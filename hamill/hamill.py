@@ -910,7 +910,7 @@ def process_lines(lines, gen=None):
                 in_code_free_block = True
                 code_lang = line.replace('@@@', '', 1).strip()
                 if len(code_lang) == 0:
-                    code_lang = VAR_DEFAULT_CODE
+                    code_lang = gen['DEFAULT_CODE']
             else:
                 gen.append('</pre>\n')
                 in_code_free_block = False
