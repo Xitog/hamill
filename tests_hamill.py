@@ -69,7 +69,7 @@ def verify(source, answer, check, msg=None):
         nb = 5
         for i in range(0, min(len(res), len(check))):
             if res[i] != check[i]:
-                print('>>>', i, res[i], check[i])
+                print('>>>', i, res[i].replace('\n', '<NL>'), check[i].replace('\n', '<NL>'))
                 nb -= 1
             if nb == 0: break
         if stop_on_error:
@@ -362,9 +362,9 @@ if a == 5:
     break
 @@@""",
         'result': """<pre class="code">
-<span class="python-keyword">if</span><span class="python-blank"> </span><span class="python-identifier">a</span><span class="python-blank"> </span><span class="python-operator">==</span><span class="python-blank"> </span><span class="python-integer">5</span><span class="python-operator">:</span>
-<span class="python-blank">    </span><span class="python-keyword">break</span>
-</pre>
+<span class="python-keyword">if</span><span class="python-blank"> </span><span class="python-identifier">a</span><span class="python-blank"> </span><span class="python-operator">==</span><span class="python-blank"> </span><span class="python-integer">5</span><span class="python-operator">:</span><span class="python-newline">
+</span><span class="python-blank">    </span><span class="python-keyword">break</span><span class="python-newline">
+</span></pre>
 """,
         'msg': "Python code on multilines with weyland"
     },
@@ -385,19 +385,19 @@ nb = input('enter a number:')
 writeln(fact(nb))
 @@@""",
         'result': """<pre class="code">
-<span class="text-normal">-- fonction factorielle récursive</span>
-<span class="text-normal">fun fact(nb : int)</span>
-<span class="text-normal">    if nb == 0 then</span>
-<span class="text-normal">        return 1</span>
-<span class="text-normal">    elif nb &gt; 0 then</span>
-<span class="text-normal">        return nb * fact(nb - 1)</span>
-<span class="text-normal">    else</span>
-<span class="text-normal">        raise Exception(&quot;Invalid number&quot;)</span>
-<span class="text-normal">    end</span>
-<span class="text-normal">end</span>
-<span class="text-normal">nb = input(&#x27;enter a number:&#x27;)</span>
-<span class="text-normal">writeln(fact(nb))</span>
-</pre>
+<span class="text-normal">-- fonction factorielle récursive</span><span class="text-newline">
+</span><span class="text-normal">fun fact(nb : int)</span><span class="text-newline">
+</span><span class="text-normal">    if nb == 0 then</span><span class="text-newline">
+</span><span class="text-normal">        return 1</span><span class="text-newline">
+</span><span class="text-normal">    elif nb &gt; 0 then</span><span class="text-newline">
+</span><span class="text-normal">        return nb * fact(nb - 1)</span><span class="text-newline">
+</span><span class="text-normal">    else</span><span class="text-newline">
+</span><span class="text-normal">        raise Exception(&quot;Invalid number&quot;)</span><span class="text-newline">
+</span><span class="text-normal">    end</span><span class="text-newline">
+</span><span class="text-normal">end</span><span class="text-newline">
+</span><span class="text-normal">nb = input(&#x27;enter a number:&#x27;)</span><span class="text-newline">
+</span><span class="text-normal">writeln(fact(nb))</span><span class="text-newline">
+</span></pre>
 """,
         'msg': "Bug: double replace html entity"
     },

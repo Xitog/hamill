@@ -726,7 +726,7 @@ def output_list(gen, list_array):
 def process_lines(lines, gen=None):
     gen = Generation() if gen is None else gen
     if isinstance(lines, str):
-        lines = lines.split('\n')
+        lines = [line + '\n' for line in lines.split('\n')]
     # The 6 HTML constants are defined in Result class
     in_table = False
     in_definition_list = False
@@ -928,7 +928,7 @@ def process_lines(lines, gen=None):
                 if len(line) > 2 and line[0:3] == '@@@':
                     found = sub_index
                     break
-                gen.append(write_code(line, code_lang) + '\n')
+                gen.append(write_code(line, code_lang))
                 sub_index += 1
             if not found:
                 raise Exception(f"No closing @@@ found for block of free code at line {index}")
@@ -951,7 +951,7 @@ def process_lines(lines, gen=None):
                 if not line.startswith('@@'):
                     break
                 line = line[2:] # remove starting @@
-                gen.append(write_code(line, code_lang) + '\n')
+                gen.append(write_code(line, code_lang))
                 sub_index += 1
             # Closing block
             gen.append('</pre>\n')
