@@ -309,7 +309,7 @@ def safe(line):
     # Replace special glyph
     line = line.replace('<==', '⇐')
     line = line.replace('==>', '⇒')
-    # Replace HTML special char
+    # Replace HTML special char but not all (can't use html.escape for that)
     new_line = ''
     index_char = 0
     escape = False
@@ -383,7 +383,13 @@ def check_link(link, links, inner_links):
 #-------------------------------------------------------------------------------
 
 def process_string(line, gen=None):
+    if line.find('\n') != -1:
+        raise Exception("process_string() can't process multilines input")
     gen = Generation() if gen is None else gen
+    nb, title, id_title = find_title(line)
+    if nb > 0:
+        new_line = f'<h{nb} id="{id_title}">{title}</h{nb}>'
+        return new_line
     new_line = ''
     in_bold = False
     in_italic = False
@@ -719,6 +725,8 @@ def output_list(gen, list_array):
 
 def process_lines(lines, gen=None):
     gen = Generation() if gen is None else gen
+    if isinstance(lines, str):
+        lines = lines.split('\n')
     # The 6 HTML constants are defined in Result class
     in_table = False
     in_definition_list = False
@@ -765,11 +773,11 @@ def process_lines(lines, gen=None):
                 in_code_block = True
             else:
                 in_code_block = False
-            # Strip
             if not in_code_free_block and not in_code_block:
+                # Strip
                 line = super_strip(line)
-            # Special chars
-            line = safe(line)
+                # Special chars
+                line = safe(line)
             # Link library
             if len(line) > 0 and line[0] == '[' and multi_find(line, [']: https://', ']: http://']):
                 name = line[1:line.find(']: ')]
@@ -805,6 +813,8 @@ def process_lines(lines, gen=None):
     
     # 2nd Pass
     index = -1
+    in_code_block = False
+    in_code_free_block = False
     while index < len(content) - 1:
         index += 1
         line = content[index]
@@ -903,34 +913,49 @@ def process_lines(lines, gen=None):
         elif in_pre_block:
             gen.append('</pre>\n')
             in_pre_block = False
-        # Block of code 1
+        # Block of code 1 'code_free_block' (only first and last lines must start with @@@)
         if len(line) > 2 and line[0:3] == '@@@':
-            if not in_code_free_block:
-                gen.append('<pre class="code">\n')
-                in_code_free_block = True
-                code_lang = line.replace('@@@', '', 1).strip()
-                if len(code_lang) == 0:
-                    code_lang = gen['DEFAULT_CODE']
-            else:
-                gen.append('</pre>\n')
-                in_code_free_block = False
-            continue 
-        # Block of code 2
-        if line.startswith('@@') and (len(super_strip(line)) == 2 or line[2] != '@'):
-            if not in_code_block:
-                gen.append('<pre class="code">\n')
-                in_code_block = True
-                code_lang = super_strip(line.replace('@@', '', 1))
-                if len(code_lang) == 0:
-                    code_lang = gen['DEFAULT_CODE']
-                continue
-        elif in_code_block:
+            # Writing start of block
+            gen.append('<pre class="code">\n')
+            code_lang = line.replace('@@@', '', 1).strip()
+            if len(code_lang) == 0:
+                code_lang = gen['DEFAULT_CODE']
+            # Finding its limit and processing
+            sub_index = index + 1
+            found = None
+            while sub_index < len(content):
+                line = content[sub_index]
+                if len(line) > 2 and line[0:3] == '@@@':
+                    found = sub_index
+                    break
+                gen.append(write_code(line, code_lang) + '\n')
+                sub_index += 1
+            if not found:
+                raise Exception(f"No closing @@@ found for block of free code at line {index}")
+            # Closing block
             gen.append('</pre>\n')
-            in_code_block = False
-        if in_code_free_block or in_code_block:
-            if in_code_block:
+            index = sub_index
+            continue 
+        # Block of code 2 'code_block' (each lines must start with @@)
+        if line.startswith('@@') and (len(super_strip(line)) == 2 or line[2] != '@'):
+            # Writing start of block
+            gen.append('<pre class="code">\n')
+            code_lang = line.replace('@@', '', 1).strip()
+            if len(code_lang) == 0:
+                code_lang = gen['DEFAULT_CODE']
+            # Finding its limit and processing
+            sub_index = index + 1
+            found = None
+            while sub_index < len(content):
+                line = content[sub_index]
+                if not line.startswith('@@'):
+                    break
                 line = line[2:] # remove starting @@
-            gen.append(write_code(line, code_lang))
+                gen.append(write_code(line, code_lang) + '\n')
+                sub_index += 1
+            # Closing block
+            gen.append('</pre>\n')
+            index = sub_index
             continue
         # Div {{#ids .cls}}
         if line.startswith('{{') and line.endswith('}}'):
@@ -968,10 +993,9 @@ def process_lines(lines, gen=None):
            not line.startswith('|-'):
             line = process_string(line, gen)
         # Title
-        nb, title, id_title = find_title(line)
-        if nb > 0:
-            line = f'<h{nb} id="{id_title}">{title}</h{nb}>\n'
-            gen.append(line)
+        if line.startswith('#'):
+            line = process_string(line, gen)
+            gen.append(line + '\n')
             continue
         # Liste
         found = multi_start(line, LIST_STARTERS)
@@ -1124,11 +1148,21 @@ def process_dir(source, dest, default_lang=None, includes=None):
             process_dir(path, os.path.join(dest, name_ext), default_lang, includes)
 
 
-def process(source, dest, default_lang=None, includes=None):
-    """Process a file or directory"""
+def process(source, dest=None, default_lang=None, includes=None, gen=None):
+    """Process a line, some lines, a file or a directory"""
     if os.path.isfile(source):
+        if dest is None:
+            raise Exception('When processing a file, Hamill needs an output file')
         process_file(source, dest, default_lang, includes)
     elif os.path.isdir(source):
+        if dest is None:
+            raise Exception('When processing a directory, Hamill nedds an output directory')
         process_dir(source, dest, default_lang, includes)
+    elif source.find('\n') != -1:
+        if dest is not None:
+            raise Exception(f'When processing lines, dest should be None instead of |{dest}|')
+        return process_lines(source, gen)
     else:
-        warning(f'Process: {source} not found.')
+        if dest is not None:
+            raise Exception(f'When processing a line, dest should be None instead of |{dest}|')
+        return process_string(source, gen)
