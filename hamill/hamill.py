@@ -40,7 +40,8 @@ from logging import info, warning, error
 
 # Ugly hack to have the dev version of Weyland on my computer instead of the one loaded through pypi
 could_be = [r"C:\Users\damie_000\Documents\GitHub\tallentaa\projets\weyland\weyland\__init__.py",
-            '/home/damien/Documents/tallentaa/projets/weyland/weyland/__init__.py']
+            '/home/damien/Documents/tallentaa/projets/weyland/weyland/__init__.py',
+            r"C:\Temp\git\weyland\js\heretic.py"]
 location = None
 for cb in could_be:
     if os.path.exists(cb):
@@ -361,7 +362,20 @@ def make_id(string):
 def write_code(line, code_lang):
     line = line.replace('\\@', '@') # warning bug if \\@
     #print('write_code', code_lang, line)
-    return Lexer(LANGUAGES[code_lang], debug=False).to_html(text=line)
+    return Lexer(LANGUAGES[code_lang]).to_html(text=line, raws=['blank'])
+
+
+def write_code2(line, code_lang):
+    line = line.replace('\\@', '@') # warning bug if \\@
+    #print('write_code', code_lang, line)
+    #print('Lang:', code_lang, 'Envoyé:', line)
+    import requests
+    import logging
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    r = requests.post("http://localhost:7000", data={'id': 3, 'lang': code_lang, 'text': line})
+    #print(r.status_code, r.reason)
+    #print(r.json()['result'])
+    return r.json()['result']
 
 
 def check_link(link, links, inner_links):
@@ -923,15 +937,18 @@ def process_lines(lines, gen=None):
             # Finding its limit and processing
             sub_index = index + 1
             found = None
+            code_block = ''
             while sub_index < len(content):
                 line = content[sub_index]
                 if len(line) > 2 and line[0:3] == '@@@':
                     found = sub_index
                     break
-                gen.append(write_code(line, code_lang))
+                code_block += line
                 sub_index += 1
             if not found:
                 raise Exception(f"No closing @@@ found for block of free code at line {index}")
+            # The entire block is sent to write_code in order to comply with multilines comment
+            gen.append(write_code(code_block, code_lang))
             # Closing block
             gen.append('</pre>\n')
             index = sub_index
@@ -988,29 +1005,6 @@ def process_lines(lines, gen=None):
                 else:
                     gen.append(f'<div id="{cls}">\n')
             continue
-        # Bold & Italic & Strikethrough & Underline & Power
-        if multi_find(line, ('**', '--', '__', '^^', "''", "[", '@@', '{{')) and \
-           not line.startswith('|-'):
-            line = process_string(line, gen)
-        # Title
-        if line.startswith('#'):
-            line = process_string(line, gen)
-            gen.append(line + '\n')
-            continue
-        # Liste
-        found = multi_start(line, LIST_STARTERS)
-        if found:
-            level, starter, cont = count_list_level(line)
-            list_array.append({'level': level, 'starter': starter, 'line': escape(line[level * 2:]), 'cont': cont})
-            continue
-        elif len(list_array) > 0 and len(line) > 0 and line[0] == '|':
-            level = list_array[-1]['level']
-            starter = list_array[-1]['starter']
-            list_array.append({'level': level, 'starter': starter, 'line': escape(line[2:]), 'cont': True})
-            continue
-        elif len(list_array) > 0:
-            output_list(gen, list_array)
-            list_array = []
         # Table
         if len(line) > 0 and line[0] == '|':
             if not in_table:
@@ -1032,7 +1026,23 @@ def process_lines(lines, gen=None):
                 element = 'th'
             else:
                 element = 'td'
-            columns = line.split('|')
+            # Replacing :
+            # columns = line.split('|')
+            # We must consider the | used in the text of column, not for the table structure
+            # By :
+            columns = []
+            col = ''
+            prev = None
+            for c in line:
+                if c == '|' and (prev is None or prev != '\\'):
+                    columns.append(col)
+                    col = ''
+                elif c == '|' and prev == '\\':
+                    col = col[0:-1] + c # on enlève le \\
+                else:
+                    col += c
+                prev = c
+            # End of replacement
             skip = True
             for col in columns:
                 if len(col.replace('-', '').strip()) != 0:
@@ -1068,6 +1078,29 @@ def process_lines(lines, gen=None):
         elif in_table:
             gen.append('</table>\n')
             in_table = False
+        # Bold & Italic & Strikethrough & Underline & Power
+        if multi_find(line, ('**', '--', '__', '^^', "''", "[", '@@', '{{')) and \
+           not line.startswith('|-'):
+            line = process_string(line, gen)
+        # Title
+        if line.startswith('#'):
+            line = process_string(line, gen)
+            gen.append(line + '\n')
+            continue
+        # Liste
+        found = multi_start(line, LIST_STARTERS)
+        if found:
+            level, starter, cont = count_list_level(line)
+            list_array.append({'level': level, 'starter': starter, 'line': escape(line[level * 2:]), 'cont': cont})
+            continue
+        elif len(list_array) > 0 and len(line) > 0 and line[0] == '|':
+            level = list_array[-1]['level']
+            starter = list_array[-1]['starter']
+            list_array.append({'level': level, 'starter': starter, 'line': escape(line[2:]), 'cont': True})
+            continue
+        elif len(list_array) > 0:
+            output_list(gen, list_array)
+            list_array = []
         # Definition list
         if line.startswith('$ '):
             if not in_definition_list:
