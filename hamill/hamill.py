@@ -1006,7 +1006,7 @@ def process_lines(lines, gen=None):
                     gen.append(f'<div id="{cls}">\n')
             continue
         # Table
-        if len(line) > 0 and line[0] == '|':
+        if len(line) > 0 and line[0] == '|' and line[-1] == '|':
             if not in_table:
                 if gen['NEXT_TAB_CLASS'] is not None:
                     cls = f' class="{gen["NEXT_TAB_CLASS"]}"'

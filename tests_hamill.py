@@ -352,7 +352,7 @@ Je suis dans une div !
     {
         # Test 29 python
         'source': "@@python if a == 5: break@@",
-        'result': '<code><span class="python-keyword">if</span><span class="python-blank"> </span><span class="python-identifier">a</span><span class="python-blank"> </span><span class="python-operator">==</span><span class="python-blank"> </span><span class="python-integer">5</span><span class="python-operator">:</span><span class="python-blank"> </span><span class="python-keyword">break</span></code>',
+        'result': '<code><span class="python-keyword">if</span> <span class="python-identifier">a</span> <span class="python-operator">==</span> <span class="python-integer">5</span><span class="python-operator">:</span> <span class="python-keyword">break</span></code>',
         'msg': "Python code on one line with weyland"
     },
     {
@@ -362,8 +362,8 @@ if a == 5:
     break
 @@@""",
         'result': """<pre class="code">
-<span class="python-keyword">if</span><span class="python-blank"> </span><span class="python-identifier">a</span><span class="python-blank"> </span><span class="python-operator">==</span><span class="python-blank"> </span><span class="python-integer">5</span><span class="python-operator">:</span><span class="python-newline">
-</span><span class="python-blank">    </span><span class="python-keyword">break</span><span class="python-newline">
+<span class="python-keyword">if</span> <span class="python-identifier">a</span> <span class="python-operator">==</span> <span class="python-integer">5</span><span class="python-operator">:</span><span class="python-newline">
+</span>    <span class="python-keyword">break</span><span class="python-newline">
 </span></pre>
 """,
         'msg': "Python code on multilines with weyland"
@@ -404,7 +404,7 @@ writeln(fact(nb))
     {
         # Test 32 code inside a line
         'source': "quand on fait @@python a > 5@@ on teste",
-        'result': """quand on fait <code><span class="python-identifier">a</span><span class="python-blank"> </span><span class="python-operator">&gt;</span><span class="python-blank"> </span><span class="python-integer">5</span></code> on teste""",
+        'result': """quand on fait <code><span class="python-identifier">a</span> <span class="python-operator">&gt;</span> <span class="python-integer">5</span></code> on teste""",
         'msg': 'Problème avec code dans une ligne'
     }
 ]

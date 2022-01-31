@@ -54,7 +54,7 @@ Start your titles with the number of ``#`` equivalent to the title level.
 ## Tables
 
 * Use ``|`` to limit your table and its columns
-* For creating a header line, put after a it a ``|-------|`` line 
+* For creating a header line, put after the title line a ``|-------|`` line 
 * Text modifiers, images and links can be put in a table
 * LIMITATION: For now, lists can't be put in a table
 
@@ -74,9 +74,10 @@ Start your titles with the number of ``#`` equivalent to the title level.
 
 ## Constants
 
-* You can define the value of the one of the 6 constants by starting a line with ``!const`` then the constant then = and the value
+* You can define the value of the one of the 6 constants by starting a line with ``!const`` then the constant identifier then = and the value
 * You can have multiple value definition but only the last will be taken into account
-* The 6 variables :
+* A constant value can't change during the process of emitting HTML
+* The 6 constants :
   * ``TITLE`` to define the title of the page
   * ``ICON`` to define an icon for the page
   * ``LANG`` to define the lang of the page (default : en)
@@ -86,7 +87,7 @@ Start your titles with the number of ``#`` equivalent to the title level.
 
 ## Variables
 
-* You can define the value of the variables by staring a line with ``!var`` then the variable then = and the value
+* You can define the value of the variables by staring a line with ``!var`` then the variable identifier then = and the value
 * A variable value can change through the process of emitting HTML
    * ``EXPORT_COMMENT=true/false`` specify if entire comment lines must be emitted in HTML
    * ``PARAGRAPH_DEFINITION=true/false`` specify if definitions of a definition list must be put in paragraph (p)
