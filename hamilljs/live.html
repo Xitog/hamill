@@ -1,0 +1,135 @@
+<html>
+    <head>
+        <title>Hamill Live</title>
+        <meta charset="utf8">
+        <link href="https://xitog.github.io/dgx/css/flashy.css" rel="stylesheet">
+        <style>
+            #code {
+                width: 95%;
+                height: 90%;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                border: 1px black solid;
+                padding: 12px;
+                overflow: auto;
+                font-family: 'Courier New', Courier, monospace;
+                white-space: pre-wrap;
+                resize: none;
+            }
+            .grid-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-gap: 5px;
+                height: 100%;
+            }
+            #output {
+                margin-top: 30px;
+                padding: 12px;
+                font-family: 'Courier New', Courier, monospace;
+            }
+        </style>
+        <script type="module">
+            function reset()
+            {
+                let code = document.getElementById("code");
+                code.value = "";
+            }
+            
+            function analyse()
+            {
+                console.clear();
+                let code = document.getElementById("code");
+                let text = code.value;
+                let i = 0;
+                let out = '';
+                let in_italic = false;
+                let in_bold = false;
+                let in_strikethrough = false;
+                let in_underline = false;
+                let in_power = false;
+                while (i < text.length)
+                {
+                    let current = text[i];
+                    let next = i + 1 < text.length ? text[i + 1] : '';
+                    let prev = i - 1 >= 0 ? text[i - 1] : '';
+                    if (current === "'" && next === "'" && prev !== "\\") {
+                        if (!in_italic) {
+                            out += '<i>';
+                            in_italic = true;
+                        } else {
+                            out += '</i>';
+                            in_italic = false;
+                        }
+                        i += 2;
+                    } else if (current === '*' && next === '*' && prev !== "\\") {
+                        if (!in_bold) {
+                            out += '<b>';
+                            in_bold = true;
+                        } else {
+                            out += '</b>';
+                            in_bold = false;
+                        }
+                        i += 2;
+                    } else if (current === '-' && next === '-' && prev !== "\\") {
+                        if (!in_strikethrough) {
+                            out += '<s>';
+                            in_strikethrough = true;
+                        } else {
+                            out += '</s>';
+                            in_strikethrough = false;
+                        }
+                        i += 2;
+                    } else if (current === '_' && next === '_' && prev !== "\\") {
+                        if (!in_underline) {
+                            out += '<u>';
+                            in_underline = true;
+                        } else {
+                            out += '</u>';
+                            in_underline = false;
+                        }
+                        i += 2;
+                    } else if (current === '^' && next === '^' && prev !== "\\") {
+                        if (!in_power) {
+                            out += '<sup>';
+                            in_power = true;
+                        } else {
+                            out += '</sup>';
+                            in_power = false;
+                        }
+                        i += 2;
+                    } else {
+                        if (current == '&') {
+                            out += '&amp;'
+                        } else if (current === '<') {
+                            out += '&lt;'
+                        } else if (current === '>') {
+                            out += '&gt;'
+                        } else {
+                            out += current;
+                        }
+                        i += 1;
+                    }
+                    let output = document.getElementById("output");
+                    output.innerHTML = out;
+                }
+            }
+            
+            document.querySelectorAll('[class$="_reset"]').forEach(e => e.addEventListener('click', reset));
+            document.querySelectorAll('[class$="_analyse"]').forEach(e => e.addEventListener('click', analyse));
+        </script>
+    </head>
+    <body width="100%">
+        <div class="grid-container">
+            <div class="grid-child">
+                <button class="_reset">Reset</button>
+                <button class="_analyse">Parse</button>
+                <textarea id="code"></textarea>
+                <button class="_reset">Reset</button>
+                <button class="_analyse">Parse</button>
+            </div>
+            <div class="grid-child">
+                <div id="output"></div>
+            </div>
+        </div>
+    </body>
+</html>
