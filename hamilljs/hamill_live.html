@@ -1,0 +1,282 @@
+<html>
+    <head>
+        <title>Hamill Live</title>
+        <meta charset="utf8">
+        <link href="https://xitog.github.io/dgx/css/flashy.css" rel="stylesheet">
+        <style>
+            #code {
+                width: 95%;
+                height: 90%;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                border: 1px black solid;
+                padding: 12px;
+                overflow: auto;
+                font-family: 'Courier New', Courier, monospace;
+                white-space: pre-wrap;
+                resize: none;
+            }
+            .grid-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-gap: 5px;
+                height: 100%;
+            }
+            #output {
+                margin-top: 30px;
+                padding: 12px;
+                font-family: 'Courier New', Courier, monospace;
+            }
+        </style>
+        <script type="module">
+            var links = [];
+
+            function reset()
+            {
+                let code = document.getElementById("code");
+                code.value = "";
+            }
+
+            function make_link(s)
+            {
+                return s.replaceAll(' ', '-').toLowerCase();
+            }
+
+            function analyse()
+            {
+                console.clear();
+                let code = document.getElementById("code");
+                let text = code.value;
+                let i = 0;
+                let out = '';
+                let in_italic = false;
+                let in_bold = false;
+                let in_strikethrough = false;
+                let in_underline = false;
+                let in_superscript = false;
+                let in_subscript = false;
+                let in_code = false;
+                let in_link = false;
+                let link = '';
+                let in_picture = false;
+                let picture = '';
+                let in_comment = false;
+                while (i < text.length)
+                {
+                    let current = text[i];
+                    let next = i + 1 < text.length ? text[i + 1] : '';
+                    let next_next = i + 2 < text.length ? text[i + 2] : '';
+                    let prev = i - 1 >= 0 ? text[i - 1] : '';
+                    // Comments
+                    if (current === '§' && next === '§' && prev !== "\\") {
+                        in_comment = !in_comment;
+                        i += 2;
+                    }  else if (in_comment) {
+                        i += 1;
+                    // Glyphs - Trio
+                    } else if (current === '=' && next === '=' && next_next === '>' && prev !== "\\") {
+                        out += '&DoubleRightArrow;'; // ==>
+                        i += 3;
+                    } else if (current === '<' && next === '=' && next_next === '=' && prev !== "\\") {
+                        out += '&DoubleLeftArrow;';  // <==
+                        i += 3;
+                    // Glyphs - Duo
+                    } else if (current === '-' && next === '>' && prev !== "\\" && !in_link) {
+                        out += '&ShortRightArrow;';  // ->
+                        i += 2;
+                    } else if (current === '<' && next === '-' && prev !== "\\") {
+                        out += '&ShortLeftArrow;';   // <-
+                        i += 2;
+                    } else if (current === 'o' && next === 'e' && prev !== "\\") {
+                        out += '&oelig;';            // oe
+                        i += 2;
+                    } else if (current === 'O' && next === 'E' && prev !== "\\") {
+                        out += '&OElig;';            // OE
+                        i += 2;
+                    } else if (current === '=' && next === '=' && prev !== "\\") {
+                        out += '&Equal;';            // ==
+                        i += 2;
+                    } else if (current === '!' && next === '=' && prev !== "\\") {
+                        out += '&NotEqual;';         // !=
+                        i += 2;
+                    } else if (current === '>' && next === '=' && prev !== "\\") {
+                        out += '&GreaterSlantEqual;';// >=
+                        i += 2;
+                    } else if (current === '<' && next === '=' && prev !== "\\") {
+                        out += '&LessSlantEqual;';   // <=
+                        i += 2;
+                    // Styles
+                    } else if (current === "'" && next === "'" && prev !== "\\") {
+                        if (!in_italic) {
+                            out += '<i>';
+                            in_italic = true;
+                        } else {
+                            out += '</i>';
+                            in_italic = false;
+                        }
+                        i += 2;
+                    } else if (current === '*' && next === '*' && prev !== "\\") {
+                        if (!in_bold) {
+                            out += '<b>';
+                            in_bold = true;
+                        } else {
+                            out += '</b>';
+                            in_bold = false;
+                        }
+                        i += 2;
+                    } else if (current === '-' && next === '-' && prev !== "\\") {
+                        if (!in_strikethrough) {
+                            out += '<s>';
+                            in_strikethrough = true;
+                        } else {
+                            out += '</s>';
+                            in_strikethrough = false;
+                        }
+                        i += 2;
+                    } else if (current === '_' && next === '_' && prev !== "\\") {
+                        if (!in_underline) {
+                            out += '<u>';
+                            in_underline = true;
+                        } else {
+                            out += '</u>';
+                            in_underline = false;
+                        }
+                        i += 2;
+                    } else if (current === '^' && next === '^' && prev !== "\\") {
+                        if (!in_superscript) {
+                            out += '<sup>';
+                            in_superscript = true;
+                        } else {
+                            out += '</sup>';
+                            in_superscript = false;
+                        }
+                        i += 2;
+                    } else if (current === '#' && next === '#' && prev !== "\\") {
+                        if (!in_subscript) {
+                            out += '<sub>';
+                            in_subscript = true;
+                        } else {
+                            out += '</sub>';
+                            in_subscript = false;
+                        }
+                        i += 2;
+                    } else if (current === '@' && next === '@' && prev !== "\\") {
+                        if (!in_code) {
+                            out += '<code>';
+                            in_code = true;
+                        } else {
+                            out += '</code>';
+                            in_code = false;
+                        }
+                        i += 2;
+                    } else if (current === '[' && next === '[' && prev !== "\\") {
+                        if (in_link) {
+                            throw new Error("Cannot open a link inside a link");
+                        }
+                        in_link = true;
+                        link = '';
+                        i += 2;
+                    } else if (current === ']' && next === ']' && prev !== "\\") {
+                        in_link = false;
+                        let name = link; // by default we display the link
+                        if (link.includes('->'))
+                        {
+                            let parts = link.split('->');
+                            name = parts[0];
+                            link = parts[1];
+                            if (name.length === 0)
+                            {
+                                throw new Error("Cannot produce a link with an empty name");
+                            } else if (link.length === 0) {
+                                throw new Error("Cannot produce a link with an empty link");
+                            }
+                            if (link === '#') {
+                                link = '#' + make_link(name);
+                            } else if (link in links) {
+                                link = links[link];
+                            } else if (!link.startsWith("http://") && !link.startsWith("https://")) {
+                                throw new Error(`Invalid link to: ${link}`);
+                            }
+                        } else if (link.includes('::')) {
+                            let parts = link.split('::');
+                            let ref = parts[0];
+                            link = parts[1];
+                            links[ref] = link;
+                            i += 2;
+                            continue;
+                        }
+                        out += `<a href="${link}">${name}</a>`;
+                        link = '';
+                        i += 2;
+                    } else if (in_link) {
+                        link += current;
+                        i += 1;
+                    } else if (current === '(' && next === '(' && prev !== "\\") {
+                        if (in_picture) {
+                            throw new Error("Cannot open an image inside an image");
+                        }
+                        in_picture = true;
+                        picture = '';
+                        i += 2;
+                    } else if (current === ')' && next === ')' && prev !== "\\") {
+                        in_picture = false;
+                        if (picture.includes('->'))
+                        {
+                            let parts = picture.split('->');
+                            let caption = parts[0];
+                            picture = parts[1];
+                            if (caption.length === 0)
+                            {
+                                throw new Error("Cannot produce an image with an empty caption");
+                            } else if (picture.length === 0) {
+                                throw new Error("Cannot produce an image with an empty link");
+                            }
+                            out += `<figure><img src="${picture}" alt="${caption}"></img><figcaption>${caption}</figcaption></figure>`;
+                        } else {
+                            out += `<img src="${picture}"></img>`;
+                        }
+                        picture = '';
+                        i += 2;
+                    } else if (in_picture) {
+                        picture += current;
+                        i += 1;
+                    } else {
+                        if (current == '&') {
+                            out += '&amp;'
+                        } else if (current === '<') {
+                            out += '&lt;'
+                        } else if (current === '>') {
+                            out += '&gt;'
+                        } else if (current === '\n') {
+                            //
+                        } else {
+                            out += current;
+                        }
+                        i += 1;
+                    }
+                    let output = document.getElementById("output");
+                    output.innerHTML = out;
+                }
+            }
+
+            document.querySelectorAll('[class$="_reset"]').forEach(e => e.addEventListener('click', reset));
+            document.querySelectorAll('[class$="_analyse"]').forEach(e => e.addEventListener('click', analyse));
+        </script>
+    </head>
+    <body width="100%">
+        <h1>Live Hamill</h1>
+        <p>Entrer du code Hamill à gauche pour produire de l'HTML à droite en cliquant sur <i>Parse</i>.</p>
+        <div class="grid-container">
+            <div class="grid-child">
+                <button class="_reset">Reset</button>
+                <button class="_analyse">Parse</button>
+                <textarea id="code"></textarea>
+                <button class="_reset">Reset</button>
+                <button class="_analyse">Parse</button>
+            </div>
+            <div class="grid-child">
+                <div id="output"></div>
+            </div>
+        </div>
+    </body>
+</html>
