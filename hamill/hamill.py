@@ -37,29 +37,7 @@ import locale
 import datetime
 
 from logging import info, warning, error
-
-# Ugly hack to have the dev version of Weyland on my computer instead of the one loaded through pypi
-could_be = [r"C:\Users\damie_000\Documents\GitHub\tallentaa\projets\weyland\weyland\__init__.py",
-            '/home/damien/Documents/tallentaa/projets/weyland/weyland/__init__.py',
-            r"C:\Temp\git\weyland\js\heretic.py"]
-location = None
-for cb in could_be:
-    if os.path.exists(cb):
-        location = cb
-        break
-if location is not None:
-    import sys
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("weyland", location)
-    weyland = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = weyland
-    spec.loader.exec_module(weyland)
-    Lexer = weyland.Lexer
-    RECOGNIZED_LANGUAGES = weyland.RECOGNIZED_LANGUAGES
-    LANGUAGES = weyland.LANGUAGES
-    __version__ = weyland.__version__
-else:
-    from weyland import Lexer, RECOGNIZED_LANGUAGES, LANGUAGES, __version__
+from weyland import Lexer, RECOGNIZED_LANGUAGES, LANGUAGES, __version__
 print('Using Weyland version:', __version__)
 
 #-------------------------------------------------------------------------------
@@ -271,6 +249,15 @@ def multi_find(string, finds):
     return None
 
 
+# Compte le nombre de fois où le motif apparaît __non échappé__
+def count(line, motif):
+    a = find_unsecaped(line, motif)
+    while a > -1:
+        nb += 1
+        a = find_unsecaped(line, motif, a + 1)
+    return nb
+
+
 def find_unescaped(line, motif, start=0):
     "Used by super_strip, code handling and multi_find"
     index = start
@@ -294,7 +281,7 @@ def escape(line):
     while index_char < len(line):
         char = line[index_char]
         _, next_char, _ = prev_next(line, index_char)
-        if char == '\\' and next_char in ['*', "'", '^', '-', '_', '[', '@', '%', '+', '$', '!', '|', '{', '•']:
+        if char == '\\' and next_char in ['*', "'", '^', '#', '-', '_', '[', '@', '%', '+', '$', '!', '|', '{', '•']:
             new_line += next_char
             index_char += 2    
         else:
@@ -410,6 +397,7 @@ def process_string(line, gen=None):
     in_strikethrough = False
     in_underline = False
     in_power = False
+    in_sub = False
     in_code = False
     code = ''
     char_index = -1
@@ -562,7 +550,7 @@ def process_string(line, gen=None):
             else:
                 new_line += '__'
             continue
-        # Power
+        # Superscript
         if char == '^' and next_char == '^' and prev_char != '\\':
             continue
         if char == '^' and prev_char == '^' and prev_prev_char != '\\':
@@ -574,6 +562,19 @@ def process_string(line, gen=None):
                 in_power = False
             else:
                 new_line += '^^'
+            continue
+        # Subscript
+        if char == '%' and next_char == '%' and prev_char != '\\':
+            continue
+        if char == '%' and prev_char == '%' and prev_prev_char != '\\':
+            if not in_sub and next_char is not None and line.find("%%", char_index + 1) != -1:
+                new_line += '<sub>'
+                in_sub = True
+            elif in_sub:
+                new_line += '</sub>'
+                in_sub = False
+            else:
+                new_line += '%%'
             continue
         # Code
         if char == '@' and next_char == '@' and prev_char != '\\':
@@ -1079,7 +1080,7 @@ def process_lines(lines, gen=None):
             gen.append('</table>\n')
             in_table = False
         # Bold & Italic & Strikethrough & Underline & Power
-        if multi_find(line, ('**', '--', '__', '^^', "''", "[", '@@', '{{')) and \
+        if multi_find(line, ('**', '--', '__', '^^', '%%', "''", "[", '@@', '{{')) and \
            not line.startswith('|-'):
             line = process_string(line, gen)
         # Title

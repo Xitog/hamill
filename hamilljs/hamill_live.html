@@ -151,7 +151,7 @@
                             in_superscript = false;
                         }
                         i += 2;
-                    } else if (current === '#' && next === '#' && prev !== "\\") {
+                    } else if (current === '%' && next === '%' && prev !== "\\") {
                         if (!in_subscript) {
                             out += '<sub>';
                             in_subscript = true;
@@ -265,7 +265,7 @@
     </head>
     <body width="100%">
         <h1>Live Hamill</h1>
-        <p>Entrer du code Hamill à gauche pour produire de l'HTML à droite en cliquant sur <i>Parse</i>.</p>
+        <p>Entrer du code <a href="https://xitog.github.io/dgx/informatique/hamill.html">Hamill</a> à gauche pour produire de l'HTML à droite en cliquant sur <i>Parse</i>.</p>
         <div class="grid-container">
             <div class="grid-child">
                 <button class="_reset">Reset</button>

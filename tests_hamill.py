@@ -6,6 +6,7 @@ import hamill
 import weyland
 import locale
 from datetime import datetime
+from logging import info, warning, error
 
 #------------------------------------------------------------------------------
 # Constants
@@ -43,9 +44,10 @@ def verify(source, answer, check, msg=None):
             print(res)
         if len(res) > 0 and res[-1] != '\n':
             print()
+        return True
     else:
         bad += 1
-        print(f'Test n°{good + bad} ERROR')
+        error(f'Test n°{good + bad} ERROR')
         print('---')
         print(f'Source ({len(source)} chars):')
         if source.find('\n') == -1:
@@ -71,13 +73,9 @@ def verify(source, answer, check, msg=None):
             if res[i] != check[i]:
                 print('>>>', i, res[i].replace('\n', '<NL>'), check[i].replace('\n', '<NL>'))
                 nb -= 1
-            if nb == 0: break
-        if stop_on_error:
-            if msg is not None:
-                print("Unexpected result: " + str(answer))
-            else:
-                print("Unexpected result")
-            exit()
+            if nb == 0:
+                break
+        return False
 
 #------------------------------------------------------------------------------
 # Tests
@@ -85,8 +83,8 @@ def verify(source, answer, check, msg=None):
 tests = [
     {
         # Test 1
-        'source': "**bold** ''italic'' __underline__ --strike-- ^^super^^",
-        'result': "<b>bold</b> <i>italic</i> <u>underline</u> <s>strike</s> <sup>super</sup>", 
+        'source': "**bold** ''italic'' __underline__ --strike-- ^^super^^ %%sub%%",
+        'result': "<b>bold</b> <i>italic</i> <u>underline</u> <s>strike</s> <sup>super</sup> <sub>sub</sub>", 
         'msg':  "process() => Bold/Italic error"
     },
     {
@@ -406,6 +404,12 @@ writeln(fact(nb))
         'source': "quand on fait @@python a > 5@@ on teste",
         'result': """quand on fait <code><span class="python-identifier">a</span> <span class="python-operator">&gt;</span> <span class="python-integer">5</span></code> on teste""",
         'msg': 'Problème avec code dans une ligne'
+    },
+    {
+        # Test 33 title
+        'source': "## TITLE 2",
+        'result': '<h2 id="title-2">TITLE 2</h2>',
+        'msg': 'Problème avec titre de niveau 2'
     }
 ]
 
@@ -421,7 +425,10 @@ def execute_tests():
                 gen = hamill.Generation(default_lang=t['default_lang'])
             print(f'- {nb} -------------------------------------------------------------------')
             res = hamill.process(t['source'], gen=gen)
-            verify(t['source'], res, t['result'], t['msg'])
+            res = verify(t['source'], res, t['result'], t['msg'])
+            if not res and stop_on_error:
+                error("STOPPING ON ERROR")
+                break
         nb += 1
     stop = datetime.now()
     print()
