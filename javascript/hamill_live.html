@@ -1,0 +1,77 @@
+<html>
+    <head>
+        <title>Hamill Live</title>
+        <meta charset="utf8">
+        <link href="https://xitog.github.io/dgx/css/flashy.css" rel="stylesheet">
+        <style>
+            #code {
+                width: 95%;
+                height: 90%;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                border: 1px black solid;
+                padding: 12px;
+                overflow: auto;
+                font-family: 'Courier New', Courier, monospace;
+                white-space: pre-wrap;
+                resize: none;
+            }
+            .grid-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-gap: 5px;
+                height: 100%;
+            }
+            #output {
+                margin-top: 30px;
+                padding: 12px;
+                font-family: 'Courier New', Courier, monospace;
+            }
+        </style>
+        <script type="module">
+            import {Hamill, Document} from "./hamill.mjs";
+
+            var links = [];
+
+            function reset()
+            {
+                let code = document.getElementById("code");
+                code.value = "";
+            }
+
+            function make_link(s)
+            {
+                return s.replaceAll(' ', '-').toLowerCase();
+            }
+
+            function analyse()
+            {
+                console.clear();
+                let code = document.getElementById("code");
+                let text = code.value;
+                let doc = Hamill.process_string(text);
+                let output = document.getElementById("output");
+                output.innerHTML = doc.to_html();
+            }
+
+            document.querySelectorAll('[class$="_reset"]').forEach(e => e.addEventListener('click', reset));
+            document.querySelectorAll('[class$="_analyse"]').forEach(e => e.addEventListener('click', analyse));
+        </script>
+    </head>
+    <body width="100%">
+        <h1>Live Hamill</h1>
+        <p>Entrer du code <a href="https://xitog.github.io/dgx/informatique/hamill.html">Hamill</a> à gauche pour produire de l'HTML à droite en cliquant sur <i>Parse</i>.</p>
+        <div class="grid-container">
+            <div class="grid-child">
+                <button class="_reset">Reset</button>
+                <button class="_analyse">Parse</button>
+                <textarea id="code"></textarea>
+                <button class="_reset">Reset</button>
+                <button class="_analyse">Parse</button>
+            </div>
+            <div class="grid-child">
+                <div id="output"></div>
+            </div>
+        </div>
+    </body>
+</html>
