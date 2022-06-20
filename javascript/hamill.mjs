@@ -28,8 +28,12 @@
 // Imports
 //-------------------------------------------------------------------------------
 
-//import fs from 'fs';
-let fs = await import('fs');
+let fs = null;
+if (typeof process !== 'undefined' && process !== null && typeof process.version !== 'undefined' && process.version !== null && typeof process.version === "string") // ==="node"
+{
+    //import fs from 'fs';
+    fs = await import('fs');
+}
 
 //-----------------------------------------------------------------------------
 // Classes
@@ -916,6 +920,10 @@ class Hamill
     // Take a filename, return a list of tagged lines, output the result in a file
     static process_file(filename)
     {
+        if (fs === null)
+        {
+            throw new Error("Not in node.js : module fs not defined. Aborting.");
+        }
         if (DEBUG)
         {
             console.log('Processing file:', filename);
@@ -1497,6 +1505,9 @@ function tests()
 //-------------------------------------------------------------------------------
 
 var DEBUG = false;
-//tests();
+if (DEBUG && fs !== null)
+{
+    tests();
+}
 
 export {Hamill, Document};
