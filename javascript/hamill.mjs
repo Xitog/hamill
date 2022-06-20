@@ -1136,6 +1136,9 @@ class Hamill
             {
                 word += '&gt;';
             // Glyphs - Trio
+            } else if (char === '.' && next === '.' && next_next === '.' && prev !== "\\") {
+                word += '…';
+                index += 2;
             } else if (char === '=' && next === '=' && next_next === '>' && prev !== "\\") {
                 word += '&DoubleRightArrow;'; // ==>
                 index += 2;
