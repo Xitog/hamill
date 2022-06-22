@@ -43,12 +43,12 @@ You can define custom div, span and paragraph with :
 * Specify the language right after the opening ``@@`` with an space at the end: ``@@python @@`` ``\`` to escape.
 * For a code bloc, you can either do :
   * a opening line with only ``@@language`` then each line of code must start by ``@@``
-  * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only @@@ on it
+  * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only ``@@@`` on it
 
 ## Quote
 
 * With ``>>`` at the start of the line and all the following lines of the quote
-* With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only >>> on it
+* With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only ``>>>`` on it
 
 ## List
 
