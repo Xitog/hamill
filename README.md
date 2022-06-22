@@ -55,7 +55,7 @@ You can define custom div, span and paragraph with :
 * Use ``*`` at a start of line followed by a space for an unordered list
 * Use ``+`` at a start of line followed by a space for an ordered list, ascending
 * Use ``-`` at a start of line followed by a space  for an ordered list, descending
-* You can have multiple level of lists by putting two spaces before the starter symbol like : ``  * item``
+* You can have multiple level of lists by putting two spaces before the starter symbol for each level
 * Use ``|`` for continuing a previous item on a new line
 
 ## Definition list
