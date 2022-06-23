@@ -111,12 +111,50 @@ class Stop extends Node
 }
 class Picture extends Node
 {
+    constructor(url, text=null, cls=null, ids=null)
+    {
+        super(url);
+        this.text = text;
+        this.cls = cls;
+        this.ids = ids;
+    }
+
     to_html()
     {
-        return `<img src="${this.content}"/>`;
+        let cls = '';
+        if (this.cls !== null)
+        {
+            cls = ` class="${this.cls}"`;
+        }
+        let ids = '';
+        if (this.ids !== null)
+        {
+            ids = ` id="${this.ids}"`;
+        }
+        if (this.text !== null)
+        {
+            return `<figure><img ${cls} ${ids} src="${this.content}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
+        }
+        else
+        {
+            return `<img ${cls} ${ids} src="${this.content}"/>`;
+        }
     }
 }
-class HR extends EmptyNode {}
+class HR extends EmptyNode
+{
+    to_html()
+    {
+        return "<hr>\n";
+    }
+}
+class BR extends EmptyNode
+{
+    to_html()
+    {
+        return '<br>';
+    }
+}
 class Span extends EmptyNode
 {
     constructor(ids, cls, text)
@@ -176,7 +214,13 @@ class Row extends EmptyNode
         this.is_header = false;
     }
 }
-class RawHTML extends Node {}
+class RawHTML extends Node
+{
+    to_html()
+    {
+        return this.content + "\n";
+    }
+}
 class Include extends Node {}
 class Title extends Node
 {
@@ -188,14 +232,40 @@ class Title extends Node
 }
 class StartDiv extends EmptyNode
 {
-    constructor(id, cls)
+    constructor(id=null, cls=null)
     {
         super();
         this.id = id;
         this.cls = cls;
     }
+
+    to_html()
+    {
+        if (this.id !== null && this.cls !== null)
+        {
+            return `<div id="${this.id}" class="${this.cls}">\n`;
+        }
+        else if (this.id !== null)
+        {
+            return `<div id="${this.id}">\n`;
+        }
+        else if (this.cls !== null)
+        {
+            return `<div class="${this.cls}">\n`;
+        }
+        else
+        {
+            return '<div>\n';
+        }
+    }
 }
-class EndDiv extends EmptyNode {}
+class EndDiv extends EmptyNode
+{
+    to_html()
+    {
+        return "</div>\n";
+    }
+}
 class Composite extends EmptyNode
 {
     constructor()
@@ -317,7 +387,8 @@ class Document
         this.variables = {
             'VERSION': new Variable(this, 'VERSION', 'string', 'true', 'Hamill 2.0'),
             'NOW': new Variable(this, 'NOW', 'string', 'true', ''),
-            'PARAGRAPH_DEFINITION': new Variable(this, 'PARAGRAPH_DEFINITION', 'boolean', false, false)
+            'PARAGRAPH_DEFINITION': new Variable(this, 'PARAGRAPH_DEFINITION', 'boolean', false, false),
+            'EXPORT_COMMENT': new Variable(this, 'EXPORT_COMMENT', 'boolean', false, false)
         };
         this.required = [];
         this.css = [];
@@ -343,6 +414,7 @@ class Document
 
     set_variable(k, v, t='string', c=false)
     {
+        //console.log(`Setting ${k} to ${v}`);
         if (k in this.variables)
         {
             this.variables[k].set_variable(v);
@@ -430,7 +502,8 @@ class Document
             if (node instanceof Start
                 || node instanceof Stop
                 || node instanceof Span
-                || node instanceof Picture)
+                || node instanceof Picture
+                || node instanceof BR)
             {
                 content += node.to_html();
             }
@@ -534,7 +607,7 @@ class Document
         return content;
     }
 
-    to_html(header=true, discard_comment=true)
+    to_html(header=true)
     {
         let start_time = new Date();
         let content = '';
@@ -642,7 +715,7 @@ class Document
             }
             else if (node instanceof Comment)
             {
-                if (!discard_comment)
+                if (this.get_variable('EXPORT_COMMENT'))
                 {
                     content += '<!-- ' + node.content + ' -->\n';
                 }
@@ -651,36 +724,12 @@ class Document
             {
                 this.set_variable(node.id, node.value, node.type, node.constant);
             }
-            else if (node instanceof HR)
+            else if (node instanceof HR
+                     || node instanceof StartDiv
+                     || node instanceof EndDiv
+                     || node instanceof RawHTML)
             {
-                content += "<hr>\n";
-            }
-            else if (node instanceof StartDiv)
-            {
-                if (node.id !== null && node.cls !== null)
-                {
-                    content += `<div id="${node.id}" class="${node.cls}">\n`;
-                }
-                else if (node.id !== null)
-                {
-                    content += `<div id="${node.id}">\n`;
-                }
-                else if (node.cls !== null)
-                {
-                    content += `<div class="${node.cls}">\n`;
-                }
-                else
-                {
-                    content += '<div>\n';
-                }
-            }
-            else if (node instanceof EndDiv)
-            {
-                content += "</div>\n";
-            }
-            else if (node instanceof RawHTML)
-            {
-                content += node.content + "\n";
+                content += node.to_html();
             }
             else if (node instanceof TextLine)
             {
@@ -1048,6 +1097,10 @@ class Hamill
                     {
                         doc.add_node(new EndDiv());
                     }
+                    else if (res['has_only_text'] && res['text'] === 'begin')
+                    {
+                        doc.add_node(new StartDiv());
+                    }
                     else if (res['has_only_text'])
                     {
                         console.log(res);
@@ -1123,7 +1176,6 @@ class Hamill
             let next = index + 1 < str.length ? str[index + 1] : null;
             let next_next = index + 2 < str.length ? str[index + 2] : null;
             let prev = index - 1 >= 0 ? str[index - 1] : null;
-
             // Glyphs
             // Glyphs - Solo
             if (char === '&')
@@ -1135,6 +1187,18 @@ class Hamill
             } else if (char === '>')
             {
                 word += '&gt;';
+            // Glyphs - Quatuor
+            } else if (char === '!' && next === '!' && next_next === ' ' && prev !== "  ") {
+                if (word.length > 0)
+                {
+                    nodes.push(new Text(word.substring(0, word.length - 1))); // remove the last space
+                    word = '';
+                }
+                nodes.push(new BR());
+                index += 2;
+            } else if (char === '\\' && str.substring(index + 1, index + 5) === ' !! ') { // escape it
+                word += ' !! ';
+                index += 4;
             // Glyphs - Trio
             } else if (char === '.' && next === '.' && next_next === '.' && prev !== "\\") {
                 word += '…';
@@ -1357,27 +1421,9 @@ class Hamill
                     word = '';
                 }
                 let end = str.indexOf('))', index);
-                let url = str.substring(index+2, end);
-
-                /*
-                if (picture.includes('->'))
-                {
-                    let parts = picture.split('->');
-                    let caption = parts[0];
-                    picture = parts[1];
-                    if (caption.length === 0)
-                    {
-                        throw new Error("Cannot produce an image with an empty caption");
-                    } else if (picture.length === 0) {
-                        throw new Error("Cannot produce an image with an empty link");
-                    }
-                    out += `<figure><img src="${picture}" alt="${caption}"></img><figcaption>${caption}</figcaption></figure>`;
-                } else {
-                    out += `<img src="${picture}"></img>`;
-                }
-                */
-
-                nodes.push(new Picture(url));
+                let content = str.substring(index+2, end);
+                let res = Hamill.process_inner_picture(content);
+                nodes.push(new Picture(res["url"], res["text"], res["class"], res["id"]));
                 index = end + 1;
             }
             else if (char === '$' && next === '$' && prev !== '\\')
@@ -1413,6 +1459,24 @@ class Hamill
         return nodes;
     }
 
+    static process_inner_picture(content)
+    {
+        let res = null;
+        let parts = content.split('->');
+        if (parts.length === 1)
+        {
+            return {'has_text': false, 'has_only_text': false,
+                    'class': null, 'id': null, 'text': null,
+                    'url': parts[0]};
+        }
+        else
+        {
+            content = parts[0];
+            res = Hamill.process_inner_markup(content);
+            res['url'] = parts[1].trim();
+        }
+        return res;
+    }
 
     static process_inner_markup(content)
     {
@@ -1508,7 +1572,7 @@ function tests()
 //-------------------------------------------------------------------------------
 
 var DEBUG = false;
-if (DEBUG && fs !== null)
+if (/*DEBUG &&*/ fs !== null)
 {
     tests();
 }
