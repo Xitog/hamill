@@ -33,7 +33,7 @@ The style of the text can be modified by the following markups:
 
 You can define custom div, span and paragraph with :
 
-* Use ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class. Use {{end}} to close it. To open a div without a class or an id, use {{begin}}.
+* Use ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class. Use ``{{end}}`` to close it. To open a div without a class or an id, use ``{{begin}}``.
 * Use ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class.
 * Use ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
@@ -82,7 +82,8 @@ You can define custom div, span and paragraph with :
 ## Images
 
 * Use ``(( url ))``
-* You can also specify an id or a class before ``(( .id #class url ))``
+* You can specify a caption before `` (( caption -> url ))``
+* You can also specify an id or a class before ``(( .id #class -> url ))``
 * You can define a default directory where to find the images with the variable ``DEFAULT_FIND_IMAGE``
 
 ## Constants
@@ -121,6 +122,8 @@ You can define custom div, span and paragraph with :
 * The CSS link or the JavaScript link will be put in the head of the HTML page
 
 ## Special
+
+Raw CSS and HTML are always possible :
 
 * Start a line with ``!css`` for emitting raw CSS code which will be put in the head
 * Start a line with ``!html`` for emitting raw HTML code in place
