@@ -2,6 +2,10 @@
 
 A simple lightweight markup language outputting HTML. Implementations are available in JavaScript and Python 3.
 
+First version released in 2020. Version 2 released in 2022.
+
+You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
+
 ## Comments, HR and BR
 
 ``// This is a comment``
