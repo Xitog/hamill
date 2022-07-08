@@ -8,10 +8,24 @@ You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/ham
 
 ## Summary
 
-* [Links to CSS and JavaScript files](#links) 
+* [Comments, HR and BR](#comments)
+* [Titles](#titles)
+* [Text modifications](#text)
+* [Div, p and span](#div) 
+* [Code](#code)
+* [Quote](#quote)
+* [List](#list) 
+* [Definition list](#definition)
+* [Tables](#tables)
+* [Links](#links)
+* [Images](#images)
+* [Constants](#constants)
+* [Variables](#variables)
+* [Inclusion of HTML files]("#include")
+* [Links to CSS and JavaScript files](#require) 
 * [Raw HTML and CSS](#direct)
 
-## Comments, HR and BR
+## <a name="comments"> Comments, HR and BR
 
 ``// This is a comment``
 
@@ -21,11 +35,11 @@ You can put a new line (br) with `` !! `` surrounded by one space on each side.
 
 You can put a line (hr) with a line with only three or more - on it :``---``.
 
-## Titles
+## <a name="titles"> Titles
 
 Start your titles with the number of ``#`` equivalent to the title level.
 
-## Text modifications
+## <a name="text"> Text modifications
 
 The style of the text can be modified by the following markups:
 
@@ -38,7 +52,7 @@ The style of the text can be modified by the following markups:
 * Surround your word with ``@@`` for code (see below)
 * Use ``\`` to prevent the interpretation of a markup
 
-## Div, p and span
+## <a name="div"> Div, p and span
 
 You can define custom div, span and paragraph with :
 
@@ -46,7 +60,7 @@ You can define custom div, span and paragraph with :
 * Use ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class.
 * Use ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
-## Code
+## <a name="code"> Code
 
 * Surround your code with ``@@`` in a text for inline code. Hamill can colorize the code using [Weyland](https://github.com/Xitog/weyland).
 * Specify the language right after the opening ``@@`` with an space at the end: ``@@python @@`` ``\`` to escape.
@@ -54,12 +68,12 @@ You can define custom div, span and paragraph with :
   * a opening line with only ``@@language`` then each line of code must start by ``@@``
   * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only ``@@@`` on it
 
-## Quote
+## <a name="quote"> Quote
 
 * With ``>>`` at the start of the line and all the following lines of the quote
 * With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only ``>>>`` on it
 
-## List
+## <a name="list"> List
 
 * Use ``*`` at a start of line followed by a space for an unordered list
 * Use ``+`` at a start of line followed by a space for an ordered list, ascending
@@ -67,19 +81,19 @@ You can define custom div, span and paragraph with :
 * You can have multiple level of lists by putting two spaces before the starter symbol for each level
 * Use ``|`` for continuing a previous item on a new line
 
-## Definition list
+## <a name="definition"> Definition list
 
 * Use ``$`` at a start of line followed by a space for the definition term
 * The following line of text will be the definition
 
-## Tables
+## <a name="tables"> Tables
 
 * Use ``|`` to limit your table and its columns
 * For creating a header line, put after the title line a ``|-------|`` line 
 * Text modifiers, images and links can be put inside a table
 * LIMITATION: lists can't be put in a table
 
-## Links
+## <a name="links"> Links
 
 * Use surrounding ``[[ url ]]`` for a simple URL link
 * Use ``[[ display -> link ]]`` for a link with a display string different of the link itself
@@ -88,14 +102,14 @@ You can define custom div, span and paragraph with :
 * If link is not an URL, nor #, Hamill will search if it can find in the library of links
 * An item of the library of links is defined by putting at the start of line ``::label:: URL``
 
-## Images
+## <a name="images"> Images
 
 * Use ``(( url ))``
 * You can specify a caption before `` (( caption -> url ))``
 * You can also specify an id or a class before ``(( .id #class -> url ))``
 * You can define a default directory where to find the images with the variable ``DEFAULT_FIND_IMAGE``
 
-## Constants
+## <a name="constants"> Constants
 
 * You can define the value of the one of the 6 constants by starting a line with ``!const`` then the constant identifier then = and the value
 * You can only set the value of a constant once, anywhere in the document.
@@ -108,7 +122,7 @@ You can define custom div, span and paragraph with :
   * ``BODY_ID`` to define the ID of the body
 * You can display the value of a constant by using ``$$TITLE$$``
 
-## Variables
+## <a name="variables"> Variables
 
 * You can define the value of the variables by staring a line with ``!var`` then the variable identifier then = and the value
 * A variable value can change through the process of emitting HTML
@@ -121,11 +135,11 @@ You can define custom div, span and paragraph with :
    * ``DEFAULT_FIND_IMAGE=path`` specifiy a default directory where to find the included images
 * You can display the value of a variable by using ``$$NEXT_PAR_ID$$``
 
-## Inclusion of HTML files
+## <a name="include"> Inclusion of HTML files
 
 * Start a line with ``!include`` for emitting the content of an HTML file directly into your production
 
-## <a name="links"> Links to CSS and JavaScript files
+## <a name="require"> Links to CSS and JavaScript files
 
 * Start a line with ``!require`` for linking your production to a given CSS or JavaScript file
 * The CSS link or the JavaScript link will be put in the head of the HTML page
