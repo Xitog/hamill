@@ -2,6 +2,8 @@
 
 A simple lightweight markup language outputting HTML. Implementations are available in JavaScript and Python 3.
 
+<ins>Rationale</ins>: Easier to parse and use than Markdown, use only double characters for markup.
+
 First version released in 2020. Version 2 released in 2022.
 
 You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
@@ -117,6 +119,29 @@ def hello(n):
 
 * With ``>>`` at the start of the line and all the following lines of the quote
 * With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only ``>>>`` on it
+
+The blocks
+
+```
+>> I have spread my dreams under your feet;
+>> Tread softly because you tread on my dreams.
+>> He wishes for the Cloths of Heaven by WB Yeats
+```
+
+or
+
+```
+>>> I have spread my dreams under your feet;
+Tread softly because you tread on my dreams.
+He wishes for the Cloths of Heaven by WB Yeats
+>>>
+```
+
+produce:
+
+>
+>
+>
 
 <p align="center">
  <a href="#summary">Back to summary</a>
