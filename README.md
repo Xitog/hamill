@@ -6,7 +6,7 @@ First version released in 2020. Version 2 released in 2022.
 
 You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
 
-## Summary
+## <a name="summary"></a> Summary
 
 * [Comments, HR and BR](#comments)
 * [Titles](#titles)
@@ -35,6 +35,8 @@ You can put a new line (br) with `` !! `` surrounded by one space on each side.
 
 You can put a line (hr) with a line with only three or more - on it :``---``.
 
+<p align="center">[Summary](#summary)</p>
+ 
 ## <a name="titles"> Titles
 
 Start your titles with the number of ``#`` equivalent to the title level then a space:
