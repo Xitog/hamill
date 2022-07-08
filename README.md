@@ -19,9 +19,9 @@ Damien Gouteux 2020-2022
 * [Text modifications](#text)
 * [Div, p and span](#div) 
 * [Code](#code)
-* [Quote](#quote)
-* [List](#list) 
-* [Definition list](#definition)
+* [Quotes](#quotes)
+* [Lists](#lists) 
+* [Definition lists](#definitions)
 * [Tables](#tables)
 * [Links](#links)
 * [Images](#images)
@@ -119,7 +119,7 @@ def hello(n):
     print(f"Hello {n}!")
 ```
 
-## <a name="quote"> Quote
+## <a name="quotes"> Quotes
 
 * With ``>>`` at the start of the line and all the following lines of the quote
 * With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only ``>>>`` on it
@@ -151,7 +151,7 @@ produce:
  <a href="#summary">Back to summary</a>
 </p>
 
-## <a name="list"> List
+## <a name="lists"> Lists
 
 * Use ``*`` at a start of line followed by a space for an unordered list
 * Use ``+`` at a start of line followed by a space for an ordered list, ascending
@@ -163,7 +163,7 @@ produce:
  <a href="#summary">Back to summary</a>
 </p>
 
-## <a name="definition"> Definition list
+## <a name="definitions"> Definition lists
 
 * Use ``$`` at a start of line followed by a space for the definition term
 * The following line of text will be the definition
