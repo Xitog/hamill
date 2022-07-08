@@ -6,6 +6,11 @@ First version released in 2020. Version 2 released in 2022.
 
 You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
 
+## Summary
+
+* [Links to CSS and JavaScript files](#links) 
+* [Raw HTML and CSS](#direct)
+
 ## Comments, HR and BR
 
 ``// This is a comment``
@@ -120,12 +125,12 @@ You can define custom div, span and paragraph with :
 
 * Start a line with ``!include`` for emitting the content of an HTML file directly into your production
 
-## Links to CSS and JavaScript files
+## <a name="links"> Links to CSS and JavaScript files
 
 * Start a line with ``!require`` for linking your production to a given CSS or JavaScript file
 * The CSS link or the JavaScript link will be put in the head of the HTML page
 
-## Special
+## <a name="direct">Raw HTML and CSS
 
 Raw CSS and HTML are always possible :
 
