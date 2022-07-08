@@ -84,11 +84,11 @@ You can define custom div, span and paragraph with:
 
 * Surround your code with ``@@`` in a text for inline code. Hamill can colorize the code using [Weyland](https://github.com/Xitog/weyland).
 * Specify the language right after the opening ``@@`` with an space at the end: ``@@python @@`` ``\`` to escape.
-* For a code bloc, you can either do :
+* For a code block, you can either do :
   * a opening line with only ``@@language`` then each line of code must start by ``@@``
   * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only ``@@@`` on it
 
-The blocs
+The blocks
 
 ```
 @@python
