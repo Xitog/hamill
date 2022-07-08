@@ -37,28 +37,32 @@ You can put a line (hr) with a line with only three or more - on it :``---``.
 
 ## <a name="titles"> Titles
 
-Start your titles with the number of ``#`` equivalent to the title level.
+Start your titles with the number of ``#`` equivalent to the title level then a space:
+ 
+ ``### This is a level 3 title``
 
 ## <a name="text"> Text modifications
 
 The style of the text can be modified by the following markups:
 
-* Surround your word with ``**`` for bold
-* Surround your word with ``''`` for italic
-* Surround your word with ``--`` for strikethrough
-* Surround your word with ``__`` for underline
-* Surround your word with ``^^`` for superscript
-* Surround your word with ``%%`` for subscript
-* Surround your word with ``@@`` for code (see below)
+* Surround your text with ``**`` for bold
+* Surround your text with ``''`` for italic
+* Surround your text with ``--`` for strikethrough
+* Surround your text with ``__`` for underline
+* Surround your text with ``^^`` for superscript
+* Surround your text with ``%%`` for subscript
+* Surround your text with ``@@`` for code (see below) 
 * Use ``\`` to prevent the interpretation of a markup
 
 ## <a name="div"> Div, p and span
 
-You can define custom div, span and paragraph with :
+You can define custom div, span and paragraph with:
 
-* Use ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class. Use ``{{end}}`` to close it. To open a div without a class or an id, use ``{{begin}}``.
-* Use ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class.
-* Use ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
+* Write ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class.
+* Write ``{{begin}}`` to open a div without a class or an id.
+* Write ``{{end}}`` to close a div.
+* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.
+* Write ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
 ## <a name="code"> Code
 
@@ -67,6 +71,17 @@ You can define custom div, span and paragraph with :
 * For a code bloc, you can either do :
   * a opening line with only ``@@language`` then each line of code must start by ``@@``
   * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only ``@@@`` on it
+
+```
+@@@python
+def hello(n):
+    print(f"Hello {n}!")
+@@@
+
+```python
+def hello(n):
+    print(f"Hello {n}!")
+```
 
 ## <a name="quote"> Quote
 
