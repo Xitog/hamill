@@ -2,11 +2,15 @@
 
 A simple lightweight markup language outputting HTML. Implementations are available in JavaScript and Python 3.
 
-<ins>Rationale</ins>: More complete than [the original Markdown](https://daringfireball.net/projects/markdown/syntax)<sup>2004</sup>, easier to parse and use.
+<ins>Rationale</ins>: More complete than [the original Markdown](https://daringfireball.net/projects/markdown/syntax)<sup>2004</sup>, easier to parse and write.
 
 First version released in 2020. Version 2 released in 2022.
 
 You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
+
+<p align="right">
+Damien Gouteux 2020-2022
+</p>
 
 ## <a name="summary"></a> Summary
 
