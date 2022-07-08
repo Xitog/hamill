@@ -123,25 +123,25 @@ def hello(n):
 The blocks
 
 ```
->> I have spread my dreams under your feet;<br>
->> Tread softly because you tread on my dreams.<br>
->> He wishes for the Cloths of Heaven by WB Yeats<br>
+>> I have spread my dreams under your feet;
+>> Tread softly because you tread on my dreams.
+>> He wishes for the Cloths of Heaven by WB Yeats
 ```
 
 or
 
 ```
->>> I have spread my dreams under your feet;<br>
-Tread softly because you tread on my dreams.<br>
-He wishes for the Cloths of Heaven by WB Yeats<br>
+>>> I have spread my dreams under your feet;
+Tread softly because you tread on my dreams.
+He wishes for the Cloths of Heaven by WB Yeats
 >>>
 ```
 
 produce:
 
-> I have spread my dreams under your feet;
-> Tread softly because you tread on my dreams.
-> He wishes for the Cloths of Heaven by WB Yeats
+> I have spread my dreams under your feet;  
+> Tread softly because you tread on my dreams.  
+> He wishes for the Cloths of Heaven by WB Yeats  
 
 <p align="center">
  <a href="#summary">Back to summary</a>
