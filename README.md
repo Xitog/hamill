@@ -45,13 +45,13 @@ Start your titles with the number of ``#`` equivalent to the title level then a 
 
 The style of the text can be modified by the following markups:
 
-* Surround your text with ``**`` for bold
-* Surround your text with ``''`` for italic
-* Surround your text with ``--`` for strikethrough
-* Surround your text with ``__`` for underline
-* Surround your text with ``^^`` for superscript
-* Surround your text with ``%%`` for subscript
-* Surround your text with ``@@`` for code (see below) 
+* Surround your text with ``**`` for bold **bold**
+* Surround your text with ``''`` for italic _abc_
+* Surround your text with ``--`` for strikethrough ~~abc~~
+* Surround your text with ``__`` for underline <u>abc</u>
+* Surround your text with ``^^`` for superscript Ex<sup>abc</sup>
+* Surround your text with ``%%`` for subscript Ex<sub>abc</sub>
+* Surround your text with ``@@`` for code (see below) ``abc``
 * Use ``\`` to prevent the interpretation of a markup
 
 ## <a name="div"> Div, p and span
@@ -77,6 +77,7 @@ You can define custom div, span and paragraph with:
 def hello(n):
     print(f"Hello {n}!")
 @@@
+```
 
 ```python
 def hello(n):
