@@ -36,7 +36,7 @@ You can put a new line (br) with `` !! `` surrounded by one space on each side.
 You can put a line (hr) with a line with only three or more - on it :``---``.
 
 <p align="center">
- <a href="#summary">Summary</a>
+ <a href="#summary">Back to summary</a>
 </p>
  
 ## <a name="titles"> Titles
@@ -44,6 +44,10 @@ You can put a line (hr) with a line with only three or more - on it :``---``.
 Start your titles with the number of ``#`` equivalent to the title level then a space:
  
  ``### This is a level 3 title``
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
 
 ## <a name="text"> Text modifications
 
@@ -58,6 +62,10 @@ The style of the text can be modified by the following markups:
 * Surround your text with ``@@`` for code (see below) ``abc``
 * Use ``\`` to prevent the interpretation of a markup
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="div"> Div, p and span
 
 You can define custom div, span and paragraph with:
@@ -68,6 +76,10 @@ You can define custom div, span and paragraph with:
 * Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.
 * Write ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="code"> Code
 
 * Surround your code with ``@@`` in a text for inline code. Hamill can colorize the code using [Weyland](https://github.com/Xitog/weyland).
@@ -76,12 +88,25 @@ You can define custom div, span and paragraph with:
   * a opening line with only ``@@language`` then each line of code must start by ``@@``
   * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only ``@@@`` on it
 
+The blocs
+
+```
+@@python
+@@ def hello(n):
+@@     print(f"Hello {n}!")
+@@
+```
+
+and
+
 ```
 @@@python
 def hello(n):
     print(f"Hello {n}!")
 @@@
 ```
+
+produce:
 
 ```python
 def hello(n):
@@ -93,6 +118,10 @@ def hello(n):
 * With ``>>`` at the start of the line and all the following lines of the quote
 * With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only ``>>>`` on it
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="list"> List
 
 * Use ``*`` at a start of line followed by a space for an unordered list
@@ -101,17 +130,29 @@ def hello(n):
 * You can have multiple level of lists by putting two spaces before the starter symbol for each level
 * Use ``|`` for continuing a previous item on a new line
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="definition"> Definition list
 
 * Use ``$`` at a start of line followed by a space for the definition term
 * The following line of text will be the definition
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
 
 ## <a name="tables"> Tables
 
 * Use ``|`` to limit your table and its columns
 * For creating a header line, put after the title line a ``|-------|`` line 
 * Text modifiers, images and links can be put inside a table
-* LIMITATION: lists can't be put in a table
+* **LIMITATION**: lists can't be put in a table
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
 
 ## <a name="links"> Links
 
@@ -122,12 +163,20 @@ def hello(n):
 * If link is not an URL, nor #, Hamill will search if it can find in the library of links
 * An item of the library of links is defined by putting at the start of line ``::label:: URL``
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="images"> Images
 
 * Use ``(( url ))``
 * You can specify a caption before `` (( caption -> url ))``
 * You can also specify an id or a class before ``(( .id #class -> url ))``
 * You can define a default directory where to find the images with the variable ``DEFAULT_FIND_IMAGE``
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
 
 ## <a name="constants"> Constants
 
@@ -142,6 +191,10 @@ def hello(n):
   * ``BODY_ID`` to define the ID of the body
 * You can display the value of a constant by using ``$$TITLE$$``
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="variables"> Variables
 
 * You can define the value of the variables by staring a line with ``!var`` then the variable identifier then = and the value
@@ -155,14 +208,26 @@ def hello(n):
    * ``DEFAULT_FIND_IMAGE=path`` specifiy a default directory where to find the included images
 * You can display the value of a variable by using ``$$NEXT_PAR_ID$$``
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
 ## <a name="include"> Inclusion of HTML files
 
 * Start a line with ``!include`` for emitting the content of an HTML file directly into your production
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
 
 ## <a name="require"> Links to CSS and JavaScript files
 
 * Start a line with ``!require`` for linking your production to a given CSS or JavaScript file
 * The CSS link or the JavaScript link will be put in the head of the HTML page
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
 
 ## <a name="direct">Raw HTML and CSS
 
@@ -170,3 +235,7 @@ Raw CSS and HTML are always possible :
 
 * Start a line with ``!css`` for emitting raw CSS code which will be put in the head
 * Start a line with ``!html`` for emitting raw HTML code in place
+
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
