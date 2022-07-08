@@ -36,7 +36,7 @@ You can put a new line (br) with `` !! `` surrounded by one space on each side.
 You can put a line (hr) with a line with only three or more - on it :``---``.
 
 <p align="center">
- [Summary](#summary)
+ <a href="#summary">Summary</a>
 </p>
  
 ## <a name="titles"> Titles
