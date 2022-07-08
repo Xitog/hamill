@@ -2,7 +2,7 @@
 
 A simple lightweight markup language outputting HTML. Implementations are available in JavaScript and Python 3.
 
-<ins>Rationale</ins>: Easier to parse and use than Markdown, use only double characters for markup.
+<ins>Rationale</ins>: More complete than [the original Markdown](https://daringfireball.net/projects/markdown/syntax), easier to parse and use.
 
 First version released in 2020. Version 2 released in 2022.
 
