@@ -322,6 +322,8 @@ class Definition extends Node
         this.header = header;
     }
 }
+class Quote extends Node {}
+class Code extends Node {}
 class GetVar extends Node {}
 class SetVar extends EmptyNode
 {
@@ -668,6 +670,8 @@ class Document
         // Paragraph
         let in_paragraph = false;
         let in_def_list = false;
+        let in_code_block = false;
+        let in_quote_block = false;
         for (const [index, node] of this.nodes.entries())
         {
             //console.log(content.substring(content.indexOf('<body>')));
@@ -693,7 +697,16 @@ class Document
                 content += "</table>\n";
                 in_table = false;
             }
-
+            if (!(node instanceof Quote) && in_quote_block)
+            {
+                content += "</blockquote>\n";
+                in_quote_block = false;
+            }
+            if (!(node instanceof Code) && in_code_block)
+            {
+                content += "</pre>\n";
+                in_code_block = false;
+            }
             // Handling of nodes
             if (node instanceof ListItem)
             {
@@ -757,6 +770,60 @@ class Document
                 if (this.get_variable('PARAGRAPH_DEFINITION') === true) content += '</p>';
                 content += '</dd>\n';
             }
+            else if (node instanceof Quote)
+            {
+                if (!in_quote_block)
+                {
+                    in_quote_block = true;
+                    content += '<blockquote>\n';
+                    if (node.content.startsWith('>>>'))
+                    {
+                        content += node.content.substring(3) + "<br>\n";
+                    }
+                    else
+                    {
+                        content += node.content.substring(2) + "<br>\n";
+                    }
+                }
+                else
+                {
+                    if (node.content.startsWith('>>'))
+                    {
+                        content += node.content.substring(2) + "<br>\n";
+                    }
+                    else
+                    {
+                        content += node.content + "<br>\n";
+                    }
+                }
+            }
+            else if (node instanceof Code)
+            {
+                if (!in_code_block)
+                {
+                    in_code_block = true;
+                    content += '<pre>\n';
+                    if (node.content.startsWith('@@@'))
+                    {
+                        content += node.content.substring(3) + "\n";
+                    }
+                    else
+                    {
+                        content += node.content.substring(2) + "\n";
+                    }
+                }
+                else
+                {
+                    if (node.content.startsWith('@@'))
+                    {
+                        content += node.content.substring(2) + "\n";
+                    }
+                    else
+                    {
+                        content += node.content + "\n";
+                    }
+                }
+            }
             else if (node instanceof Row)
             {
                 if (!in_table)
@@ -797,6 +864,14 @@ class Document
         if (in_table)
         {
             content += "</table>\n";
+        }
+        if (in_quote_block)
+        {
+            content += "</blockquote>\n";
+        }
+        if (in_code_block)
+        {
+            content += "</pre>\n";
         }
         if (!first_text)
         {
@@ -860,21 +935,34 @@ class Hamill
     {
         let lines = [];
         let next_is_def = false;
+        let in_code_block = false;
+        let in_quote_block = false;
         for (const [index, value] of raw.entries())
         {
             let trimmed = value.trim();
-            if (trimmed.length === 0)
+            if (in_code_block)
+            {
+                lines.push(new Line(value, 'code'))
+            }
+            else if (in_quote_block)
+            {
+                lines.push(new Line(value, 'quote'))
+            }
+            else if (trimmed.length === 0)
             {
                 lines.push(new Line('', 'empty'));
             }
+            // Titles :
             else if (trimmed[0] === '#')
             {
                 lines.push(new Line(trimmed, 'title'));
             }
+            // HR :
             else if ((trimmed.match(/-/g)||[]).length === trimmed.length)
             {
                 lines.push(new Line('', 'separator'));
             }
+            // Lists, line with the first non empty character is "* " or "+ " or "- " :
             else if (trimmed.substring(0, 2) === '* ')
             {
                 lines.push(new Line(value, 'unordered_list'));
@@ -887,6 +975,8 @@ class Hamill
             {
                 lines.push(new Line(value, 'reverse_list'));
             }
+            // Keywords, line with the first non empty character is "!" :
+            //     var, const, include, require, css, html, comment
             else if (trimmed.startsWith('!var '))
             {
                 lines.push(new Line(trimmed, 'var'));
@@ -915,19 +1005,42 @@ class Hamill
             {
                 lines.push(new Line(trimmed, 'comment'));
             }
+            // Block of code
+            else if (trimmed.substring(0, 2) === '@@@')
+            {
+                in_code_block = !in_code_block;
+                lines.push(new Line(value, 'code'))
+            }
+            else if (trimmed.substring(0, 2) === '@@')
+            {
+                lines.push(new Line(value, 'code'));
+            }
+            // Block of quote
+            else if (trimmed.substring(0, 2) === '>>>')
+            {
+                in_quote_block = !in_quote_block;
+                lines.push(new Line(value, 'quote'))
+            }
+            else if (trimmed.substring(0, 2) === '>>')
+            {
+                lines.push(new Line(value, 'quote'));
+            }
+            // Labels
             else if (trimmed.substring(0, 2) === '::')
             {
                 lines.push(new Line(trimmed, 'label'));
             }
+            // Div (Si la ligne entière est {{ }}, c'est une div. On ne fait pas de span d'une ligne)
             else if (trimmed.substring(0, 2) === '{{' && trimmed.substring(trimmed.length - 2) === '}}')
             {
-                // Si la ligne entière est {{ }}, c'est une div... on ne fait pas de span d'une ligne...
                 lines.push(new Line(trimmed, 'div'));
             }
+            // Tables
             else if (trimmed[0] === '|' && trimmed[trimmed.length - 1] === '|')
             {
                 lines.push(new Line(trimmed, 'row'));
             }
+            // Definition lists
             else if (trimmed.substring(0, 2) === '$ ')
             {
                 lines.push(new Line(trimmed.substring(2), 'definition-header'));
@@ -1150,6 +1263,12 @@ class Hamill
                     }
                     doc.add_node(new Definition(definition, Hamill.process_inner_string(line.value)));
                     definition = null;
+                    break;
+                case 'quote':
+                    doc.add_node(new Quote(line.value));
+                    break;
+                case 'code':
+                    doc.add_node(new Code(line.value));
                     break;
                 default:
                     throw new Error(`Unknown ${line.type}`);
