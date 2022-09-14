@@ -53,7 +53,7 @@ Start your title lines with the number of ``#`` equivalent to the title level:
 
 Any spaces between the suite of ``#`` and the first non empty character will be discarded. 
 
-  ``##Title`` is equivalent to ```##                       Title```
+  ``##Title`` is equivalent to ``## Title``
 
 <p align="center">
  <a href="#summary">Back to summary</a>
