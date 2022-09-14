@@ -180,6 +180,7 @@ produce:
 
 * Use ``|`` to limit your table and its columns
 * For creating a header line, put after the title line a ``|-------|`` line 
+* The header line can have any number of ``|`` inside
 * Text modifiers, images and links can be put inside a table
 * **LIMITATION**: lists can't be put in a table
 
