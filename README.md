@@ -182,6 +182,7 @@ produce:
 * For creating a header line, put after the title line a ``|-------|`` line 
 * The header line can have any number of ``|`` inside
 * Text modifiers, images and links can be put inside a table
+* If the first character of a cell is ``=`` its content will be centered
 * **LIMITATION**: lists can't be put in a table
 
 <p align="center">
