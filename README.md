@@ -47,9 +47,13 @@ You can put a line (hr) with a line with only three or more ``-`` on it :``---``
  
 ## <a name="titles"> Titles
 
-Start your titles with the number of ``#`` equivalent to the title level then a space:
+Start your title lines with the number of ``#`` equivalent to the title level:
  
  ``### This is a level 3 title``
+
+Any spaces between the suite of ``#`` and the first non empty character will be discarded. 
+
+  ``##Title`` is equivalent to ``## Title``
 
 <p align="center">
  <a href="#summary">Back to summary</a>
@@ -176,7 +180,9 @@ produce:
 
 * Use ``|`` to limit your table and its columns
 * For creating a header line, put after the title line a ``|-------|`` line 
+* The header line can have any number of ``|`` inside
 * Text modifiers, images and links can be put inside a table
+* If the character right after the starting ``|`` of a cell is ``=`` its content will be centered
 * **LIMITATION**: lists can't be put in a table
 
 <p align="center">
