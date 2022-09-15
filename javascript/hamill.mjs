@@ -36,6 +36,16 @@ if (typeof process !== 'undefined' && process !== null && typeof process.version
 }
 
 //-----------------------------------------------------------------------------
+// Functions
+//-----------------------------------------------------------------------------
+
+function pp(o)
+{
+    o.document = 'redacted';
+    return o;
+}
+
+//-----------------------------------------------------------------------------
 // Classes
 //-----------------------------------------------------------------------------
 
@@ -57,12 +67,22 @@ class Line
 
 // Document nodes
 
-class EmptyNode {}
+class EmptyNode
+{
+    constructor(document)
+    {
+        this.document = document;
+        if (this.document === undefined || this.document === null)
+        {
+            throw new Error("Undefined or null document");
+        }
+    }
+}
 class Node extends EmptyNode
 {
-    constructor(content=null)
+    constructor(document, content=null)
     {
-        super();
+        super(document);
         this.content = content;
     }
 
@@ -76,7 +96,13 @@ class Node extends EmptyNode
         }
     }
 }
-class Text extends Node {}
+class Text extends Node
+{
+    to_html()
+    {
+        return this.content;
+    }
+}
 class Start extends Node
 {
     to_html()
@@ -111,9 +137,9 @@ class Stop extends Node
 }
 class Picture extends Node
 {
-    constructor(url, text=null, cls=null, ids=null)
+    constructor(document, url, text=null, cls=null, ids=null)
     {
-        super(url);
+        super(document, url);
         this.text = text;
         this.cls = cls;
         this.ids = ids;
@@ -157,9 +183,9 @@ class BR extends EmptyNode
 }
 class Span extends EmptyNode
 {
-    constructor(ids, cls, text)
+    constructor(document, ids, cls, text)
     {
-        super();
+        super(document);
         this.ids = ids;
         this.cls = cls;
         this.text = text;
@@ -182,9 +208,9 @@ class Span extends EmptyNode
 }
 class ParagraphIndicator extends EmptyNode
 {
-    constructor(ids, cls)
+    constructor(document, ids, cls)
     {
-        super();
+        super(document);
         this.ids = ids;
         this.cls = cls;
     }
@@ -200,16 +226,16 @@ class ParagraphIndicator extends EmptyNode
         {
             r += ` class="${this.cls}"`;
         }
-        r+= ">";
+        r += ">";
         return r;
     }
 }
 class Comment extends Node {}
 class Row extends EmptyNode
 {
-    constructor(node_list_list)
+    constructor(document, node_list_list)
     {
-        super();
+        super(document);
         this.node_list_list = node_list_list;
         this.is_header = false;
     }
@@ -224,17 +250,17 @@ class RawHTML extends Node
 class Include extends Node {}
 class Title extends Node
 {
-    constructor(content, level)
+    constructor(document, content, level)
     {
-        super(content);
+        super(document, content);
         this.level = level;
     }
 }
 class StartDiv extends EmptyNode
 {
-    constructor(id=null, cls=null)
+    constructor(document, id=null, cls=null)
     {
-        super();
+        super(document);
         this.id = id;
         this.cls = cls;
     }
@@ -268,57 +294,173 @@ class EndDiv extends EmptyNode
 }
 class Composite extends EmptyNode
 {
-    constructor()
+    constructor(document, parent=null)
     {
-        super(null);
+        super(document);
         this.children = [];
+        this.parent = parent;
     }
     add_child(o)
     {
+        if (! o instanceof EmptyNode)
+        {
+            throw new Error("A composite can only be made of EmptyNode and subclasses");
+        }
         this.children.push(o);
+        if (o instanceof Composite)
+        {
+            o.parent = this;
+        }
+        return o;
     }
     add_children(ls)
     {
-        this.children = this.children.concat(ls);
+        //this.children = this.children.concat(ls);
+        for (let e of ls)
+        {
+            this.add_child(e);
+        }
+    }
+    last()
+    {
+        return this.children[this.children.length-1];
+    }
+    parent()
+    {
+        return this.parent;
+    }
+    root()
+    {
+        if (this.parent === null)
+        {
+            return this;
+        } else {
+            return this.parent.root();
+        }
+    }
+    toString()
+    {
+        return this.constructor.name + ` (${this.children.length})`;
+    }
+    pop()
+    {
+        return this.children.pop();
+    }
+    to_html(level=0)
+    {
+        let s = "";
+        for (const child of this.children)
+        {
+            if (child instanceof List)
+            {
+                s += "\n" + child.to_html(level);
+            } else {
+                s += child.to_html();
+            }
+        }
+        return s;
     }
 }
 class TextLine extends Composite
 {
-    constructor(children=[])
+    constructor(document, children=[])
     {
-        super();
+        super(document);
         this.add_children(children);
     }
-}
-class ListItem extends Composite
-{
-    constructor(ordered=false, reverse=false, level=0, children=[])
+    to_html()
     {
-        super();
+        return this.document.string_to_html('', this.children);
+    }
+}
+class List extends Composite
+{
+    constructor(document, parent, ordered=false, reverse=false, level=0, children=[])
+    {
+        super(document, parent);
         this.add_children(children);
         this.level = level;
         this.ordered = ordered;
         this.reverse = reverse;
     }
+
+    to_html(level=0)
+    {
+        let start = "    ".repeat(level);
+        let end = "    ".repeat(level);
+        if (this.ordered)
+        {
+            start += "<ol>";
+            end += "</ol>";
+        } else {
+            start += "<ul>";
+            end += "</ul>";
+        }
+        let s = start + "\n";
+        for (const child of this.children)
+        {
+            s +=  "    ".repeat(level) + "  <li>";
+            if (child instanceof List)
+            {
+                s += "\n" + child.to_html(level+1) + "  </li>\n";
+            } else if (child instanceof Composite && !(child instanceof TextLine)) {
+                s += child.to_html(level+1) + "  </li>\n";
+            } else {
+                s += child.to_html() + "</li>\n";
+            }
+        }
+        s += end + "\n";
+        return s;
+    }
 }
+
 // [[label]] (you must define somewhere ::label:: https://) display = url
 // [[https://...]] display = url
 // [[display->label]] (you must define somewhere ::label:: https://)
 // [[display->https://...]]
 class Link extends EmptyNode
 {
-    constructor(url, display)
+    constructor(document, url, display=null)
     {
-        super();
+        super(document);
         this.url = url;
         this.display = display; // list of nodes
+    }
+    toString()
+    {
+        return this.constructor.name + ` ${this.display} -> ${this.url}`;
+    }
+    to_html()
+    {
+        let url = this.url;
+        let display = null;
+        if (this.display !== null)
+        {
+            display = this.document.string_to_html('', this.display);
+        }
+        if (!url.startsWith('https://') && !url.startsWith('http://'))
+        {
+            if (url === '#')
+            {
+                url = this.document.get_label( this.document.make_anchor(display));
+            }
+            else
+            {
+                url = this.document.get_label(url);
+            }
+        }
+        if (display === undefined || display === null)
+        {
+            display = url;
+        }
+        return `<a href="${url}">${display}</a>`;
     }
 }
 class Definition extends Node
 {
-    constructor(header, content)
+    constructor(document, header, content)
     {
-        super(content);
+        super(document, content);
         this.header = header;
     }
 }
@@ -327,9 +469,9 @@ class Code extends Node {}
 class GetVar extends Node {}
 class SetVar extends EmptyNode
 {
-    constructor(id, value, type, constant)
+    constructor(document, id, value, type, constant)
     {
-        super();
+        super(document);
         this.id = id;
         this.value = value;
         this.type = type;
@@ -390,7 +532,8 @@ class Document
             'VERSION': new Variable(this, 'VERSION', 'string', 'true', 'Hamill 2.0'),
             'NOW': new Variable(this, 'NOW', 'string', 'true', ''),
             'PARAGRAPH_DEFINITION': new Variable(this, 'PARAGRAPH_DEFINITION', 'boolean', false, false),
-            'EXPORT_COMMENT': new Variable(this, 'EXPORT_COMMENT', 'boolean', false, false)
+            'EXPORT_COMMENT': new Variable(this, 'EXPORT_COMMENT', 'boolean', false, false),
+            'DEFAULT_CODE': new Variable(this, 'DEFAULT_CODE', 'string', 'false')
         };
         this.required = [];
         this.css = [];
@@ -410,7 +553,7 @@ class Document
         outfilename = outfilename.substring(0, outfilename.lastIndexOf('.hml')) + '.html';
         let sep = output_directory[output_directory.length - 1] === '/' ? '' : '/';
         let target = output_directory + sep + outfilename;
-        fs.writeFileSync(target, this.to_html());
+        fs.writeFileSync(target, this.to_html(true)); // with header
         console.log('Outputting in:', target);
     }
 
@@ -465,6 +608,10 @@ class Document
 
     add_node(n)
     {
+        if (n === undefined || n === null)
+        {
+            throw new Error("Trying to add an undefined or null node");
+        }
         this.nodes.push(n);
     }
 
@@ -493,6 +640,10 @@ class Document
 
     string_to_html(content, nodes)
     {
+        if (nodes === undefined || nodes === null)
+        {
+            throw new Error("No nodes to process");
+        }
         if (typeof content !== 'string') throw new Error('Parameter content should be of type string');
         if (!Array.isArray(nodes) || (!(nodes[0] instanceof Start)
             && !(nodes[0] instanceof Stop) && !(nodes[0] instanceof Text)
@@ -505,34 +656,14 @@ class Document
                 || node instanceof Stop
                 || node instanceof Span
                 || node instanceof Picture
-                || node instanceof BR)
+                || node instanceof BR
+                || node instanceof Text)
             {
                 content += node.to_html();
             }
-            else if (node instanceof Text)
-            {
-                content += node.content;
-            }
             else if (node instanceof Link)
             {
-                let url = node.url;
-                let display = this.string_to_html('', node.display);
-                if (!url.startsWith('https://') && !url.startsWith('http://'))
-                {
-                    if (url === '#')
-                    {
-                        url = this.get_label(this.make_anchor(display));
-                    }
-                    else
-                    {
-                        url = this.get_label(url);
-                    }
-                }
-                if (display === undefined || display === null)
-                {
-                    display = url;
-                }
-                content += `<a href="${url}">${display}</a>`;
+                content += node.to_html(this);
             }
             else if (node instanceof GetVar)
             {
@@ -551,65 +682,7 @@ class Document
         return content;
     }
 
-    assure_list_consistency(content, stack, level, ordered, reverse)
-    {
-        //console.log('lvl', level, 'len', stack.length);
-        if (level > stack.length)
-        {
-            while (level > stack.length)
-            {
-                let starter = (stack.length > 0) ? "\n" : "";
-                stack.push({'ordered': ordered, 'reverse': reverse, 'level': stack.length + 1});
-                if (ordered && reverse)
-                {
-                    content += starter + "  ".repeat(level * 2) + "<ol reversed>";
-                    content += "\n" + "  ".repeat(level * 2 + 1) + "<li>";
-                }
-                else if (ordered)
-                {
-                    content += starter + "  ".repeat(level * 2) + "<ol>";
-                    content += "\n" + "  ".repeat(level * 2 + 1) + "<li>";
-                }
-                else
-                {
-                    content += starter + "  ".repeat(level * 2) + "<ul>";
-                    content += "\n" + "  ".repeat(level * 2 + 1) + "<li>";
-                }
-            }
-        }
-        else if (level < stack.length)
-        {
-            while (level < stack.length)
-            {
-                let o = stack.pop();
-                if (o['ordered'])
-                {
-                    content += "</li>\n" + "  ".repeat(o['level'] * 2) + "</ol>\n";
-                    if (stack.length > 0)
-                    {
-                        content += "  ".repeat(o['level'] * 2 - 1) + "</li>\n";
-                        if (level !== 0) content += "  ".repeat(o['level'] * 2 - 1) + "<li>";
-                    }
-                }
-                else
-                {
-                    content += "</li>\n" + "  ".repeat(o['level'] * 2) + "</ul>\n";
-                    if (stack.length > 0)
-                    {
-                        content += "  ".repeat(o['level'] * 2 - 1) + "</li>\n";
-                        if (level !== 0) content += "  ".repeat(o['level'] * 2 - 1) + "<li>";
-                    }
-                }
-            }
-        }
-        else
-        {
-            content += "</li>\n" + "  ".repeat(level * 2 + 1) + "<li>";
-        }
-        return content;
-    }
-
-    to_html(header=true)
+    to_html(header=false)
     {
         let start_time = new Date();
         let content = '';
@@ -675,17 +748,13 @@ class Document
         for (const [index, node] of this.nodes.entries())
         {
             //console.log(content.substring(content.indexOf('<body>')));
-            console.log(index, node);
+            //console.log(index, node);
 
             // Consistency
             if (!(node instanceof TextLine) && in_paragraph)
             {
                 content += "</p>\n";
                 in_paragraph = false;
-            }
-            if (!(node instanceof ListItem) && stack.length > 0)
-            {
-                content = this.assure_list_consistency(content, stack, 0, null, null);
             }
             if (!(node instanceof Definition) && in_def_list)
             {
@@ -708,12 +777,7 @@ class Document
                 in_code_block = false;
             }
             // Handling of nodes
-            if (node instanceof ListItem)
-            {
-                content = this.assure_list_consistency(content, stack, node.level, node.ordered, node.reverse);
-                content = this.string_to_html(content, node.children);
-            }
-            else if (node.constructor.name === 'EmptyNode')
+            if (node.constructor.name === 'EmptyNode')
             {
                 // Nothing, it is just too close the paragraph, done above.
             }
@@ -740,7 +804,8 @@ class Document
             else if (node instanceof HR
                      || node instanceof StartDiv
                      || node instanceof EndDiv
-                     || node instanceof RawHTML)
+                     || node instanceof RawHTML
+                     || node instanceof List)
             {
                 content += node.to_html();
             }
@@ -753,7 +818,7 @@ class Document
                 } else {
                     content += "<br>\n";
                 }
-                content = this.string_to_html(content, node.children);
+                content += node.to_html();
             }
             else if (node instanceof Definition)
             {
@@ -835,7 +900,17 @@ class Document
                 let delim = node.is_header ? 'th' : 'td';
                 for (let node_list of node.node_list_list)
                 {
-                    content += `<${delim}>`;
+                    let center = '';
+                    //console.log(node_list[0]);
+                    if (node_list.length > 0
+                        && node_list[0] instanceof Node // for content
+                        && node_list[0].content.length > 0
+                        && node_list[0].content[0] === '=')
+                    {
+                        node_list[0].content = node_list[0].content.substring(1);
+                        center = ' class="text-center"';
+                    }
+                    content += `<${delim}${center}>`;
                     content = this.string_to_html(content, node_list);
                     content += `</${delim}>`;
                 }
@@ -843,7 +918,7 @@ class Document
             }
             else
             {
-                console.log(index, node);
+                //console.log(index, node);
                 not_processed += 1;
                 if (!(node.constructor.name in types_not_processed))
                 {
@@ -896,16 +971,30 @@ class Document
         return content;
     }
 
-    info()
+    display_info(level=0, node=null)
     {
-        console.log('\n------------------------------------------------------------------------');
-        console.log('Liste des nodes du document');
-        console.log('------------------------------------------------------------------------\n');
-        for (const [index, node] of this.nodes.entries())
+        if (node === null || node === undefined)
         {
-            console.log(index, node.toString());
+            console.log('\n------------------------------------------------------------------------');
+            console.log('Liste des nodes du document');
+            console.log('------------------------------------------------------------------------\n');
+            for (const n of this.nodes)
+            {
+                this.display_info(level, n);
+            }
+        } else {
+            let info = " " + node.toString();
+            console.log("    ".repeat(level) + info);
+            if (node instanceof Composite)
+            {
+                for (const n of node.children)
+                {
+                    this.display_info(level + 1, n);
+                }
+            }
         }
     }
+
 }
 
 class Hamill
@@ -931,6 +1020,7 @@ class Hamill
         return lines;
     }
 
+    // First pass: we tag all the lines
     static tag_lines(raw)
     {
         let lines = [];
@@ -1103,11 +1193,27 @@ class Hamill
         if (DEBUG) console.log(`Processing ${lines.length} lines`);
         let doc = new Document();
         let definition = null;
+        // Lists
+        let actual_list = null;
+        let actual_level = 0;
+        // Main loop
         for (const [index, line] of lines.entries())
         {
             let text = undefined;
             let id = undefined;
             let value = undefined;
+            // List
+            if (actual_list !== null && line.type !== 'unordered_list'
+                                     && line.type !== 'ordered_list'
+                                     && line.type !== 'reverse_list')
+            {
+                doc.add_node(actual_list.root());
+                actual_list = null;
+                actual_level = 0;
+            }
+            let elem_is_unordered = false;
+            let elem_is_ordered = false;
+            let elem_is_reverse = false;
             switch (line.type)
             {
                 case 'title':
@@ -1123,45 +1229,82 @@ class Hamill
                             break;
                         }
                     }
-                    text = line.value.substring(lvl+1).trim();
-                    doc.add_node(new Title(text, lvl));
+                    text = line.value.substring(lvl).trim();
+                    doc.add_node(new Title(doc, text, lvl));
                     doc.add_label(doc.make_anchor(text), '#' + doc.make_anchor(text));
                     break;
                 case 'separator':
-                    doc.add_node(new HR());
+                    doc.add_node(new HR(doc));
                     break;
                 case 'text':
                     if (line.value.trim().startsWith('\\* ')) line.value = line.value.trim().substring(1);
-                    let n = Hamill.process_inner_string(line.value);
-                    doc.add_node(new TextLine(n));
+                    let n = Hamill.process_inner_string(doc, line.value);
+                    doc.add_node(new TextLine(doc, n));
                     break;
                 case 'unordered_list':
+                    elem_is_unordered = true;
+                    if (actual_list === null)
+                    {
+                        actual_list = new List(doc, null, false, false);
+                        actual_level = 1;
+                    }
+                    // next
                 case 'ordered_list':
+                    if (line.type === 'ordered_list') elem_is_ordered = true;
+                    if (actual_list === null)
+                    {
+                        actual_list = new List(doc, null, true, false);
+                        actual_level = 1;
+                    }
+                    // next
                 case 'reverse_list':
-                    let ordered = false;
-                    let reverse = false;
-                    if (line.type === 'unordered_list')
+                    if (line.type === 'reverse_list') elem_is_reverse = true;
+                    if (actual_list === null)
                     {
-                        // Nothing
+                        actual_list = new List(doc, null, true, true);
+                        actual_level = 1;
                     }
-                    else if (line.type === 'ordered_list')
-                    {
-                        ordered = true;
-                    }
-                    else if (line.type === 'reverse_list')
-                    {
-                        ordered = true;
-                        reverse = true;
-                    }
+                    // common code
+                    // compute item level
                     let delimiters = {'unordered_list': '* ', 'ordered_list': '+ ', 'reverse_list': '- '};
                     let delimiter = delimiters[line.type];
-                    let list_lvl = Math.floor(line.value.indexOf(delimiter) / 2) + 1;
-                    let list_text = line.value.substring(line.value.indexOf(delimiter) + 2).trim();
-                    let list_nodes = Hamill.process_inner_string(list_text);
-                    doc.add_node(new ListItem(ordered, reverse, list_lvl, list_nodes));
+                    let list_level = Math.floor(line.value.indexOf(delimiter) / 2) + 1;
+                    // coherency
+                    if (list_level === actual_level)
+                    {
+                        if ((elem_is_unordered && (actual_list.ordered || actual_list.reverse))
+                            || (elem_is_ordered && !actual_list.ordered)
+                            || (elem_is_reverse && !actual_list.reverse))
+                        {
+                            throw new Error(`Incoherency with previous item ${actual_level} at this level ${list_level}: ul:${elem_is_unordered} ol:${elem_is_unordered} r:${elem_is_reverse} vs o:${actual_list.ordered} r:${actual_list.reverse}`);
+                        }
+                    }
+                    while (list_level > actual_level)
+                    {
+                        let last = actual_list.pop(); // get and remove the last item
+                        let c = new Composite(doc, actual_list); // create a new composite
+                        c.add_child(last); // put the old last item in it
+                        actual_list = actual_list.add_child(c); // link the new composite to the list
+                        let sub = new List(doc, c, elem_is_ordered, elem_is_reverse); // create a new list
+                        actual_list = actual_list.add_child(sub);
+                        actual_level += 1;
+                    }
+                    while (list_level < actual_level)
+                    {
+                        actual_list = actual_list.parent();
+                        actual_level -= 1;
+                        if (! actual_list instanceof List)
+                        {
+                            throw new Error("List incoherency: last element is not a list.");
+                        }
+                    }
+                    // creation
+                    let item_text = line.value.substring(line.value.indexOf(delimiter) + 2).trim();
+                    let item_nodes = Hamill.process_inner_string(doc, item_text);
+                    actual_list.add_child(new TextLine(doc, item_nodes));
                     break;
                 case 'html':
-                    doc.add_node(new RawHTML(line.value.replace('!html ', '').trim()));
+                    doc.add_node(new RawHTML(doc, line.value.replace('!html ', '').trim()));
                     break;
                 case 'css':
                     text = line.value.replace('!css ', '').trim();
@@ -1169,7 +1312,7 @@ class Hamill
                     break;
                 case 'include':
                     let include = line.value.replace('!include ', '').trim();
-                    doc.add_node(new Include(include));
+                    doc.add_node(new Include(doc, include));
                     break;
                 case 'require':
                     text = line.value.replace('!require ', '').trim();
@@ -1194,7 +1337,7 @@ class Hamill
                     {
                         type = 'boolean';
                     }
-                    doc.add_node(new SetVar(id, value, type, false));
+                    doc.add_node(new SetVar(doc, id, value, type, false));
                     break;
                 case 'label':
                     value = line.value.replace(/::/, '').trim();
@@ -1208,11 +1351,11 @@ class Hamill
                     let res = Hamill.process_inner_markup(value);
                     if (res['has_only_text'] && res['text'] === 'end')
                     {
-                        doc.add_node(new EndDiv());
+                        doc.add_node(new EndDiv(doc));
                     }
                     else if (res['has_only_text'] && res['text'] === 'begin')
                     {
-                        doc.add_node(new StartDiv());
+                        doc.add_node(new StartDiv(doc));
                     }
                     else if (res['has_only_text'])
                     {
@@ -1221,15 +1364,15 @@ class Hamill
                     }
                     else
                     {
-                        doc.add_node(new StartDiv(res['id'], res['class']));
+                        doc.add_node(new StartDiv(doc, res['id'], res['class']));
                     }
                     break;
                 case 'comment':
-                    doc.add_node(new Comment(line.value));
+                    doc.add_node(new Comment(doc, line.value));
                     break;
                 case 'row':
                     let content = line.value.substring(1, line.value.length - 1);
-                    if (content.length === (content.match(/-/g) || []).length)
+                    if (content.length === (content.match(/(-|\|)/g) || []).length)
                     {
                         let i = doc.nodes.length - 1;
                         while (doc.get_node(i) instanceof Row)
@@ -1244,40 +1387,45 @@ class Hamill
                         let all_nodes = [];
                         for (let p of parts)
                         {
-                            let nodes = Hamill.process_inner_string(p);
+                            let nodes = Hamill.process_inner_string(doc, p);
                             all_nodes.push(nodes);
                         }
-                        doc.add_node(new Row(all_nodes));
+                        doc.add_node(new Row(doc, all_nodes));
                     }
                     break;
                 case 'empty':
-                    doc.add_node(new EmptyNode());
+                    doc.add_node(new EmptyNode(doc));
                     break;
                 case 'definition-header':
-                    definition = Hamill.process_inner_string(line.value);
+                    definition = Hamill.process_inner_string(doc, line.value);
                     break;
                 case 'definition-content':
                     if (definition === null)
                     {
                         throw new Error('Definition content without header: ' + line.value);
                     }
-                    doc.add_node(new Definition(definition, Hamill.process_inner_string(line.value)));
+                    doc.add_node(new Definition(doc, definition, Hamill.process_inner_string(doc, line.value)));
                     definition = null;
                     break;
                 case 'quote':
-                    doc.add_node(new Quote(line.value));
+                    doc.add_node(new Quote(doc, line.value));
                     break;
                 case 'code':
-                    doc.add_node(new Code(line.value));
+                    doc.add_node(new Code(doc, line.value));
                     break;
                 default:
                     throw new Error(`Unknown ${line.type}`);
             }
         }
+        // List
+        if (actual_list !== null)
+        {
+            doc.add_node(actual_list.root());
+        }
         return doc;
     }
 
-    static process_inner_string(str)
+    static process_inner_string(doc, str)
     {
         let in_sup = false;
         let in_sub = false;
@@ -1286,6 +1434,7 @@ class Hamill
         let in_italic = false;
         let in_underline = false;
         let in_stroke = false;
+        let in_link = false; // hum check this :TODO:
         let index = 0;
         let word = '';
         let nodes = [];
@@ -1310,10 +1459,10 @@ class Hamill
             } else if (char === '!' && next === '!' && next_next === ' ' && prev !== "  ") {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word.substring(0, word.length - 1))); // remove the last space
+                    nodes.push(new Text(doc, word.substring(0, word.length - 1))); // remove the last space
                     word = '';
                 }
-                nodes.push(new BR());
+                nodes.push(new BR(doc));
                 index += 2;
             } else if (char === '\\' && str.substring(index + 1, index + 5) === ' !! ') { // escape it
                 word += ' !! ';
@@ -1359,18 +1508,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_code)
                 {
                     in_code = true;
-                    nodes.push(new Start('code'))
+                    nodes.push(new Start(doc, 'code'))
                 }
                 else
                 {
                     in_code = false;
-                    nodes.push(new Stop('code'));
+                    nodes.push(new Stop(doc, 'code'));
                 }
                 index += 1;
             }
@@ -1378,18 +1527,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_bold)
                 {
                     in_bold = true;
-                    nodes.push(new Start('bold'))
+                    nodes.push(new Start(doc, 'bold'))
                 }
                 else
                 {
                     in_bold = false;
-                    nodes.push(new Stop('bold'));
+                    nodes.push(new Stop(doc, 'bold'));
                 }
                 index += 1;
             }
@@ -1397,18 +1546,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_italic)
                 {
                     in_italic = true;
-                    nodes.push(new Start('italic'))
+                    nodes.push(new Start(doc, 'italic'))
                 }
                 else
                 {
                     in_italic = false;
-                    nodes.push(new Stop('italic'));
+                    nodes.push(new Stop(doc, 'italic'));
                 }
                 index += 1;
             }
@@ -1416,18 +1565,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_underline)
                 {
                     in_underline = true;
-                    nodes.push(new Start('underline'))
+                    nodes.push(new Start(doc, 'underline'))
                 }
                 else
                 {
                     in_underline = false;
-                    nodes.push(new Stop('underline'));
+                    nodes.push(new Stop(doc, 'underline'));
                 }
                 index += 1;
             }
@@ -1435,18 +1584,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_stroke)
                 {
                     in_stroke = true;
-                    nodes.push(new Start('stroke'))
+                    nodes.push(new Start(doc, 'stroke'))
                 }
                 else
                 {
                     in_stroke = false;
-                    nodes.push(new Stop('stroke'));
+                    nodes.push(new Stop(doc, 'stroke'));
                 }
                 index += 1;
             }
@@ -1454,18 +1603,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_sup)
                 {
                     in_sup = true;
-                    nodes.push(new Start('sup'));
+                    nodes.push(new Start(doc, 'sup'));
                 }
                 else
                 {
                     in_sup = false;
-                    nodes.push(new Stop('sup'));
+                    nodes.push(new Stop(doc, 'sup'));
                 }
                 index += 1;
             }
@@ -1473,18 +1622,18 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 if (!in_sub)
                 {
                     in_sub = true;
-                    nodes.push(new Start('sub'));
+                    nodes.push(new Start(doc, 'sub'));
                 }
                 else
                 {
                     in_sub = false;
-                    nodes.push(new Stop('sub'));
+                    nodes.push(new Stop(doc, 'sub'));
                 }
                 index += 1;
             }
@@ -1492,7 +1641,7 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 let end = str.indexOf('}}', index);
@@ -1500,11 +1649,11 @@ class Hamill
                 let res = Hamill.process_inner_markup(content);
                 if (res['has_text'])
                 {
-                    nodes.push(new Span(res['id'], res['class'], res['text']));
+                    nodes.push(new Span(doc, res['id'], res['class'], res['text']));
                 }
                 else
                 {
-                    nodes.push(new ParagraphIndicator(res['id'], res['class']));
+                    nodes.push(new ParagraphIndicator(doc, res['id'], res['class']));
                 }
                 index = end + 1;
             }
@@ -1512,7 +1661,7 @@ class Hamill
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 let end = str.indexOf(']]', index);
@@ -1526,30 +1675,30 @@ class Hamill
                 }
                 else if (parts.length === 2)
                 {
-                    display = Hamill.process_inner_string(parts[0].trim());
+                    display = Hamill.process_inner_string(doc, parts[0].trim());
                     url = parts[1].trim();
                 }
-                nodes.push(new Link(url, display));
+                nodes.push(new Link(doc, url, display));
                 index = end + 1;
             }
             else if (char === '(' && next === '(' && prev !== '\\')
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 let end = str.indexOf('))', index);
                 let content = str.substring(index+2, end);
                 let res = Hamill.process_inner_picture(content);
-                nodes.push(new Picture(res["url"], res["text"], res["class"], res["id"]));
+                nodes.push(new Picture(doc, res["url"], res["text"], res["class"], res["id"]));
                 index = end + 1;
             }
             else if (char === '$' && next === '$' && prev !== '\\')
             {
                 if (word.length > 0)
                 {
-                    nodes.push(new Text(word));
+                    nodes.push(new Text(doc, word));
                     word = '';
                 }
                 let end = str.indexOf('$$', index+2);
@@ -1572,7 +1721,7 @@ class Hamill
         }
         if (word.length > 0)
         {
-            nodes.push(new Text(word));
+            nodes.push(new Text(doc, word));
             word = '';
         }
         return nodes;
@@ -1683,7 +1832,7 @@ function tests()
     console.log("Test de process_string");
     console.log("------------------------------------------------------------------------\n");
 
-    console.log(Hamill.process_string("**bonjour**").to_html(false));
+    console.log(Hamill.process_string("**bonjour**").to_html());
 }
 
 //-------------------------------------------------------------------------------
@@ -1693,7 +1842,18 @@ function tests()
 var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
-    tests();
+    //tests();
+    Hamill.process_file('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
+
+    const test = false;
+    if (test)
+    {
+        let doc = Hamill.process_string("* A\n* B [[http://www.gogol.com]]\n  + D\n  + E")
+        doc.display_info();
+        let output = doc.to_html();
+        console.log("RESULT:");
+        console.log(output);
+    }
 }
 
 export {Hamill, Document};
