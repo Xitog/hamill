@@ -114,7 +114,7 @@ class Start extends Node
             'underline': 'u',
             'sup': 'sup',
             'sub': 'sub',
-            'code': 'code'
+           // 'code': 'code'
         }
         return `<${markups[this.content]}>`;
     }
@@ -130,7 +130,7 @@ class Stop extends Node
             'underline': 'u',
             'sup': 'sup',
             'sub': 'sub',
-            'code': 'code'
+           // 'code': 'code'
         }
         return  `</${markups[this.content]}>`;
     }
@@ -465,7 +465,25 @@ class Definition extends Node
     }
 }
 class Quote extends Node {}
-class Code extends Node {}
+class Code extends Node
+{
+    constructor(document, content, inline=false)
+    {
+        super(document, content);
+        this.inline = inline;
+    }
+    to_html()
+    {
+        // appelé uniquement par string_to_html pour le code inline
+        //return '<code><span class="game-normal">' + this.content + '</span></code>';
+        if (this.inline)
+        {
+            return '<code>' + this.content + '</code>';
+        } else {
+            throw new Error("It's done elsewhere.");
+        }
+    }
+}
 class GetVar extends Node {}
 class SetVar extends EmptyNode
 {
@@ -649,7 +667,9 @@ class Document
             && !(nodes[0] instanceof Stop) && !(nodes[0] instanceof Text)
             && !(nodes[0] instanceof Link) && !(nodes[0] instanceof GetVar))
             && !(nodes[0] instanceof ParagraphIndicator)
-            && !(nodes[0] instanceof Picture)) throw new Error(`Parameter nodes should be an array of Start|Stop|Text|Link|GetVar and is: ${typeof nodes[0]}`);
+            && !(nodes[0] instanceof Picture)
+            && !(nodes[0] instanceof Code)
+            && (nodes[0] instanceof Code && !nodes[0].inline)) throw new Error(`Parameter nodes should be an array of Start|Stop|Text|Link|GetVar|Code(inline) and is: ${typeof nodes[0]}`);
         for (let node of nodes)
         {
             if (node instanceof Start
@@ -673,6 +693,10 @@ class Document
             {
                 let ret = content.lastIndexOf("<p>");
                 content = content.substring(0, ret) + node.to_html() + content.substring(ret + 3);
+            }
+            else if (node instanceof Code)
+            {
+                content += node.to_html();
             }
             else
             {
@@ -1101,7 +1125,7 @@ class Hamill
                 in_code_block = !in_code_block;
                 lines.push(new Line(value, 'code'))
             }
-            else if (trimmed.substring(0, 2) === '@@')
+            else if (trimmed.substring(0, 2) === '@@' && trimmed.substring(trimmed.length-2, trimmed.length) !== '@@') // :TODO: Escaping @@ in code for Ruby. @@code@@ should be a <p> not a <pre>!
             {
                 lines.push(new Line(value, 'code'));
             }
@@ -1429,7 +1453,6 @@ class Hamill
     {
         let in_sup = false;
         let in_sub = false;
-        let in_code = false;
         let in_bold = false;
         let in_italic = false;
         let in_underline = false;
@@ -1511,17 +1534,25 @@ class Hamill
                     nodes.push(new Text(doc, word));
                     word = '';
                 }
-                if (!in_code)
+                let is_code_ok = -1;
+                for (let subindex = index  + 2; subindex < str.length; subindex++)
                 {
-                    in_code = true;
-                    nodes.push(new Start(doc, 'code'))
+                    let subchar = str[subindex];
+                    let subnext = (subindex + 1) < str.length ? str[subindex + 1] : null;
+                    let subprev = (subindex - 1) > 0 ? str[subindex - 1] : null;
+                    // Ignore all formatting in a inline code bloc
+                    if (subchar === '@' && subnext === '@' && subprev !== '\\')
+                    {
+                        nodes.push(new Code(doc, str.substring(index + 2, subindex), true));
+                        is_code_ok = subindex + 1;
+                        break;
+                    }
                 }
-                else
+                if (is_code_ok === -1)
                 {
-                    in_code = false;
-                    nodes.push(new Stop(doc, 'code'));
+                    throw new Error("Unfinished inline code sequence: " + str);
                 }
-                index += 1;
+                index = is_code_ok; // will inc by 1 at the end of the loop
             }
             else if (char === '*' && next === '*' && prev !== '\\')
             {
@@ -1843,16 +1874,18 @@ var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
     //tests();
-    Hamill.process_file('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
-
     const test = false;
     if (test)
     {
-        let doc = Hamill.process_string("* A\n* B [[http://www.gogol.com]]\n  + D\n  + E")
+        //let doc = Hamill.process_string("* A\n* B [[http://www.gogol.com]]\n  + D\n  + E");
+        //let doc = Hamill.process_string("+ Été @@2006@@ Mac, Intel, Mac OS X");
+        let doc = Hamill.process_string("@@Code@@");
         doc.display_info();
         let output = doc.to_html();
         console.log("RESULT:");
         console.log(output);
+    } else {
+        Hamill.process_file('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
     }
 }
 
