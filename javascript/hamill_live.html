@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
     <head>
         <title>Hamill Live</title>
@@ -51,7 +52,7 @@
                 let text = code.value;
                 let doc = Hamill.process_string(text);
                 let output = document.getElementById("output");
-                output.innerHTML = doc.to_html();
+                output.innerHTML = doc.to_html() + "<pre>" + doc.to_s() + "</pre>";
             }
 
             document.querySelectorAll('[class$="_reset"]').forEach(e => e.addEventListener('click', reset));

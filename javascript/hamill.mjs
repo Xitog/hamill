@@ -77,7 +77,12 @@ class EmptyNode
             throw new Error("Undefined or null document");
         }
     }
+    toString()
+    {
+        return this.constructor.name;
+    }
 }
+
 class Node extends EmptyNode
 {
     constructor(document, content=null)
@@ -96,6 +101,7 @@ class Node extends EmptyNode
         }
     }
 }
+
 class Text extends Node
 {
     to_html()
@@ -103,6 +109,7 @@ class Text extends Node
         return this.content;
     }
 }
+
 class Start extends Node
 {
     to_html()
@@ -119,6 +126,7 @@ class Start extends Node
         return `<${markups[this.content]}>`;
     }
 }
+
 class Stop extends Node
 {
     to_html()
@@ -135,6 +143,7 @@ class Stop extends Node
         return  `</${markups[this.content]}>`;
     }
 }
+
 class Picture extends Node
 {
     constructor(document, url, text=null, cls=null, ids=null)
@@ -167,6 +176,7 @@ class Picture extends Node
         }
     }
 }
+
 class HR extends EmptyNode
 {
     to_html()
@@ -174,6 +184,7 @@ class HR extends EmptyNode
         return "<hr>\n";
     }
 }
+
 class BR extends EmptyNode
 {
     to_html()
@@ -181,6 +192,7 @@ class BR extends EmptyNode
         return '<br>';
     }
 }
+
 class Span extends EmptyNode
 {
     constructor(document, ids, cls, text)
@@ -206,6 +218,7 @@ class Span extends EmptyNode
         return r;
     }
 }
+
 class ParagraphIndicator extends EmptyNode
 {
     constructor(document, ids, cls)
@@ -230,7 +243,9 @@ class ParagraphIndicator extends EmptyNode
         return r;
     }
 }
+
 class Comment extends Node {}
+
 class Row extends EmptyNode
 {
     constructor(document, node_list_list)
@@ -240,6 +255,7 @@ class Row extends EmptyNode
         this.is_header = false;
     }
 }
+
 class RawHTML extends Node
 {
     to_html()
@@ -247,7 +263,9 @@ class RawHTML extends Node
         return this.content + "\n";
     }
 }
+
 class Include extends Node {}
+
 class Title extends Node
 {
     constructor(document, content, level)
@@ -256,6 +274,7 @@ class Title extends Node
         this.level = level;
     }
 }
+
 class StartDiv extends EmptyNode
 {
     constructor(document, id=null, cls=null)
@@ -285,6 +304,7 @@ class StartDiv extends EmptyNode
         }
     }
 }
+
 class EndDiv extends EmptyNode
 {
     to_html()
@@ -292,6 +312,7 @@ class EndDiv extends EmptyNode
         return "</div>\n";
     }
 }
+
 class Composite extends EmptyNode
 {
     constructor(document, parent=null)
@@ -361,6 +382,7 @@ class Composite extends EmptyNode
         return s;
     }
 }
+
 class TextLine extends Composite
 {
     constructor(document, children=[])
@@ -373,6 +395,7 @@ class TextLine extends Composite
         return this.document.string_to_html('', this.children);
     }
 }
+
 class List extends Composite
 {
     constructor(document, parent, ordered=false, reverse=false, level=0, children=[])
@@ -484,7 +507,19 @@ class Code extends Node
         }
     }
 }
-class GetVar extends Node {}
+
+class GetVar extends Node
+{
+    constructor(document, content)
+    {
+        super(document, content);
+        if (content === null || content === undefined)
+        {
+            throw new Error("A GetVar node must have a content");
+        }
+    }
+}
+
 class SetVar extends EmptyNode
 {
     constructor(document, id, value, type, constant)
@@ -547,7 +582,7 @@ class Document
     {
         this.name = name;
         this.variables = {
-            'VERSION': new Variable(this, 'VERSION', 'string', 'true', 'Hamill 2.0'),
+            'VERSION': new Variable(this, 'VERSION', 'string', 'true', 'Hamill 2.00'),
             'NOW': new Variable(this, 'NOW', 'string', 'true', ''),
             'PARAGRAPH_DEFINITION': new Variable(this, 'PARAGRAPH_DEFINITION', 'boolean', false, false),
             'EXPORT_COMMENT': new Variable(this, 'EXPORT_COMMENT', 'boolean', false, false),
@@ -669,7 +704,10 @@ class Document
             && !(nodes[0] instanceof ParagraphIndicator)
             && !(nodes[0] instanceof Picture)
             && !(nodes[0] instanceof Code)
-            && (nodes[0] instanceof Code && !nodes[0].inline)) throw new Error(`Parameter nodes should be an array of Start|Stop|Text|Link|GetVar|Code(inline) and is: ${typeof nodes[0]}`);
+            && (nodes[0] instanceof Code && !nodes[0].inline))
+        {
+            throw new Error(`Parameter nodes should be an array of Start|Stop|Text|Link|GetVar|Code(inline) and is: ${typeof nodes[0]}`);
+        }
         for (let node of nodes)
         {
             if (node instanceof Start
@@ -995,28 +1033,30 @@ class Document
         return content;
     }
 
-    display_info(level=0, node=null)
+    to_s(level=0, node=null)
     {
+        let out = "";
         if (node === null || node === undefined)
         {
-            console.log('\n------------------------------------------------------------------------');
-            console.log('Liste des nodes du document');
-            console.log('------------------------------------------------------------------------\n');
+            out += '\n------------------------------------------------------------------------\n';
+            out += 'Liste des nodes du document\n';
+            out += '------------------------------------------------------------------------\n\n';
             for (const n of this.nodes)
             {
-                this.display_info(level, n);
+                out += this.to_s(level, n);
             }
         } else {
             let info = " " + node.toString();
-            console.log("    ".repeat(level) + info);
+            out += "    ".repeat(level) + info + '\n';
             if (node instanceof Composite)
             {
                 for (const n of node.children)
                 {
-                    this.display_info(level + 1, n);
+                    out += this.to_s(level + 1, n);
                 }
             }
         }
+        return out;
     }
 
 }
@@ -1734,7 +1774,7 @@ class Hamill
                 }
                 let end = str.indexOf('$$', index+2);
                 let content = str.substring(index+2, end);
-                nodes.push(new GetVar(content));
+                nodes.push(new GetVar(doc, content));
                 index = end + 1;
             }
             else if (char === '\\'
@@ -1874,13 +1914,15 @@ var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
     //tests();
+    //const test = true;
     const test = false;
     if (test)
     {
         //let doc = Hamill.process_string("* A\n* B [[http://www.gogol.com]]\n  + D\n  + E");
         //let doc = Hamill.process_string("+ Été @@2006@@ Mac, Intel, Mac OS X");
-        let doc = Hamill.process_string("@@Code@@");
-        doc.display_info();
+        //let doc = Hamill.process_string("@@Code@@");
+        //let doc = Hamill.process_string("Bonjour $$VERSION$$");
+        console.log(doc.to_s());
         let output = doc.to_html();
         console.log("RESULT:");
         console.log(output);
