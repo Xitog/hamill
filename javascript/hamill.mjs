@@ -1889,19 +1889,28 @@ class Hamill
 // Functions
 //-------------------------------------------------------------------------------
 
-function tests()
+function tests(stop_on_first_error=false)
 {
     console.log("\n------------------------------------------------------------------------");
     console.log("Test de process_string");
     console.log("------------------------------------------------------------------------\n");
     let test_suite = [
+        // Comments, HR and BR
         ["// This is a comment", ""],
         ["!var EXPORT_COMMENT=true\n// This is a comment", "<!-- This is a comment -->\n"],
         ["---", "<hr>\n"],
         ["a !! b", "<p>a<br>b</p>\n"],
+        // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
-        ["**bonjour**", "<p><b>bonjour</b></p>\n"]
+        // Text modifications
+        ["**bonjour**", "<p><b>bonjour</b></p>\n"],
+        ["''italic''", "<p><i>italic</i></p>\n"],
+        ["--strikethrough--", "<p><s>strikethrough</s></p>\n"],
+        ["__underline__", "<p><u>underline</u></p>\n"],
+        ["^^superscript^^", "<p><sup>superscript</sup></p>\n"],
+        ["%%subscript%%", "<p><sub>subscript</sub></p>\n"],
+        ["@@code@@", "<p><code>code</code></p>\n"],
     ];
     let nb_ok = 0;
     for (let t of test_suite)
@@ -1909,6 +1918,10 @@ function tests()
         if (test(t[0], t[1]))
         {
             nb_ok += 1;
+        }
+        else if (stop_on_first_error)
+        {
+            throw new Error("Stopping on first error");
         }
     }
     console.log(`Tests ok : ${nb_ok} / ${test_suite.length}`);
@@ -1970,7 +1983,7 @@ if (/*DEBUG &&*/ fs !== null)
     //const do_test = false;
     if (do_test)
     {
-        tests();
+        tests(true);
     }
     else
     {
