@@ -160,7 +160,7 @@ produce:
 * Use ``*`` at a start of line followed by a space for an unordered list
 * Use ``+`` at a start of line followed by a space for an ordered list, ascending
 * Use ``-`` at a start of line followed by a space  for an ordered list, descending
-* You can have multiple level of lists by putting two spaces before the starter symbol for each level
+* You can have multiple level of lists by putting **two** spaces before the starter symbol for each level
 * Use ``|`` for continuing a previous item on a new line
 
 <p align="center">
@@ -183,7 +183,7 @@ produce:
 * The header line can have any number of ``|`` inside
 * Text modifiers, images and links can be put inside a table
 * If the character right after the starting ``|`` of a cell is ``=`` its content will be centered
-* **LIMITATION**: lists can't be put in a table
+* **LIMITATION**: lists can't be put in tables
 
 <p align="center">
  <a href="#summary">Back to summary</a>
