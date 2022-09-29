@@ -194,7 +194,7 @@ produce:
 * Use surrounding ``[[ url ]]`` for a simple URL link
 * Use ``[[ display -> link ]]`` for a link with a display string different of the link itself
 * If link is equal to ``#``, Hamill will search if it can find a corresponding inner links and put it here
-* Inner links are created by the syntax ``[[#...]] ``and automatically for title (space are replaced by - and text put in lowercase)
+* Anchors for inner links are created by the syntax ``[[#...]] ``and automatically for title (space are replaced by ``-`` and text is put in lowercase)
 * If link is not an URL, nor ``#``, Hamill will search if it can find in the library of links
 * An item of the library of links is defined by putting at the start of line ``::label:: URL``
 
