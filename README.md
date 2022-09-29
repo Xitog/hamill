@@ -234,7 +234,7 @@ produce:
 
 * You can define the value of the variables by staring a line with ``!var`` then the variable identifier then = and the value
 * A variable value can change through the process of emitting HTML
-   * ``EXPORT_COMMENT=true/false`` specify if entire comment lines must be emitted in HTML
+   * ``EXPORT_COMMENT=true/false`` specify if entire comment lines must be emitted in HTML. The starting ``//`` will be removed.
    * ``PARAGRAPH_DEFINITION=true/false`` specify if definitions of a definition list must be put in paragraph (p)
    * ``DEFAULT_CODE=python/json`` define the language of the code by default (plain text by default)
    * ``NEXT_PAR_ID=ids`` specify the ID of the next paragraph
