@@ -4,6 +4,8 @@ A simple lightweight markup language outputting HTML. Implementations are availa
 
 <ins>Rationale</ins>: More complete than [the original Markdown](https://daringfireball.net/projects/markdown/syntax)<sup>2004</sup>, easier to parse and write.
 
+The Python 3 version handles only Hamill 1.0. The Javascript version handles only Hamill 2.0.
+
 First version released in 2020. Version 2 released in 2022.
 
 You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
@@ -11,8 +13,6 @@ You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/ham
 <p align="right">
 Damien Gouteux 2020-2022
 </p>
-
-PS : the Python 3 version handles only Hamill 1.0. The Javascript version handles ony Hamill 2.0.
 
 ## <a name="summary"></a> Summary
 
