@@ -71,7 +71,8 @@ The style of the text can be modified by the following markups:
 * Surround your text with ``__`` for underline <ins>abc</ins>
 * Surround your text with ``^^`` for superscript Ex<sup>abc</sup>
 * Surround your text with ``%%`` for subscript Ex<sub>abc</sub>
-* Surround your text with ``@@`` for code (see below) ``abc``. No markup is interpreted inside code, no need to escape it except ``@@``.
+* Surround your text with ``@@`` for code (see below) ``abc``.  
+  No markup is interpreted inside code, no need to escape it except ``@@``.
 * Use ``\`` to prevent the interpretation of a markup
 
 <p align="center">
@@ -85,7 +86,8 @@ You can define custom div, span and paragraph with:
 * Write ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class.
 * Write ``{{begin}}`` to open a div without a class or an id.
 * Write ``{{end}}`` to close a div.
-* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line. This markup must **start** the line.
+* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.  
+  This markup must **start** the line.
 * Write ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
 <p align="center">
