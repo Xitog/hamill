@@ -71,7 +71,7 @@ The style of the text can be modified by the following markups:
 * Surround your text with ``__`` for underline <ins>abc</ins>
 * Surround your text with ``^^`` for superscript Ex<sup>abc</sup>
 * Surround your text with ``%%`` for subscript Ex<sub>abc</sub>
-* Surround your text with ``@@`` for code (see below) ``abc``. No markup is interpreted inside code.
+* Surround your text with ``@@`` for code (see below) ``abc``. No markup is interpreted inside code, no need to escape it except ``@@``.
 * Use ``\`` to prevent the interpretation of a markup
 
 <p align="center">
