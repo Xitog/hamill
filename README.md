@@ -85,7 +85,7 @@ You can define custom div, span and paragraph with:
 * Write ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class.
 * Write ``{{begin}}`` to open a div without a class or an id.
 * Write ``{{end}}`` to close a div.
-* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.
+* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line. This markup must **start** the line.
 * Write ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
 <p align="center">
