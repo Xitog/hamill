@@ -12,6 +12,8 @@ You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/ham
 Damien Gouteux 2020-2022
 </p>
 
+PS : the Python 3 version handles only Hamill 1.0. The Javascript version handles ony Hamill 2.0.
+
 ## <a name="summary"></a> Summary
 
 * [Comments, HR and BR](#comments)
