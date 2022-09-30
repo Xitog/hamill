@@ -729,8 +729,9 @@ class Document
             }
             else if (node instanceof ParagraphIndicator)
             {
-                let ret = content.lastIndexOf("<p>");
-                content = content.substring(0, ret) + node.to_html() + content.substring(ret + 3);
+                //let ret = content.lastIndexOf("<p>");
+                //content = content.substring(0, ret) + node.to_html() + content.substring(ret + 3);
+                content += node.to_html();
             }
             else if (node instanceof Code)
             {
@@ -873,10 +874,22 @@ class Document
             }
             else if (node instanceof TextLine)
             {
+                // Check that ParagraphIndicator must be only at 0
+                for (let nc = 0; nc < node.children.length; nc++)
+                {
+                    if (node.children[nc] instanceof ParagraphIndicator && nc > 0)
+                    {
+                        throw new Error("A paragraph indicator must always be at the start of a text line/")
+                    }
+                }
                 if (!in_paragraph)
                 {
                     in_paragraph = true;
-                    content += "<p>";
+                    // If the first child is a pragraph indicator, don't start the paragraph !
+                    if (node.children.length > 0 && !(node.children[0] instanceof ParagraphIndicator))
+                    {
+                        content += "<p>";
+                    }
                 } else {
                     content += "<br>\n";
                 }
@@ -1575,6 +1588,7 @@ class Hamill
                     word = '';
                 }
                 let is_code_ok = -1;
+                let code_str = '';
                 for (let subindex = index  + 2; subindex < str.length; subindex++)
                 {
                     let subchar = str[subindex];
@@ -1583,9 +1597,19 @@ class Hamill
                     // Ignore all formatting in a inline code bloc
                     if (subchar === '@' && subnext === '@' && subprev !== '\\')
                     {
-                        nodes.push(new Code(doc, str.substring(index + 2, subindex), true));
+                        nodes.push(new Code(doc, code_str, true));
                         is_code_ok = subindex + 1;
                         break;
+                    }
+                    // We can only escape @@
+                    else if (subchar === '@' && subnext === '@' && subprev === '\\')
+                    {
+                        code_str = code_str.slice(0, -1); // remove the \
+                        code_str += subchar; // add the first @, the second will be added through the else
+                    }
+                    else
+                    {
+                        code_str += subchar;
                     }
                 }
                 if (is_code_ok === -1)
@@ -1911,6 +1935,37 @@ function tests(stop_on_first_error=false)
         ["^^superscript^^", "<p><sup>superscript</sup></p>\n"],
         ["%%subscript%%", "<p><sub>subscript</sub></p>\n"],
         ["@@code@@", "<p><code>code</code></p>\n"],
+        // Escaping
+        ["\\**bonjour\\**", "<p>**bonjour**</p>\n"],
+        ["@@code \\@@variable = '\\n' end@@", "<p><code>code @@variable = '\\n' end</code></p>\n"],
+        // Div, p and span
+        ["{{#myid .myclass}}", '<div id="myid" class="myclass">\n'],
+        ["{{#myid}}", '<div id="myid">\n'],
+        ["{{.myclass}}", '<div class="myclass">\n'],
+        ["{{begin}}", '<div>\n'],
+        ["{{end}}", '</div>\n'],
+        ["{{#myid .myclass}}content", '<p id="myid" class="myclass">content</p>\n'],
+        ["{{#myid}}content", '<p id="myid">content</p>\n'],
+        ["{{.myclass}}content", '<p class="myclass">content</p>\n'],
+        ["je suis {{#myid .myclass rouge}} et oui !", '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n'],
+        ["je suis {{#myid rouge}} et oui !", '<p>je suis <span id="myid">rouge</span> et oui !</p>\n'],
+        ["je suis {{.myclass rouge}} et oui !", '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n'],
+        // Code
+        // Quotes
+        // Lists
+        // Definition lists
+        // Tables
+        // Links
+        // Images
+        // Constants
+        // Variables
+        // Inclusion of HTML files
+        // Links to CSS and JavaScript files
+        ["!require pipo.css", ""],
+        // Raw HTML and CSS
+        ["!html <div>Hello</div>", "<div>Hello</div>\n"],
+        ["\\!html <div>Hello</div>", "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n"], // Error, the \ should be removed!
+        ["!css p { color: pink;}", ""]
     ];
     let nb_ok = 0;
     for (let t of test_suite)
@@ -1967,7 +2022,7 @@ function test(s, r)
         {
             r = "EMPTY";
         }
-        console.log("Error, expected:", r);
+        console.log(`Error, expected:\n${r}`);
         return false;
     }
 }
