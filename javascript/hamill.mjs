@@ -24,6 +24,8 @@
 // For more information about my projects see:
 // https://xitog.github.io/dgx (in French)
 
+import { lutimesSync } from 'fs';
+
 //-------------------------------------------------------------------------------
 // Imports
 //-------------------------------------------------------------------------------
@@ -580,6 +582,9 @@ class Document
 {
     constructor(name=null)
     {
+        this.predefined_constants = [
+            "TITLE", "ICON", "LANG", "ENCODING", "BODY_CLASS", "BODY_ID", "VERSION", "NOW"
+        ];
         this.name = name;
         this.variables = {
             'VERSION': new Variable(this, 'VERSION', 'string', 'true', 'Hamill 2.00'),
@@ -608,6 +613,11 @@ class Document
         let target = output_directory + sep + outfilename;
         fs.writeFileSync(target, this.to_html(true)); // with header
         console.log('Outputting in:', target);
+    }
+
+    has_variable(k)
+    {
+        return ((k in this.variables) && this.variables[k] !== null);
     }
 
     set_variable(k, v, t='string', c=false)
@@ -753,7 +763,7 @@ class Document
         {
             content = `<html lang="${this.get_variable('LANG', 'en')}">
 <head>
-  <meta charset=utf-8>
+  <meta charset="${this.get_variable('ENCODING', 'utf-8')}">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${this.get_variable('TITLE', 'Undefined title')}</title>
@@ -793,7 +803,17 @@ class Document
             if (header)
             {
                 content += "</head>\n";
-                content += "<body>\n";
+                let bclass = "";
+                let bid= "";
+                if (this.has_variable("BODY_ID"))
+                {
+                    bid = ' id="' + this.get_variable("BODY_ID") + '"';
+                }
+                if (this.has_variable("BODY_CLASS"))
+                {
+                    bclass = ' class="' + this.get_variable("BODY_CLASS") + '"';
+                }
+                content += `<body${bid}${bclass}>\n`;
             }
         }
         let first_text = true;
@@ -862,6 +882,13 @@ class Document
             }
             else if (node instanceof SetVar)
             {
+                if (!node.constant)
+                {
+                    if (this.predefined_constants.includes(node.id))
+                    {
+                        throw new Error(`You cannot use ${node.id} for a variable because it is a predefined constant.`);
+                    }
+                }
                 this.set_variable(node.id, node.value, node.type, node.constant);
             }
             else if (node instanceof HR
@@ -1314,7 +1341,15 @@ class Hamill
                     doc.add_node(new HR(doc));
                     break;
                 case 'text':
-                    if (line.value.trim().startsWith('\\* ')) line.value = line.value.trim().substring(1);
+                    if (line.value.trim().startsWith('\\* ')
+                       || line.value.trim().startsWith('\\!html')
+                       || line.value.trim().startsWith('\\!var')
+                       || line.value.trim().startsWith('\\!const')
+                       || line.value.trim().startsWith('\\!include')
+                       || line.value.trim().startsWith('\\!require'))
+                    {
+                        line.value = line.value.trim().substring(1);
+                    }
                     let n = Hamill.process_inner_string(doc, line.value);
                     doc.add_node(new TextLine(doc, n));
                     break;
@@ -1958,10 +1993,23 @@ function tests(stop_on_first_error=false)
         // Links
         // Images
         // Constants
+        ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
+        ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
+        ["!const ALPHACONST = abcd\n!const ALPHACONST = efgh", "", "Can't set the value of the already defined constant: ALPHACONST of type string"],
         // Variables
+        ["!var NUMBER=5\n$$NUMBER$$", "<p>5</p>\n"],
+        ["!var ALPHA=je suis un poulpe\n$$ALPHA$$", "<p>je suis un poulpe</p>\n"],
+        ["!var BOOLEAN=true\n$$BOOLEAN$$", "<p>true</p>\n"],
+        ["!var NUM=1\n$$NUM$$\n!var NUM=25\n$$NUM$$\n", "<p>1</p>\n<p>25</p>\n"],
+        ["\\!var I AM NOT A VAR", "<p>!var I AM NOT A VAR</p>\n"],
+        ["$$UNKNOWNVAR$$", "", "Unknown variable: UNKNOWNVAR"],
+        ["!var TITLE=ERROR", "", "You cannot use TITLE for a variable because it is a predefined constant."],
         // Inclusion of HTML files
+        ["!include include_test.html", "<h1>Hello World!</h1>\n"],
+        ["\\!include I AM NOT AN INCLUDE", "<p>!include I AM NOT AN INCLUDE</p>\n"],
         // Links to CSS and JavaScript files
         ["!require pipo.css", ""],
+        ["\\!require I AM NOT A REQUIRE", "<p>!require I AM NOT A REQUIRE</p>\n"],
         // Raw HTML and CSS
         ["!html <div>Hello</div>", "<div>Hello</div>\n"],
         ["\\!html <div>Hello</div>", "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n"], // Error, the \ should be removed!
@@ -1970,7 +2018,25 @@ function tests(stop_on_first_error=false)
     let nb_ok = 0;
     for (let t of test_suite)
     {
-        if (test(t[0], t[1]))
+        if (t === undefined || t === null || !Array.isArray(t) || (t.length !== 2 && t.length !== 3))
+        {
+            throw new Error("Test not well defined:", t);
+        }
+        console.log("\n========================================================================");
+        if (t[0].split("\n").length < 2)
+        {
+            console.log("Test :", t[0]);
+        }
+        else
+        {
+            console.log("Test :");
+            for (let line of t[0].split("\n"))
+            {
+                console.log("   ", line);
+            }
+        }
+        console.log("========================================================================");
+        if (test(t[0], t[1], t.length === 3 ? t[2] : null))
         {
             nb_ok += 1;
         }
@@ -1997,33 +2063,56 @@ function tests(stop_on_first_error=false)
     */
 }
 
-function test(s, r)
+function test(text, result, error=null)
 {
-    let doc = Hamill.process_string(s);
-    console.log(doc.to_s());
-    let output = doc.to_html();
-    console.log("RESULT:");
-    if (output === "")
+    try
     {
-        console.log("EMPTY");
-    }
-    else
-    {
-        console.log(output);
-    }
-    if (output === r)
-    {
-        console.log("Test Validated");
-        return true;
-    }
-    else
-    {
-        if (r === "")
+        let doc = Hamill.process_string(text);
+        console.log(doc.to_s());
+        let output = doc.to_html();
+        console.log("RESULT:");
+        if (output === "")
         {
-            r = "EMPTY";
+            console.log("EMPTY");
         }
-        console.log(`Error, expected:\n${r}`);
-        return false;
+        else
+        {
+            console.log(output);
+        }
+        if (output === result)
+        {
+            console.log("Test Validated");
+            return true;
+        }
+        else
+        {
+            if (result === "")
+            {
+                result = "EMPTY";
+            }
+            console.log(`Error, expected:\n${result}`);
+            return false;
+        }
+    } catch (e) {
+        console.log("RESULT:");
+        if (error !== null && e.message === error)
+        {
+            console.log("Error expected:", e.message);
+            console.log("Test Validated");
+            return true;
+        }
+        else if (error !== null)
+        {
+            console.log(e.message);
+            console.log(`Error, expected:\n${error}`);
+            return false;
+        }
+        else
+        {
+            console.log("Unexpected error:", e.message);
+            console.log(`No error expected, expected:\n${result}`);
+            return false;
+        }
     }
 }
 
