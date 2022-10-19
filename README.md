@@ -221,7 +221,10 @@ produce:
 
 * You can define the value of the one of the 6 constants by starting a line with ``!const`` then the constant identifier then = and the value
 * You can only set the value of a constant once, anywhere in the document.
-* The 6 predefined (but not set) constants:
+* The 2 predefined and set constants are:
+  * ``VERSION`` : version of Hamill used to generate the Document (format: ``Hamill 2.xx``)
+  * ``NOW`` : date and time of the generation
+* The 6 predefined (but not set) constants are:
   * ``TITLE`` to define the title of the page (if not set, its value will be *Undefined title*)
   * ``ICON`` to define an icon for the page (if not set, its value will be *Undefined icon*)
   * ``LANG`` to define the lang of the page (if not set, its value will be *en*)
