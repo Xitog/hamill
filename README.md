@@ -221,13 +221,13 @@ produce:
 
 * You can define the value of the one of the 6 constants by starting a line with ``!const`` then the constant identifier then = and the value
 * You can only set the value of a constant once, anywhere in the document.
-* The 6 constants are :
-  * ``TITLE`` to define the title of the page
-  * ``ICON`` to define an icon for the page
-  * ``LANG`` to define the lang of the page (default : en)
-  * ``ENCODING`` to define the encoding of the page (default : utf-8)
-  * ``BODY_CLASS`` to define the class of the body
-  * ``BODY_ID`` to define the ID of the body
+* The 6 predefined (but not set) constants:
+  * ``TITLE`` to define the title of the page (if not set, its value will be *Undefined title*)
+  * ``ICON`` to define an icon for the page (if not set, its value will be *Undefined icon*)
+  * ``LANG`` to define the lang of the page (if not set, its value will be *en*)
+  * ``ENCODING`` to define the encoding of the page (if not set, its value will be *utf-8*)
+  * ``BODY_CLASS`` to define the class of the body (if not set, no value is defined)
+  * ``BODY_ID`` to define the ID of the body (if not set, no value is defined)
 * You can display the value of a constant by using ``$$TITLE$$``
 
 <p align="center">
@@ -238,6 +238,7 @@ produce:
 
 * You can define the value of the variables by staring a line with ``!var`` then the variable identifier then = and the value
 * A variable value can change through the process of emitting HTML
+* The 7 predefined (but not set) variables are:
    * ``EXPORT_COMMENT=true/false`` specify if entire comment lines must be emitted in HTML. The starting ``//`` will be removed.
    * ``PARAGRAPH_DEFINITION=true/false`` specify if definitions of a definition list must be put in paragraph (p)
    * ``DEFAULT_CODE=python/json`` define the language of the code by default (plain text by default)
@@ -246,6 +247,7 @@ produce:
    * ``DEFAULT_PAR_CLASS=cls`` specify the default class of the paragraphes
    * ``DEFAULT_FIND_IMAGE=path`` specifiy a default directory where to find the included images
 * You can display the value of a variable by using ``$$NEXT_PAR_ID$$``
+* A variable cannot have the same name as a predefined constant.
 
 <p align="center">
  <a href="#summary">Back to summary</a>
