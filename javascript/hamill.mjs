@@ -348,7 +348,7 @@ class Composite extends EmptyNode
     {
         return this.children[this.children.length-1];
     }
-    parent()
+    get_parent()
     {
         return this.parent;
     }
@@ -443,6 +443,7 @@ class List extends Composite
 // [[https://...]] display = url
 // [[display->label]] (you must define somewhere ::label:: https://)
 // [[display->https://...]]
+// http[s] can be omitted, but in this case the url should start by www.
 class Link extends EmptyNode
 {
     constructor(document, url, display=null)
@@ -463,7 +464,7 @@ class Link extends EmptyNode
         {
             display = this.document.string_to_html('', this.display);
         }
-        if (!url.startsWith('https://') && !url.startsWith('http://'))
+        if (!url.startsWith('https://') && !url.startsWith('http://') && !url.startsWith('www.'))
         {
             if (url === '#')
             {
@@ -1403,11 +1404,11 @@ class Hamill
                     }
                     while (list_level < actual_level)
                     {
-                        actual_list = actual_list.parent();
+                        actual_list = actual_list.get_parent();
                         actual_level -= 1;
                         if (! actual_list instanceof List)
                         {
-                            throw new Error("List incoherency: last element is not a list.");
+                            throw new Error(`List incoherency: last element is not a list but a ${actual_list.constructor.name}`);
                         }
                     }
                     // creation
@@ -2123,16 +2124,17 @@ function test(text, result, error=null)
 var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
-    const do_test = true;
-    //const do_test = false;
+    //const do_test = true;
+    const do_test = false;
     if (do_test)
     {
         tests(true);
     }
     else
     {
-        Hamill.process_file('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
-        Hamill.process_file('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
+        Hamill.process_file('../../dgx/static/input/liens.hml').to_html_file('../../dgx/');
+        //Hamill.process_file('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
+        //Hamill.process_file('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
     }
 }
 
