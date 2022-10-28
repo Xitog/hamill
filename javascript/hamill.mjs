@@ -1989,6 +1989,7 @@ function tests(stop_on_first_error=false)
         // Code
         // Quotes
         // Lists
+        ["* Bloc1\n  * A\n  * B\n* Bloc2\n  * C", "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n<li>C</li></ul></li></ul>"],
         // Definition lists
         // Tables
         // Links
@@ -2124,8 +2125,8 @@ function test(text, result, error=null)
 var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
-    //const do_test = true;
-    const do_test = false;
+    const do_test = true;
+    //const do_test = false;
     if (do_test)
     {
         tests(true);
