@@ -55,15 +55,21 @@ function pp(o)
 
 class Line
 {
-    constructor(value, type)
+    constructor(value, type, param=null)
     {
         this.value = value;
         this.type = type;
+        this.param = param;
     }
 
     toString()
     {
-        return `${this.type} |${this.value}|`;
+        if (this.param === null)
+        {
+            return `${this.type} |${this.value}|`;
+        } else {
+            return `${this.type} |${this.value}| (${this.param})`;
+        }
     }
 }
 
@@ -1160,15 +1166,33 @@ class Hamill
             // Lists, line with the first non empty character is "* " or "+ " or "- " :
             else if (trimmed.substring(0, 2) === '* ')
             {
-                lines.push(new Line(value, 'unordered_list'));
+                let start = value.indexOf('* ');
+                let level = Math.trunc(start / 2);
+                if (level * 2 !== start)
+                {
+                    throw new Error("Level list must be indented by a multiple of two");
+                }
+                lines.push(new Line(value, 'unordered_list', level));
             }
             else if (trimmed.substring(0, 2) === '+ ')
             {
-                lines.push(new Line(value, 'ordered_list'));
+                let start = value.indexOf('+ ');
+                let level = Math.trunc(start / 2);
+                if (level * 2 !== start)
+                {
+                    throw new Error("Level list must be indented by a multiple of two");
+                }
+                lines.push(new Line(value, 'ordered_list', level));
             }
             else if (trimmed.substring(0, 2) === '- ')
             {
-                lines.push(new Line(value, 'reverse_list'));
+                let start = value.indexOf('- ');
+                let level = Math.trunc(start / 2);
+                if (level * 2 !== start)
+                {
+                    throw new Error("Level list must be indented by a multiple of two");
+                }
+                lines.push(new Line(value, 'reverse_list', level));
             }
             // Keywords, line with the first non empty character is "!" :
             //     var, const, include, require, css, html, comment
@@ -1254,6 +1278,13 @@ class Hamill
                 }
             }
         }
+        //if (DEBUG) XXX
+        {
+            for (const [index, element] of lines.entries())
+            {
+                console.log(`${index}. ${element}`);
+            }
+        }
         return lines;
     }
 
@@ -1274,7 +1305,7 @@ class Hamill
         return doc;
     }
 
-    // Take a filename, return a list of tagged lines, output the result in a file
+    // Take a filename, read the corresponding file then process its data as a string
     static process_file(filename)
     {
         if (fs === null)
@@ -1963,6 +1994,8 @@ function tests(stop_on_first_error=false)
         // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
+        // Paragraph XXX to add in doc
+        ["a\nb\n\n", '<p>a<br>\nb</p>'], // XXX Why two empty nodes ? put \n to pass the test
         // Text modifications
         ["**bonjour**", "<p><b>bonjour</b></p>\n"],
         ["''italic''", "<p><i>italic</i></p>\n"],
