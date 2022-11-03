@@ -31,8 +31,9 @@ import { lutimesSync } from 'fs';
 //-------------------------------------------------------------------------------
 
 let fs = null;
-if (typeof process !== 'undefined' && process !== null && typeof process.version !== 'undefined' && process.version !== null && typeof process.version === "string") // ==="node"
+if (typeof process !== 'undefined' && process !== null && typeof process.version !== 'undefined' && process.version !== null && typeof process.version === "string")
 {
+    // Node code only
     //import fs from 'fs';
     fs = await import('fs');
 }
@@ -1080,20 +1081,23 @@ class Document
         return content;
     }
 
-    to_s(level=0, node=null)
+    to_s(level=0, node=null, header=false)
     {
         let out = "";
         if (node === null || node === undefined)
         {
-            out += '\n------------------------------------------------------------------------\n';
-            out += 'Liste des nodes du document\n';
-            out += '------------------------------------------------------------------------\n\n';
+            if (header === true)
+            {
+                out += '\n------------------------------------------------------------------------\n';
+                out += 'Liste des nodes du document\n';
+                out += '------------------------------------------------------------------------\n\n';
+            }
             for (const n of this.nodes)
             {
                 out += this.to_s(level, n);
             }
         } else {
-            let info = " " + node.toString();
+            let info = "    " + node.toString();
             out += "    ".repeat(level) + info + '\n';
             if (node instanceof Composite)
             {
@@ -1110,25 +1114,93 @@ class Document
 
 class Hamill
 {
-     // Read a file and produce a big string
-    static read_file(filename, encoding='utf8')
+    static process(string_or_filename)
     {
-        let data;
-        try
+        // Try to read as a file name, if it fails, take it as a string
+        let data = null;
+        let name = null;
+        if (fs !== null)
         {
-            data = fs.readFileSync(filename, encoding);
+            try
+            {
+                data = fs.readFileSync(string_or_filename, 'utf-8');
+                console.log(`Data read from file: ${string_or_filename}`);
+                name = string_or_filename;
+            }
+            catch
+            {
+                // Nothing
+            }
         }
-        catch (err)
+        if (data === null)
         {
-                throw new Error(err);
+            data = string_or_filename;
+            console.log(`Data read from string:`);
         }
-        return data;
-    }
-
-    static split_lines(data)
-    {
-        let lines = data.replace(/\r\n/g, "\n").replace(/\n\r/g, "\n").replace(/\r/g, "\n").split("\n");
-        return lines;
+        // Check authorized characters
+        let filtered = "";
+        const authorized = [
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+            'á', 'à', 'â', 'ä', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'ö', 'ú', 'ù', 'û', 'ü', 'ý', 'ÿ',
+            'Á', 'À', 'Â', 'Ä', 'É', 'È', 'Ê', 'Ë', 'Í', 'Ì', 'Î', 'Ï', 'Ó', 'Ò', 'Ô', 'Ö', 'Ú', 'Ù', 'Û', 'Ü', 'Ý',
+            'ã', 'ñ', 'õ', 'Ã', 'Ñ', 'Õ', 'Œ', 'œ', 'ß', 'ẞ',
+            ' ',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '$', '€', '£', '¥', '₹', '₽',      // Common currency : dollar, euro, pound, yen, rupee, ruble
+            '+', '-', '*', '/', '%', '^',      // Common mathematical operators
+            '>', '<', '=', '!', '~',           // Common comparison operators
+            '&', '|', '#', '"', "'", '°', '@', // Common various
+            '{', '}', '(', ')', '[', ']',      // Common opening/closing
+            '.', ',', ';', ':', '?', '!',      // Common ponctuations
+            '\n', '\t',                        // Common whitespaces \r is NOT AUTHORIZED
+            '❤',                              // Some love
+            '*', "'", "-", "_", "^", "%", '@', // Hamill text modifiers
+            '+', '-', '*', '|',                // Hamill lists
+            '{', '#', '.',                     // Hamill structure tags (div, p and span)
+            '\\',                              // Hamill escape
+            '>',                               // Hamill blocks
+            '$',                               // Hamill definition lists and display vars/consts
+            '/',                               // Hamill comments
+            '|', '-',                          // Hamill tables
+            '[', '-', '>', ']', '#', ':',      // Hamill links and labels
+            '(', '-', '>', ')', '.', '#',      // Hamill images
+            '=',                               // Hamill define vars/consts
+            '#',                               // Hamill titles
+        ];
+        data = data.replace(/\r\n/g, '\n');
+        data = data.replace(/\r/g, '\n');
+        for (let char of data)
+        {
+            // And removes multiple new lines
+            if (authorized.includes(char))
+            {
+                filtered += char;
+            }
+            else
+            {
+                throw new Error(`Unauthorized char: ${char}`);
+            }
+        }
+        // Display raw lines
+        let lines = filtered.split("\n");
+        for (let [index, line] of lines.entries())
+        {
+            console.log(`    ${index+1}. ${line.replace('\n', '<NL>')}`);
+        }
+        // Tag lines
+        let tagged = Hamill.tag_lines(filtered.split("\n"));
+        console.log('\nTagged Lines:');
+        for (const [index, line] of tagged.entries())
+        {
+            console.log(`    ${index+1}. ${line}`);
+        }
+        // Make a document
+        let doc = Hamill.parse_tagged_lines(tagged);
+        doc.set_name(name);
+        console.log("\nDocument:");
+        console.log(doc.to_s());
+        return doc;
     }
 
     // First pass: we tag all the lines
@@ -1172,7 +1244,7 @@ class Hamill
                 {
                     throw new Error("Level list must be indented by a multiple of two");
                 }
-                lines.push(new Line(value, 'unordered_list', level));
+                lines.push(new Line(value, 'unordered_list', level+1));
             }
             else if (trimmed.substring(0, 2) === '+ ')
             {
@@ -1182,7 +1254,7 @@ class Hamill
                 {
                     throw new Error("Level list must be indented by a multiple of two");
                 }
-                lines.push(new Line(value, 'ordered_list', level));
+                lines.push(new Line(value, 'ordered_list', level+1));
             }
             else if (trimmed.substring(0, 2) === '- ')
             {
@@ -1192,7 +1264,7 @@ class Hamill
                 {
                     throw new Error("Level list must be indented by a multiple of two");
                 }
-                lines.push(new Line(value, 'reverse_list', level));
+                lines.push(new Line(value, 'reverse_list', level+1));
             }
             // Keywords, line with the first non empty character is "!" :
             //     var, const, include, require, css, html, comment
@@ -1278,53 +1350,11 @@ class Hamill
                 }
             }
         }
-        //if (DEBUG) XXX
-        {
-            for (const [index, element] of lines.entries())
-            {
-                console.log(`${index}. ${element}`);
-            }
-        }
         return lines;
     }
 
-    static process_string(data)
-    {
-        let raw = Hamill.split_lines(data);
-        let lines = Hamill.tag_lines(raw);
-        if (DEBUG)
-        {
-            console.log('Lines:');
-            for (const [index, line] of lines.entries())
-            {
-                console.log(`${index}: ${line}`);
-            }
-            console.log();
-        }
-        let doc = Hamill.process_lines(lines);
-        return doc;
-    }
-
-    // Take a filename, read the corresponding file then process its data as a string
-    static process_file(filename)
-    {
-        if (fs === null)
-        {
-            throw new Error("Not in node.js : module fs not defined. Aborting.");
-        }
-        if (DEBUG)
-        {
-            console.log('Processing file:', filename);
-            console.log('--------------------------------------------------------------------------');
-        }
-        let data = Hamill.read_file(filename);
-        let doc = this.process_string(data);
-        doc.set_name(filename);
-        return doc;
-    }
-
     // Take a list of tagged lines return a valid Hamill document
-    static process_lines(lines)
+    static parse_tagged_lines(lines)
     {
         if (DEBUG) console.log(`Processing ${lines.length} lines`);
         let doc = new Document();
@@ -1332,6 +1362,7 @@ class Hamill
         // Lists
         let actual_list = null;
         let actual_level = 0;
+        let root = null;
         // Main loop
         for (const [index, line] of lines.entries())
         {
@@ -1346,6 +1377,7 @@ class Hamill
                 doc.add_node(actual_list.root());
                 actual_list = null;
                 actual_level = 0;
+                //console.log('>', doc.to_s());
             }
             let elem_is_unordered = false;
             let elem_is_ordered = false;
@@ -1382,7 +1414,7 @@ class Hamill
                     {
                         line.value = line.value.trim().substring(1);
                     }
-                    let n = Hamill.process_inner_string(doc, line.value);
+                    let n = Hamill.parse_inner_string(doc, line.value);
                     doc.add_node(new TextLine(doc, n));
                     break;
                 case 'unordered_list':
@@ -1390,6 +1422,7 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, false, false);
+                        root = actual_list;
                         actual_level = 1;
                     }
                     // next
@@ -1398,6 +1431,7 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, true, false);
+                        root = actual_list;
                         actual_level = 1;
                     }
                     // next
@@ -1406,13 +1440,16 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, true, true);
+                        root = actual_list;
                         actual_level = 1;
                     }
                     // common code
                     // compute item level
                     let delimiters = {'unordered_list': '* ', 'ordered_list': '+ ', 'reverse_list': '- '};
                     let delimiter = delimiters[line.type];
-                    let list_level = Math.floor(line.value.indexOf(delimiter) / 2) + 1;
+                    let list_level = line.param; //Math.floor(line.value.indexOf(delimiter) / 2) + 1;
+                    //console.log('Actual level:', actual_level);
+                    //console.log(doc.to_s(0, root));
                     // coherency
                     if (list_level === actual_level)
                     {
@@ -1436,15 +1473,19 @@ class Hamill
                     while (list_level < actual_level)
                     {
                         actual_list = actual_list.get_parent();
+                        if (actual_list.constructor.name === 'Composite') // L'item était un composite, il faut remonter à la liste mère !
+                        {
+                            actual_list = actual_list.get_parent();
+                        }
                         actual_level -= 1;
-                        if (! actual_list instanceof List)
+                        if (!(actual_list.constructor.name === 'List'))
                         {
                             throw new Error(`List incoherency: last element is not a list but a ${actual_list.constructor.name}`);
                         }
                     }
                     // creation
                     let item_text = line.value.substring(line.value.indexOf(delimiter) + 2).trim();
-                    let item_nodes = Hamill.process_inner_string(doc, item_text);
+                    let item_nodes = Hamill.parse_inner_string(doc, item_text);
                     actual_list.add_child(new TextLine(doc, item_nodes));
                     break;
                 case 'html':
@@ -1492,7 +1533,7 @@ class Hamill
                     break;
                 case 'div':
                     value = line.value.substring(2, line.value.length - 2).trim();
-                    let res = Hamill.process_inner_markup(value);
+                    let res = Hamill.parse_inner_markup(value);
                     if (res['has_only_text'] && res['text'] === 'end')
                     {
                         doc.add_node(new EndDiv(doc));
@@ -1531,17 +1572,21 @@ class Hamill
                         let all_nodes = [];
                         for (let p of parts)
                         {
-                            let nodes = Hamill.process_inner_string(doc, p);
+                            let nodes = Hamill.parse_inner_string(doc, p);
                             all_nodes.push(nodes);
                         }
                         doc.add_node(new Row(doc, all_nodes));
                     }
                     break;
                 case 'empty':
-                    doc.add_node(new EmptyNode(doc));
+                    // Prevent multiple empty nodes
+                    if (doc.nodes.length === 0 || (! (doc.nodes[doc.nodes.length-1].constructor.name === "EmptyNode")))
+                    {
+                        doc.add_node(new EmptyNode(doc));
+                    }
                     break;
                 case 'definition-header':
-                    definition = Hamill.process_inner_string(doc, line.value);
+                    definition = Hamill.parse_inner_string(doc, line.value);
                     break;
                 case 'definition-content':
                     if (definition === null)
@@ -1569,7 +1614,7 @@ class Hamill
         return doc;
     }
 
-    static process_inner_string(doc, str)
+    static parse_inner_string(doc, str)
     {
         let in_sup = false;
         let in_sub = false;
@@ -1808,7 +1853,7 @@ class Hamill
                 }
                 let end = str.indexOf('}}', index);
                 let content = str.substring(index+2, end);
-                let res = Hamill.process_inner_markup(content);
+                let res = Hamill.parse_inner_markup(content);
                 if (res['has_text'])
                 {
                     nodes.push(new Span(doc, res['id'], res['class'], res['text']));
@@ -1837,7 +1882,7 @@ class Hamill
                 }
                 else if (parts.length === 2)
                 {
-                    display = Hamill.process_inner_string(doc, parts[0].trim());
+                    display = Hamill.parse_inner_string(doc, parts[0].trim());
                     url = parts[1].trim();
                 }
                 nodes.push(new Link(doc, url, display));
@@ -1852,7 +1897,7 @@ class Hamill
                 }
                 let end = str.indexOf('))', index);
                 let content = str.substring(index+2, end);
-                let res = Hamill.process_inner_picture(content);
+                let res = Hamill.parse_inner_picture(content);
                 nodes.push(new Picture(doc, res["url"], res["text"], res["class"], res["id"]));
                 index = end + 1;
             }
@@ -1889,7 +1934,7 @@ class Hamill
         return nodes;
     }
 
-    static process_inner_picture(content)
+    static parse_inner_picture(content)
     {
         let res = null;
         let parts = content.split('->');
@@ -1902,13 +1947,13 @@ class Hamill
         else
         {
             content = parts[0];
-            res = Hamill.process_inner_markup(content);
+            res = Hamill.parse_inner_markup(content);
             res['url'] = parts[1].trim();
         }
         return res;
     }
 
-    static process_inner_markup(content)
+    static parse_inner_markup(content)
     {
         let cls = null;
         let in_class = false;
@@ -1980,11 +2025,11 @@ class Hamill
 // Functions
 //-------------------------------------------------------------------------------
 
-function tests(stop_on_first_error=false)
+function tests(stop_on_first_error=false, stop_at=null)
 {
-    console.log("\n------------------------------------------------------------------------");
-    console.log("Test de process_string");
-    console.log("------------------------------------------------------------------------\n");
+    console.log("\n========================================================================");
+    console.log("Starting tests");
+    console.log("========================================================================");
     let test_suite = [
         // Comments, HR and BR
         ["// This is a comment", ""],
@@ -1994,8 +2039,10 @@ function tests(stop_on_first_error=false)
         // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
-        // Paragraph XXX to add in doc
-        ["a\nb\n\n", '<p>a<br>\nb</p>'], // XXX Why two empty nodes ? put \n to pass the test
+        // Paragraph
+        ["a", '<p>a</p>\n'],
+        ["a\n\n\n", '<p>a</p>\n'],
+        ["a\nb\n\n", '<p>a<br>\nb</p>\n'],
         // Text modifications
         ["**bonjour**", "<p><b>bonjour</b></p>\n"],
         ["''italic''", "<p><i>italic</i></p>\n"],
@@ -2022,7 +2069,8 @@ function tests(stop_on_first_error=false)
         // Code
         // Quotes
         // Lists
-        ["* Bloc1\n  * A\n  * B\n* Bloc2\n  * C", "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n<li>C</li></ul></li></ul>"],
+        ["* Bloc1\n  * A\n  * B\n* Bloc2\n  * C", "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n"],
+        ["  * A", "<ul>\n  <li>A\n  </li>\n</ul>\n"], // New bug
         // Definition lists
         // Tables
         // Links
@@ -2051,26 +2099,15 @@ function tests(stop_on_first_error=false)
         ["!css p { color: pink;}", ""]
     ];
     let nb_ok = 0;
-    for (let t of test_suite)
+    for (let [index, t] of test_suite.entries())
     {
         if (t === undefined || t === null || !Array.isArray(t) || (t.length !== 2 && t.length !== 3))
         {
             throw new Error("Test not well defined:", t);
         }
-        console.log("\n========================================================================");
-        if (t[0].split("\n").length < 2)
-        {
-            console.log("Test :", t[0]);
-        }
-        else
-        {
-            console.log("Test :");
-            for (let line of t[0].split("\n"))
-            {
-                console.log("   ", line);
-            }
-        }
-        console.log("========================================================================");
+        console.log("\n-------------------------------------------------------------------------");
+        console.log(`Test ${index+1}`);
+        console.log("-------------------------------------------------------------------------\n");
         if (test(t[0], t[1], t.length === 3 ? t[2] : null))
         {
             nb_ok += 1;
@@ -2079,8 +2116,13 @@ function tests(stop_on_first_error=false)
         {
             throw new Error("Stopping on first error");
         }
+        if (stop_at !== null && stop_at === index + 1)
+        {
+            console.log(`Stopped at ${stop_at}`);
+            break;
+        }
     }
-    console.log(`Tests ok : ${nb_ok} / ${test_suite.length}`);
+    console.log(`\nTests ok : ${nb_ok} / ${test_suite.length}\n`);
 
     //let doc = Hamill.process_string("* A\n* B [[http://www.gogol.com]]\n  + D\n  + E");
     //let doc = Hamill.process_string("+ Été @@2006@@ Mac, Intel, Mac OS X");
@@ -2102,8 +2144,8 @@ function test(text, result, error=null)
 {
     try
     {
-        let doc = Hamill.process_string(text);
-        console.log(doc.to_s());
+        //let doc = Hamill.process_string(text);
+        let doc = Hamill.process(text);
         let output = doc.to_html();
         console.log("RESULT:");
         if (output === "")
@@ -2162,13 +2204,13 @@ if (/*DEBUG &&*/ fs !== null)
     //const do_test = false;
     if (do_test)
     {
-        tests(true);
+        tests(true); //, 7);
     }
     else
     {
-        Hamill.process_file('../../dgx/static/input/liens.hml').to_html_file('../../dgx/');
-        //Hamill.process_file('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
-        //Hamill.process_file('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
+        Hamill.process('../../dgx/static/input/liens.hml').to_html_file('../../dgx/');
+        //Hamill.process('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
+        //Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
     }
 }
 
