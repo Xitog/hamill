@@ -1066,7 +1066,7 @@ class Document
         {
             content += "\n  </body>\n</html>";
         }
-        console.log('\nNodes processed:', this.nodes.length - not_processed, '/', this.nodes.length);
+        console.log('\nRoot nodes processed:', this.nodes.length - not_processed, '/', this.nodes.length);
         if (not_processed > 0)
         {
             console.log(`Nodes not processed ${not_processed}:`);
@@ -1362,7 +1362,8 @@ class Hamill
         // Lists
         let actual_list = null;
         let actual_level = 0;
-        let root = null;
+        let starting_level = 0;
+        //let root = null;
         // Main loop
         for (const [index, line] of lines.entries())
         {
@@ -1377,7 +1378,6 @@ class Hamill
                 doc.add_node(actual_list.root());
                 actual_list = null;
                 actual_level = 0;
-                //console.log('>', doc.to_s());
             }
             let elem_is_unordered = false;
             let elem_is_ordered = false;
@@ -1422,8 +1422,9 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, false, false);
-                        root = actual_list;
+                        //root = actual_list;
                         actual_level = 1;
+                        starting_level = line.param;
                     }
                     // next
                 case 'ordered_list':
@@ -1431,8 +1432,9 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, true, false);
-                        root = actual_list;
+                        //root = actual_list;
                         actual_level = 1;
+                        starting_level = line.param;
                     }
                     // next
                 case 'reverse_list':
@@ -1440,16 +1442,24 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, true, true);
-                        root = actual_list;
+                        //root = actual_list;
                         actual_level = 1;
+                        starting_level = line.param;
                     }
                     // common code
                     // compute item level
                     let delimiters = {'unordered_list': '* ', 'ordered_list': '+ ', 'reverse_list': '- '};
                     let delimiter = delimiters[line.type];
                     let list_level = line.param; //Math.floor(line.value.indexOf(delimiter) / 2) + 1;
-                    //console.log('Actual level:', actual_level);
-                    //console.log(doc.to_s(0, root));
+                    // check coherency with the starting level
+                    if (list_level < starting_level)
+                    {
+                        throw new Error("Coherency error: a following item of list has a lesser level than its starting level.");
+                    }
+                    else
+                    {
+                        list_level = list_level - (starting_level - 1);
+                    }
                     // coherency
                     if (list_level === actual_level)
                     {
@@ -1852,6 +1862,10 @@ class Hamill
                     word = '';
                 }
                 let end = str.indexOf('}}', index);
+                if (end === -1)
+                {
+                    throw new Error(`Unclosed markup in ${str}`);
+                }
                 let content = str.substring(index+2, end);
                 let res = Hamill.parse_inner_markup(content);
                 if (res['has_text'])
@@ -1872,6 +1886,10 @@ class Hamill
                     word = '';
                 }
                 let end = str.indexOf(']]', index);
+                if (end === -1)
+                {
+                    throw new Error(`Unclosed link in ${str}`);
+                }
                 let content = str.substring(index+2, end);
                 let parts = content.split('->');
                 let display = undefined;
@@ -1896,6 +1914,10 @@ class Hamill
                     word = '';
                 }
                 let end = str.indexOf('))', index);
+                if (end === -1)
+                {
+                    throw new Error(`Unclosed image in ${str}`);
+                }
                 let content = str.substring(index+2, end);
                 let res = Hamill.parse_inner_picture(content);
                 nodes.push(new Picture(doc, res["url"], res["text"], res["class"], res["id"]));
@@ -1909,6 +1931,10 @@ class Hamill
                     word = '';
                 }
                 let end = str.indexOf('$$', index+2);
+                if (end === -1)
+                {
+                    throw new Error(`Unclosed display in ${str}`);
+                }
                 let content = str.substring(index+2, end);
                 nodes.push(new GetVar(doc, content));
                 index = end + 1;
@@ -2070,10 +2096,11 @@ function tests(stop_on_first_error=false, stop_at=null)
         // Quotes
         // Lists
         ["* Bloc1\n  * A\n  * B\n* Bloc2\n  * C", "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n"],
-        ["  * A", "<ul>\n  <li>A\n  </li>\n</ul>\n"], // New bug
+        ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
         // Definition lists
         // Tables
         // Links
+        ["[[Ceci est un mauvais lien->", "", "Unclosed link in [[Ceci est un mauvais lien->"],
         // Images
         // Constants
         ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
