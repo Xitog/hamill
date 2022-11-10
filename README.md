@@ -35,11 +35,12 @@ Damien Gouteux 2020-2022
 
 ## <a name="comments"> Comments, HR and BR
 
-``// This is a comment``
+``§§ This is a comment``
+``!rem This another comment``
 
 Comment can be exported in the resulting document by setting the variable ``EXPORT_COMMENT`` to true.
 
-You can put a new line (br) with `` !! `` surrounded by one space on each side.
+You can put a new line (br) with `` \\ `` surrounded by one space on each side.
 
 You can put a line (hr) with a line with only three or more ``-`` on it :``---``.
 
@@ -71,6 +72,8 @@ The style of the text can be modified by the following markups:
 * Surround your text with ``__`` for underline <ins>abc</ins>
 * Surround your text with ``^^`` for superscript Ex<sup>abc</sup>
 * Surround your text with ``%%`` for subscript Ex<sub>abc</sub>
+* Surround your text with ``!!`` for strong **abc**
+* Surround your text with ``//`` for emphasis _abc__
 * Surround your text with ``@@`` for code (see below) ``abc``.  
   No markup is interpreted inside code, no need to escape it except ``@@``.
 * Use ``\`` to prevent the interpretation of a markup
