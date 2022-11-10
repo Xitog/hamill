@@ -36,6 +36,7 @@ Damien Gouteux 2020-2022
 ## <a name="comments"> Comments, HR and BR
 
 ``§§ This is a comment``
+
 ``!rem This another comment``
 
 Comment can be exported in the resulting document by setting the variable ``EXPORT_COMMENT`` to true.
