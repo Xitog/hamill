@@ -35,6 +35,10 @@ Damien Gouteux 2020-2022
 
 ## <a name="comments"> Comments, HR and BR
 
+A comment line must starts with ``§§`` or ``!rem``.
+
+A comment must be an entire line, you can't put a comment at the end of a line of code.
+ 
 ``§§ This is a comment``
 
 ``!rem This another comment``
