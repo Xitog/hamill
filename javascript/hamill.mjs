@@ -130,7 +130,13 @@ class Start extends Node
             'underline': 'u',
             'sup': 'sup',
             'sub': 'sub',
+            'strong': 'strong',
+            'em': 'em',
            // 'code': 'code'
+        }
+        if (!(this.content in markups))
+        {
+            throw new Error(`Unknown text style:${this.content}`);
         }
         return `<${markups[this.content]}>`;
     }
@@ -147,7 +153,13 @@ class Stop extends Node
             'underline': 'u',
             'sup': 'sup',
             'sub': 'sub',
+            'strong': 'strong',
+            'em': 'em',
            // 'code': 'code'
+        }
+        if (!(this.content in markups))
+        {
+            throw new Error(`Unknown text style:${this.content}`);
         }
         return  `</${markups[this.content]}>`;
     }
@@ -1144,29 +1156,30 @@ class Hamill
             'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
             'á', 'à', 'â', 'ä', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'ö', 'ú', 'ù', 'û', 'ü', 'ý', 'ÿ',
             'Á', 'À', 'Â', 'Ä', 'É', 'È', 'Ê', 'Ë', 'Í', 'Ì', 'Î', 'Ï', 'Ó', 'Ò', 'Ô', 'Ö', 'Ú', 'Ù', 'Û', 'Ü', 'Ý',
-            'ã', 'ñ', 'õ', 'Ã', 'Ñ', 'Õ', 'Œ', 'œ', 'ß', 'ẞ',
+            'ã', 'Ã', 'õ', 'Õ', 'œ', 'Œ', 'ß', 'ẞ', 'ñ', 'Ñ', 'ç', 'Ç',
             ' ',
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            '$', '€', '£', '¥', '₹', '₽',      // Common currency : dollar, euro, pound, yen, rupee, ruble
-            '+', '-', '*', '/', '%', '^',      // Common mathematical operators
-            '>', '<', '=', '!', '~',           // Common comparison operators
-            '&', '|', '#', '"', "'", '°', '@', // Common various
-            '{', '}', '(', ')', '[', ']',      // Common opening/closing
-            '.', ',', ';', ':', '?', '!',      // Common ponctuations
-            '\n', '\t',                        // Common whitespaces \r is NOT AUTHORIZED
-            '❤',                              // Some love
-            '*', "'", "-", "_", "^", "%", '@', // Hamill text modifiers
-            '+', '-', '*', '|',                // Hamill lists
-            '{', '#', '.',                     // Hamill structure tags (div, p and span)
-            '\\',                              // Hamill escape
-            '>',                               // Hamill blocks
-            '$',                               // Hamill definition lists and display vars/consts
-            '/',                               // Hamill comments
-            '|', '-',                          // Hamill tables
-            '[', '-', '>', ']', '#', ':',      // Hamill links and labels
-            '(', '-', '>', ')', '.', '#',      // Hamill images
-            '=',                               // Hamill define vars/consts
-            '#',                               // Hamill titles
+            '$', '€', '£', '¥', '₹', '₽',                     // Common currency : dollar, euro, pound, yen, rupee, ruble
+            '+', '-', '*', '/', '%', '^',                     // Common mathematical operators
+            '>', '<', '=', '!', '~',                          // Common comparison operators
+            '&', '|', '#', '"', "'", '°', '@', '«', '»', '’', '‘', '…', // Common various
+            '{', '}', '(', ')', '[', ']',                     // Common opening/closing
+            '.', ',', ';', ':', '?', '!',                     // Common ponctuations
+            '\n', '\t',                                       // Common whitespaces \r is NOT AUTHORIZED
+            '❤',                                             // Some love
+            '*', "'", "-", "_", "^", "%", '@', '!', '/',      // Hamill text modifiers
+            '+', '-', '*', '|',                               // Hamill lists
+            '{', '#', '.',                                    // Hamill structure tags (div, p and span)
+            '\\',                                             // Hamill escape
+            '>',                                              // Hamill blocks
+            '$',                                              // Hamill definition lists and display vars/consts
+            '/',                                              // Hamill comments
+            '|', '-',                                         // Hamill tables
+            '[', '-', '>', ']', '#', ':',                     // Hamill links and labels
+            '(', '-', '>', ')', '.', '#',                     // Hamill images
+            '=',                                              // Hamill define vars/consts
+            '#',                                              // Hamill titles
+            '§',                                              // Hamill comments
         ];
         data = data.replace(/\r\n/g, '\n');
         data = data.replace(/\r/g, '\n');
@@ -1292,7 +1305,7 @@ class Hamill
             {
                 lines.push(new Line(trimmed, 'html'));
             }
-            else if (trimmed.substring(0, 2) === '//')
+            else if (trimmed.startsWith('!rem') || trimmed.substring(0, 2) === '§§')
             {
                 lines.push(new Line(trimmed, 'comment'));
             }
@@ -1563,7 +1576,14 @@ class Hamill
                     }
                     break;
                 case 'comment':
-                    doc.add_node(new Comment(doc, line.value.substring(2)));
+                    if(line.value.startsWith('!rem '))
+                    {
+                        doc.add_node(new Comment(doc, line.value.substring(4)));
+                    }
+                    else
+                    {
+                        doc.add_node(new Comment(doc, line.value.substring(2)));
+                    }
                     break;
                 case 'row':
                     let content = line.value.substring(1, line.value.length - 1);
@@ -1626,16 +1646,29 @@ class Hamill
 
     static parse_inner_string(doc, str)
     {
-        let in_sup = false;
-        let in_sub = false;
-        let in_bold = false;
-        let in_italic = false;
-        let in_underline = false;
-        let in_stroke = false;
-        let in_link = false; // hum check this :TODO:
         let index = 0;
         let word = '';
         let nodes = [];
+        let matches = [
+            ['@', '@', 'code'],
+            ['(', '(', 'picture'],
+            ['[', '[', 'link'],
+            ['{', '{', 'markup'],
+            ['$', '$', 'echo'],
+            ['*', '*', 'bold'],
+            ['!', '!', 'strong'],
+            ["'", "'", 'italic'],
+            ['/', '/', 'em'],
+            ['_', '_', 'underline'],
+            ['^', '^', 'sup'],
+            ['%', '%', 'sub'],
+            ['-', '-', 'stroke'],
+        ];
+        let modes = {
+            'bold': false, 'strong': false, 'italic': false, 'em': false,
+            'underline': false, 'sup': false, 'sub': false, 'stroke': false
+        }
+
         while (index < str.length)
         {
             let char = str[index];
@@ -1654,7 +1687,7 @@ class Hamill
             {
                 word += '&gt;';
             // Glyphs - Quatuor
-            } else if (char === '!' && next === '!' && next_next === ' ' && prev !== "  ") {
+            } else if (char === '\\' && next === '\\' && next_next === ' ' && prev !== "  ") {
                 if (word.length > 0)
                 {
                     nodes.push(new Text(doc, word.substring(0, word.length - 1))); // remove the last space
@@ -1662,8 +1695,8 @@ class Hamill
                 }
                 nodes.push(new BR(doc));
                 index += 2;
-            } else if (char === '\\' && str.substring(index + 1, index + 5) === ' !! ') { // escape it
-                word += ' !! ';
+            } else if (char === '\\' && str.substring(index + 1, index + 5) === ' \\\\ ') { // escape it
+                word += ' \\\\ ';
                 index += 4;
             // Glyphs - Trio
             } else if (char === '.' && next === '.' && next_next === '.' && prev !== "\\") {
@@ -1676,7 +1709,7 @@ class Hamill
                 word += '&DoubleLeftArrow;';  // <==
                 index += 2;
             // Glyphs - Duo
-            } else if (char === '-' && next === '>' && prev !== "\\" && !in_link) {
+            } else if (char === '-' && next === '>' && prev !== "\\") {
                 word += '&ShortRightArrow;';  // ->
                 index += 1;
             } else if (char === '<' && next === '-' && prev !== "\\") {
@@ -1701,244 +1734,7 @@ class Hamill
                 word += '&LessSlantEqual;';   // <=
                 index += 1;
             }
-            // Styles
-            else if (char === '@' && next === '@' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                let is_code_ok = -1;
-                let code_str = '';
-                for (let subindex = index  + 2; subindex < str.length; subindex++)
-                {
-                    let subchar = str[subindex];
-                    let subnext = (subindex + 1) < str.length ? str[subindex + 1] : null;
-                    let subprev = (subindex - 1) > 0 ? str[subindex - 1] : null;
-                    // Ignore all formatting in a inline code bloc
-                    if (subchar === '@' && subnext === '@' && subprev !== '\\')
-                    {
-                        nodes.push(new Code(doc, code_str, true));
-                        is_code_ok = subindex + 1;
-                        break;
-                    }
-                    // We can only escape @@
-                    else if (subchar === '@' && subnext === '@' && subprev === '\\')
-                    {
-                        code_str = code_str.slice(0, -1); // remove the \
-                        code_str += subchar; // add the first @, the second will be added through the else
-                    }
-                    else
-                    {
-                        code_str += subchar;
-                    }
-                }
-                if (is_code_ok === -1)
-                {
-                    throw new Error("Unfinished inline code sequence: " + str);
-                }
-                index = is_code_ok; // will inc by 1 at the end of the loop
-            }
-            else if (char === '*' && next === '*' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                if (!in_bold)
-                {
-                    in_bold = true;
-                    nodes.push(new Start(doc, 'bold'))
-                }
-                else
-                {
-                    in_bold = false;
-                    nodes.push(new Stop(doc, 'bold'));
-                }
-                index += 1;
-            }
-            else if (char === "'" && next === "'" && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                if (!in_italic)
-                {
-                    in_italic = true;
-                    nodes.push(new Start(doc, 'italic'))
-                }
-                else
-                {
-                    in_italic = false;
-                    nodes.push(new Stop(doc, 'italic'));
-                }
-                index += 1;
-            }
-            else if (char === '_' && next === '_' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                if (!in_underline)
-                {
-                    in_underline = true;
-                    nodes.push(new Start(doc, 'underline'))
-                }
-                else
-                {
-                    in_underline = false;
-                    nodes.push(new Stop(doc, 'underline'));
-                }
-                index += 1;
-            }
-            else if (char === '-' && next === '-' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                if (!in_stroke)
-                {
-                    in_stroke = true;
-                    nodes.push(new Start(doc, 'stroke'))
-                }
-                else
-                {
-                    in_stroke = false;
-                    nodes.push(new Stop(doc, 'stroke'));
-                }
-                index += 1;
-            }
-            else if (char === '^' && next === '^' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                if (!in_sup)
-                {
-                    in_sup = true;
-                    nodes.push(new Start(doc, 'sup'));
-                }
-                else
-                {
-                    in_sup = false;
-                    nodes.push(new Stop(doc, 'sup'));
-                }
-                index += 1;
-            }
-            else if (char === '%' && next === '%' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                if (!in_sub)
-                {
-                    in_sub = true;
-                    nodes.push(new Start(doc, 'sub'));
-                }
-                else
-                {
-                    in_sub = false;
-                    nodes.push(new Stop(doc, 'sub'));
-                }
-                index += 1;
-            }
-            else if (char === '{' && next === '{' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                let end = str.indexOf('}}', index);
-                if (end === -1)
-                {
-                    throw new Error(`Unclosed markup in ${str}`);
-                }
-                let content = str.substring(index+2, end);
-                let res = Hamill.parse_inner_markup(content);
-                if (res['has_text'])
-                {
-                    nodes.push(new Span(doc, res['id'], res['class'], res['text']));
-                }
-                else
-                {
-                    nodes.push(new ParagraphIndicator(doc, res['id'], res['class']));
-                }
-                index = end + 1;
-            }
-            else if (char === '[' && next === '[' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                let end = str.indexOf(']]', index);
-                if (end === -1)
-                {
-                    throw new Error(`Unclosed link in ${str}`);
-                }
-                let content = str.substring(index+2, end);
-                let parts = content.split('->');
-                let display = undefined;
-                let url = undefined;
-                if (parts.length === 1)
-                {
-                    url = parts[0].trim();
-                }
-                else if (parts.length === 2)
-                {
-                    display = Hamill.parse_inner_string(doc, parts[0].trim());
-                    url = parts[1].trim();
-                }
-                nodes.push(new Link(doc, url, display));
-                index = end + 1;
-            }
-            else if (char === '(' && next === '(' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                let end = str.indexOf('))', index);
-                if (end === -1)
-                {
-                    throw new Error(`Unclosed image in ${str}`);
-                }
-                let content = str.substring(index+2, end);
-                let res = Hamill.parse_inner_picture(content);
-                nodes.push(new Picture(doc, res["url"], res["text"], res["class"], res["id"]));
-                index = end + 1;
-            }
-            else if (char === '$' && next === '$' && prev !== '\\')
-            {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word));
-                    word = '';
-                }
-                let end = str.indexOf('$$', index+2);
-                if (end === -1)
-                {
-                    throw new Error(`Unclosed display in ${str}`);
-                }
-                let content = str.substring(index+2, end);
-                nodes.push(new GetVar(doc, content));
-                index = end + 1;
-            }
+            // Escaping
             else if (char === '\\'
                      && ['*', "'", '-', '_', '^', '%', '@', '$', '(', '[', '{'].includes(next)
                      && ['*', "'", '-', '_', '^', '%', '@', '$', '(', '[', '{'].includes(next_next)
@@ -1946,9 +1742,142 @@ class Hamill
             {
                 // Do nothing, this an escaping slash
             }
+            // Text Styles
             else
             {
-                word += char;
+                let match = null;
+                for (let pattern of matches)
+                {
+                    if (char === pattern[0] && next === pattern[1] && prev !== '\\')
+                    {
+                        match = pattern[2];
+                        break;
+                    }
+                }
+                if (match !== null)
+                {
+                    if (word.length > 0)
+                    {
+                        nodes.push(new Text(doc, word));
+                        word = '';
+                    }
+                    if (match === 'picture')
+                    {
+                        let end = str.indexOf('))', index);
+                        if (end === -1)
+                        {
+                            throw new Error(`Unclosed image in ${str}`);
+                        }
+                        let content = str.substring(index+2, end);
+                        let res = Hamill.parse_inner_picture(content);
+                        nodes.push(new Picture(doc, res["url"], res["text"], res["class"], res["id"]));
+                        index = end + 1;
+                    }
+                    else if (match === 'link')
+                    {
+                        let end = str.indexOf(']]', index);
+                        if (end === -1)
+                        {
+                            throw new Error(`Unclosed link in ${str}`);
+                        }
+                        let content = str.substring(index+2, end);
+                        let parts = content.split('->');
+                        let display = undefined;
+                        let url = undefined;
+                        if (parts.length === 1)
+                        {
+                            url = parts[0].trim();
+                        }
+                        else if (parts.length === 2)
+                        {
+                            display = Hamill.parse_inner_string(doc, parts[0].trim());
+                            url = parts[1].trim();
+                        }
+                        nodes.push(new Link(doc, url, display));
+                        index = end + 1;
+                    }
+                    else if (match === 'markup')
+                    {
+                        let end = str.indexOf('}}', index);
+                        if (end === -1)
+                        {
+                            throw new Error(`Unclosed markup in ${str}`);
+                        }
+                        let content = str.substring(index+2, end);
+                        let res = Hamill.parse_inner_markup(content);
+                        if (res['has_text'])
+                        {
+                            nodes.push(new Span(doc, res['id'], res['class'], res['text']));
+                        }
+                        else
+                        {
+                            nodes.push(new ParagraphIndicator(doc, res['id'], res['class']));
+                        }
+                        index = end + 1;
+                    }
+                    else if (match === 'echo')
+                    {
+                        let end = str.indexOf('$$', index+2);
+                        if (end === -1)
+                        {
+                            throw new Error(`Unclosed display in ${str}`);
+                        }
+                        let content = str.substring(index+2, end);
+                        nodes.push(new GetVar(doc, content));
+                        index = end + 1;
+                    }
+                    else if (match === 'code')
+                    {
+                        let is_code_ok = -1;
+                        let code_str = '';
+                        for (let subindex = index  + 2; subindex < str.length; subindex++)
+                        {
+                            let subchar = str[subindex];
+                            let subnext = (subindex + 1) < str.length ? str[subindex + 1] : null;
+                            let subprev = (subindex - 1) > 0 ? str[subindex - 1] : null;
+                            // Ignore all formatting in a inline code bloc
+                            if (subchar === '@' && subnext === '@' && subprev !== '\\')
+                            {
+                                nodes.push(new Code(doc, code_str, true));
+                                is_code_ok = subindex + 1;
+                                break;
+                            }
+                            // We can only escape @@
+                            else if (subchar === '@' && subnext === '@' && subprev === '\\')
+                            {
+                                code_str = code_str.slice(0, -1); // remove the \
+                                code_str += subchar; // add the first @, the second will be added through the else
+                            }
+                            else
+                            {
+                                code_str += subchar;
+                            }
+                        }
+                        if (is_code_ok === -1)
+                        {
+                            throw new Error("Unfinished inline code sequence: " + str);
+                        }
+                        index = is_code_ok; // will inc by 1 at the end of the loop
+                    }
+                    else
+                    {
+                        if (!modes[match])
+                        {
+                            modes[match] = true;
+                            nodes.push(new Start(doc, match))
+                        }
+                        else
+                        {
+                            modes[match] = false;
+                            nodes.push(new Stop(doc, match));
+                        }
+                        index += 1;
+                    }
+                }
+                else // no match
+                {
+                    word += char;
+                }
             }
             index += 1;
         }
@@ -2058,10 +1987,11 @@ function tests(stop_on_first_error=false, stop_at=null)
     console.log("========================================================================");
     let test_suite = [
         // Comments, HR and BR
-        ["// This is a comment", ""],
-        ["!var EXPORT_COMMENT=true\n// This is a comment", "<!-- This is a comment -->\n"],
+        ["!rem This is a comment", ""],
+        ["§§ This is another comment", ""],
+        ["!var EXPORT_COMMENT=true\n!rem This is a comment", "<!-- This is a comment -->\n"],
         ["---", "<hr>\n"],
-        ["a !! b", "<p>a<br>b</p>\n"],
+        ["a \\\\ b", "<p>a<br>b</p>\n"],
         // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
@@ -2077,6 +2007,8 @@ function tests(stop_on_first_error=false, stop_at=null)
         ["^^superscript^^", "<p><sup>superscript</sup></p>\n"],
         ["%%subscript%%", "<p><sub>subscript</sub></p>\n"],
         ["@@code@@", "<p><code>code</code></p>\n"],
+        ["!!ceci est strong!!", "<p><strong>ceci est strong</strong></p>\n"],
+        ["//ceci est emphase//", "<p><em>ceci est emphase</em></p>\n"],
         // Escaping
         ["\\**bonjour\\**", "<p>**bonjour**</p>\n"],
         ["@@code \\@@variable = '\\n' end@@", "<p><code>code @@variable = '\\n' end</code></p>\n"],
@@ -2213,7 +2145,7 @@ function test(text, result, error=null)
         }
         else
         {
-            console.log("Unexpected error:", e.message);
+            console.log("Unexpected error:", e.message, e.stack);
             console.log(`No error expected, expected:\n${result}`);
             return false;
         }
@@ -2227,17 +2159,17 @@ function test(text, result, error=null)
 var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
-    const do_test = true;
-    //const do_test = false;
+    //const do_test = true;
+    const do_test = false;
     if (do_test)
     {
-        tests(true); //, 7);
+        tests(true); //, 5);
     }
     else
     {
         Hamill.process('../../dgx/static/input/liens.hml').to_html_file('../../dgx/');
         //Hamill.process('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
-        //Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
+        Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
     }
 }
 
