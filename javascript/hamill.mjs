@@ -1159,27 +1159,27 @@ class Hamill
             'ã', 'Ã', 'õ', 'Õ', 'œ', 'Œ', 'ß', 'ẞ', 'ñ', 'Ñ', 'ç', 'Ç',
             ' ',
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            '$', '€', '£', '¥', '₹', '₽',                     // Common currency : dollar, euro, pound, yen, rupee, ruble
-            '+', '-', '*', '/', '%', '^',                     // Common mathematical operators
-            '>', '<', '=', '!', '~',                          // Common comparison operators
-            '&', '|', '#', '"', "'", '°', '@', '«', '»', '’', '‘', '…', // Common various
-            '{', '}', '(', ')', '[', ']',                     // Common opening/closing
-            '.', ',', ';', ':', '?', '!',                     // Common ponctuations
-            '\n', '\t',                                       // Common whitespaces \r is NOT AUTHORIZED
-            '❤',                                             // Some love
-            '*', "'", "-", "_", "^", "%", '@', '!', '/',      // Hamill text modifiers
-            '+', '-', '*', '|',                               // Hamill lists
-            '{', '#', '.',                                    // Hamill structure tags (div, p and span)
-            '\\',                                             // Hamill escape
-            '>',                                              // Hamill blocks
-            '$',                                              // Hamill definition lists and display vars/consts
-            '/',                                              // Hamill comments
-            '|', '-',                                         // Hamill tables
-            '[', '-', '>', ']', '#', ':',                     // Hamill links and labels
-            '(', '-', '>', ')', '.', '#',                     // Hamill images
-            '=',                                              // Hamill define vars/consts
-            '#',                                              // Hamill titles
-            '§',                                              // Hamill comments
+            '$', '€', '£', '¥', '₹', '₽',                          // Common currency : dollar, euro, pound, yen, rupee, ruble
+            '+', '-', '*', '/', '%', '^',                          // Common mathematical operators
+            '>', '<', '=', '!', '~',                               // Common comparison operators
+            '&', '|', '#', '"', "'", '°', '@', '–',                // Common various
+            '{', '}', '(', ')', '[', ']',                          // Common opening/closing
+            '.', ',', ';', ':', '?', '!', '«', '»', '’', '‘', '…', // Common ponctuations
+            '\n', '\t',                                            // Common whitespaces \r is NOT AUTHORIZED
+            '❤',                                                  // Some love
+            '*', "'", "-", "_", "^", "%", '@', '!', '/',           // Hamill text modifiers
+            '+', '-', '*', '|',                                    // Hamill lists
+            '{', '#', '.',                                         // Hamill structure tags (div, p and span)
+            '\\',                                                  // Hamill escape
+            '>',                                                   // Hamill blocks
+            '$',                                                   // Hamill definition lists and display vars/consts
+            '/',                                                   // Hamill comments
+            '|', '-',                                              // Hamill tables
+            '[', '-', '>', ']', '#', ':',                          // Hamill links and labels
+            '(', '-', '>', ')', '.', '#',                          // Hamill images
+            '=',                                                   // Hamill define vars/consts
+            '#',                                                   // Hamill titles
+            '§',                                                   // Hamill comments
         ];
         data = data.replace(/\r\n/g, '\n');
         data = data.replace(/\r/g, '\n');
