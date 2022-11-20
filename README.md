@@ -20,6 +20,7 @@ Damien Gouteux 2020-2022
 * [Titles](#titles)
 * [Text modifications](#text)
 * [Div, p and span](#div) 
+* [Details](#details)
 * [Code](#code)
 * [Quotes](#quotes)
 * [Lists](#lists) 
@@ -91,13 +92,23 @@ The style of the text can be modified by the following markups:
 
 You can define custom div, span and paragraph with:
 
-* Write ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class.
+* Write ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class. You can put begin after but it is not mandatory.
 * Write ``{{begin}}`` to open a div without a class or an id.
-* Write ``{{end}}`` to close a div.
+* Write ``{{end}}`` to close a div. You can recall the class and id before ``end`` but it has no meaning for the Hamill parser.
 * Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.  
   This markup must **start** the line.
 * Write ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
+<p align="center">
+ <a href="#summary">Back to summary</a>
+</p>
+
+## <a name="details"> Details
+
+* Write ``{{xxx => yyy}}`` to open a quick detail note. You can add an id and class before xxx with #id .class.
+* Write ``{{xxx =>}}`` to open a long detail note. You can add an id and class before xxx with #id .class.
+* Write ``{{end}}`` to close a long detail note. You can recall the class and id before ``end`` but it has no meaning for the Hamill parser.
+ 
 <p align="center">
  <a href="#summary">Back to summary</a>
 </p>
