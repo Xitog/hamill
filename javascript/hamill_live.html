@@ -50,7 +50,7 @@
                 console.clear();
                 let code = document.getElementById("code");
                 let text = code.value;
-                let doc = Hamill.process_string(text);
+                let doc = Hamill.process(text);
                 let output = document.getElementById("output");
                 output.innerHTML = doc.to_html() + "<pre>" + doc.to_s() + "</pre>";
             }

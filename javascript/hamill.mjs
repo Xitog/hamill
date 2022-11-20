@@ -24,8 +24,6 @@
 // For more information about my projects see:
 // https://xitog.github.io/dgx (in French)
 
-import { lutimesSync } from 'fs';
-
 //-------------------------------------------------------------------------------
 // Imports
 //-------------------------------------------------------------------------------
@@ -293,6 +291,78 @@ class Title extends Node
     {
         super(document, content);
         this.level = level;
+    }
+}
+
+class StartDetail extends EmptyNode
+{
+    constructor(document, target, id=null, cls=null)
+    {
+        super(document);
+        this.target = target;
+        this.id = id;
+        this.cls = cls;
+    }
+
+    to_html()
+    {
+        if (this.id !== null && this.cls !== null)
+        {
+            return `<details id="${this.id}" class="${this.cls}"><summary>${this.target}</summary>\n`;
+        }
+        else if (this.id !== null)
+        {
+            return `<details id="${this.id}"><summary>${this.target}</summary>\n`;
+        }
+        else if (this.cls !== null)
+        {
+            return `<details class="${this.cls}"><summary>${this.target}</summary>\n`;
+        }
+        else
+        {
+            return `<details><summary>${this.target}</summary>\n`;
+        }
+    }
+}
+
+class Detail extends EmptyNode
+{
+    constructor(document, target, content, id=null, cls=null)
+    {
+        super(document);
+        this.target = target;
+        this.content = content;
+        this.id = id;
+        this.cls = cls;
+    }
+
+    to_html()
+    {
+        if (this.id !== null && this.cls !== null)
+        {
+            return `<details id="${this.id}" class="${this.cls}"><summary>${this.target}</summary>${this.content}</details>\n`;
+        }
+        else if (this.id !== null)
+        {
+            return `<details id="${this.id}"><summary>${this.target}</summary>${this.content}</details>\n`;
+        }
+        else if (this.cls !== null)
+        {
+            return `<details class="${this.cls}"><summary>${this.target}</summary>${this.content}</details>\n`;
+        }
+        else
+        {
+            return `<details><summary>${this.target}</summary>${this.content}</details>\n`;
+        }
+    }
+
+}
+
+class EndDetail extends EmptyNode
+{
+    to_html()
+    {
+        return "</details>\n";
     }
 }
 
@@ -914,6 +984,9 @@ class Document
             else if (node instanceof HR
                      || node instanceof StartDiv
                      || node instanceof EndDiv
+                     || node instanceof StartDetail
+                     || node instanceof EndDetail
+                     || node instanceof Detail
                      || node instanceof RawHTML
                      || node instanceof List)
             {
@@ -1040,6 +1113,7 @@ class Document
             }
             else
             {
+                throw new Error(`Unknown node: ${node.constructor.name}`);
                 //console.log(index, node);
                 not_processed += 1;
                 if (!(node.constructor.name in types_not_processed))
@@ -1335,7 +1409,9 @@ class Hamill
                 lines.push(new Line(trimmed, 'label'));
             }
             // Div (Si la ligne entière est {{ }}, c'est une div. On ne fait pas de span d'une ligne)
-            else if (trimmed.substring(0, 2) === '{{' && trimmed.substring(trimmed.length - 2) === '}}')
+            else if (trimmed.substring(0, 2) === '{{'
+                     && trimmed.substring(trimmed.length - 2) === '}}'
+                     && trimmed.lastIndexOf('{{') == 0) // span au début et à la fin = erreur
             {
                 lines.push(new Line(trimmed, 'div'));
             }
@@ -1377,6 +1453,8 @@ class Hamill
         let actual_level = 0;
         let starting_level = 0;
         //let root = null;
+        // Div & Details
+        let heap = [];
         // Main loop
         for (const [index, line] of lines.entries())
         {
@@ -1557,22 +1635,39 @@ class Hamill
                 case 'div':
                     value = line.value.substring(2, line.value.length - 2).trim();
                     let res = Hamill.parse_inner_markup(value);
-                    if (res['has_only_text'] && res['text'] === 'end')
+                    if (res['text'] === 'end')
                     {
-                        doc.add_node(new EndDiv(doc));
+                        let p = heap.pop();
+                        if (p === 'Div' || p === null || p === undefined)
+                        {
+                            doc.add_node(new EndDiv(doc)); // We can put {{end .myclass #myid}} but it has no meaning except to code reading
+                        } else if (p === 'Detail')
+                        {
+                            doc.add_node(new EndDetail(doc));
+                        }
                     }
-                    else if (res['has_only_text'] && res['text'] === 'begin')
+                    else if (res['text'] !== null && res['text'].indexOf('=>') !== -1)
                     {
-                        doc.add_node(new StartDiv(doc));
+                        let parts = res['text'].split('=>');
+                        if (parts.length === 1 || parts[1].trim().length === 0)
+                        {
+                            doc.add_node(new StartDetail(doc, parts[0].trim(), res['id'], res['class']));
+                            heap.push('Detail');
+                        }
+                        else
+                        {
+                            doc.add_node(new Detail(doc, parts[0].trim(), parts[1].trim(), res['id'], res['class']));
+                        }
                     }
-                    else if (res['has_only_text'])
+                    else if (res['has_only_text'] && res['text'] !== 'begin')
                     {
                         console.log(res);
                         throw new Error(`Unknown quick markup: ${res['text']} in ${line}`);
                     }
-                    else
+                    else if (res['text'] === 'begin' || res['text'] === null) // begin can be omitted if there is no class nor id
                     {
                         doc.add_node(new StartDiv(doc, res['id'], res['class']));
+                        heap.push('Div');
                     }
                     break;
                 case 'comment':
@@ -1695,8 +1790,8 @@ class Hamill
                 }
                 nodes.push(new BR(doc));
                 index += 2;
-            } else if (char === '\\' && str.substring(index + 1, index + 5) === ' \\\\ ') { // escape it
-                word += ' \\\\ ';
+            } else if (char === '\\' && next === '\\' && next_next === '\\') { // escape it
+                word += '\\\\';
                 index += 4;
             // Glyphs - Trio
             } else if (char === '.' && next === '.' && next_next === '.' && prev !== "\\") {
@@ -2024,6 +2119,9 @@ function tests(stop_on_first_error=false, stop_at=null)
         ["je suis {{#myid .myclass rouge}} et oui !", '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n'],
         ["je suis {{#myid rouge}} et oui !", '<p>je suis <span id="myid">rouge</span> et oui !</p>\n'],
         ["je suis {{.myclass rouge}} et oui !", '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n'],
+        // Details
+        ["{{small => petit}}", "<details><summary>small</summary>petit</details>\n"],
+        ["{{big =>}}\n* This is very big!\n* Indeed\n{{end}}", "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n"],
         // Code
         // Quotes
         // Lists
@@ -2087,16 +2185,6 @@ function tests(stop_on_first_error=false, stop_at=null)
     //let doc = Hamill.process_string("+ Été @@2006@@ Mac, Intel, Mac OS X");
     //let doc = Hamill.process_string("@@Code@@");
     //let doc = Hamill.process_string("Bonjour $$VERSION$$");
-
-    /*
-    console.log("------------------------------------------------------------------------");
-    console.log("Test de process_file (hamill)");
-    console.log("------------------------------------------------------------------------\n");
-
-    Hamill.process_file('../../dgx/static/input/informatique/tools_langs.hml').to_html_file('../../dgx/informatique/');
-    Hamill.process_file('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
-    Hamill.process_file('../../dgx/static/input/tests.hml').to_html_file('../../dgx/');
-    */
 }
 
 function test(text, result, error=null)
@@ -2159,16 +2247,24 @@ function test(text, result, error=null)
 var DEBUG = false;
 if (/*DEBUG &&*/ fs !== null)
 {
-    //const do_test = true;
-    const do_test = false;
+    const do_test = true;
+    //const do_test = false;
     if (do_test)
     {
         tests(true); //, 5);
     }
     else
     {
+        console.log("------------------------------------------------------------------------");
+        console.log("Test de process_file (hamill)");
+        console.log("------------------------------------------------------------------------\n");
+        // Root
+        Hamill.process('../../dgx/static/input/blog.hml').to_html_file('../../dgx/');
+        Hamill.process('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
+        Hamill.process('../../dgx/static/input/plan.hml').to_html_file('../../dgx/');
         Hamill.process('../../dgx/static/input/liens.hml').to_html_file('../../dgx/');
-        //Hamill.process('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
+        Hamill.process('../../dgx/static/input/tests.hml').to_html_file('../../dgx/');
+        // Passetemps
         Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
     }
 }
