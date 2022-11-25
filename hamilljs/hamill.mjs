@@ -2252,7 +2252,7 @@ function test(text, result, error=null)
 const DEBUG = false;
 if (fs !== null)
 {
-    const do_test = true;
+    const do_test = false;
     if (do_test)
     {
         tests(true); //, 5);

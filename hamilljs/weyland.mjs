@@ -113,7 +113,7 @@ class Language
     getNumberOfRegex()
     {
         let sum = 0;
-        for (const [k, v] of Object.entries(this.definitions))
+        for (const v of Object.values(this.definitions))
         {
             sum += v.length;
         }
@@ -240,6 +240,7 @@ class Lexer
             {
                 console.log(start, `${i}. @start |${ln(word)}|`);
             }
+            old = matched;
             matched = this.match(start, word);
             if (DEBUG && matched.length === 0)
             {
@@ -287,8 +288,6 @@ class Lexer
                     start = old[0].start + content.length;
                 }
             }
-            old = matched;
-            matched = [];
         }
         if (old !== null && old.length > 0)
         {
@@ -978,7 +977,7 @@ function tests()
     console.log(LEXERS['lua'].to_html("if a >= 5 then println('hello') end", null, ['blank']));
 }
 
-var DEBUG = false;
+const DEBUG = false;
 tests();
 
 export {ln, Language, Token, Lexer, LANGUAGES, PATTERNS, LEXERS};
