@@ -214,7 +214,7 @@ class Lexer
         {
             for (let elem of variants)
             {
-                //if (DEBUG) console.log(ln(word), 'vs', elem, '=', elem.test(word));
+                if (DEBUG) console.log(ln(word), 'vs', elem, '=', elem.test(word));
                 if (elem.test(word))
                 {
                     if (DEBUG) console.log('    Match: ' + type + ' : ' + variants + ' => ' + elem.test(word));
@@ -240,7 +240,6 @@ class Lexer
             {
                 console.log(start, `${i}. @start |${ln(word)}|`);
             }
-            old = matched;
             matched = this.match(start, word);
             if (DEBUG && matched.length === 0)
             {
@@ -288,6 +287,7 @@ class Lexer
                     start = old[0].start + content.length;
                 }
             }
+            old = matched;
         }
         if (old !== null && old.length > 0)
         {
@@ -312,7 +312,7 @@ class Lexer
         {
             console.log(tokens);
             console.log(word.charCodeAt(0));
-            throw new Error(`Text not lexed at the end: ${word}`);
+            throw new Error(`Text not lexed at the end: |${word}| in |${text}| for lang ${this.lang.name}`);
         }
         if (this.lang.after !== null)
         {
@@ -596,13 +596,22 @@ const LANGUAGES = {
     ),
     'game': new Language('game',
         {
+            'year': ['\\([12][0-9][0-9][0-9]\\)'],
+            'normal': ['\\w[\\w\'\\-:\\d ]*[\\w\\d]'],
+            'newline' : ['\n'],
+            'separator': [',', ';'],
+            'blank': PATTERNS['BLANKS'],
+            'wrong_id': ['\\w[\\w\'\\-:\\d ]*[\\w\\d:]'], // Pour garder Far Cry<: >Blood Dragon
+            /*
             'number': ['\\d+'],
             'normal': ['\\w[\\w\'-]*'], // Total Annihilation => 2 tokens, Baldur's => 1, Half-life => 1
             'blank': PATTERNS['BLANKS'],
             'wrong_int' : PATTERNS['WRONG_INTEGER'],
             'newline' : ['\n'],
             'operator': [':'] // FarCry:
-        }
+            */
+        },
+        ['wrong_id'],
     ),
     'hamill' : new Language('hamill',
         {
@@ -653,11 +662,6 @@ const LANGUAGES = {
         function(tokens)
         {
             let res = [];
-            // Dump #0
-            /*for (let [index, tok] of tokens.entries())
-            {
-                console.log('dump #0', index, tok);
-            }*/
             // Première passe, fusion des speciaux / liste
             for (const [index, tok] of tokens.entries())
             {
@@ -773,11 +777,6 @@ const LANGUAGES = {
                 }
                 index += 1;
             }
-            // Dump #2
-            /*for (let [index, tok] of res3.entries())
-            {
-                console.log('dump #2', index, tok);
-            }*/
             return res3;
         }
     ),
@@ -908,8 +907,8 @@ const TESTS = [
     new Test(LEXERS['line'], "bonjour\ntoi qui\nvient de loin", ['line', 'line', 'line']),
     new Test(LEXERS['fr'], "bonjour l'ami !", ['word', 'word', 'punct', 'word', 'punct']),
     new Test(LEXERS['text'], "je suis là", ['normal', 'normal', 'normal']),
-    new Test(LEXERS['game'], "Baldur's Gate\nTotal Annihilation\nHalf-Life\nFar Cry: Blood Dragon",
-             ['normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'operator', 'normal', 'normal']),
+    new Test(LEXERS['game'], "Baldur's Gate\nTotal Annihilation\nHalf-Life\nFar Cry: Blood Dragon\nSystem Shock 2\n WarCraft 2 (1995)",
+             ['normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'year']),
     new Test(LEXERS['json'], "{'alpharius': 20, 'heretic': true}",
              ['separator', 'string', 'separator', 'number', 'separator', 'string', 'separator', 'boolean', 'separator']),
     new Test(LEXERS['bnf'], "<rule 1> ::= 'terminal1' 'terminal2'",
@@ -952,22 +951,18 @@ const TESTS = [
     new Test(LEXERS['hamill'], '[[bonjour]] le monde', ['link', 'normal']),
 ]
 
-function tests()
+function tests(stop_at=null, only=false)
 {
-    /*
-    const text = "if a == 5 then\nprintln('hello')\nend\nendly = 5\na = 2.5\nb = 0xAE\nc = 2.5.to_i()\nd = 2.to_s()\n"; //5A";
-    let lexer = new Lexer(LANGUAGES['test'], ['blank']);
-    let tokens = lexer.lex(text);
-    console.log('    Text :', text);
-    for (const [index, tok] of tokens.entries())
-    {
-        console.log(`${index.toString().padStart(4)}  ` + tok.toString());
-    }
-    */
-
     for (const [index, t] of TESTS.entries())
     {
-        t.test(index + 1);
+        if (stop_at === null || only === false || index + 1 === stop_at)
+        {
+            t.test(index + 1);
+        }
+        if (stop_at !== null && index + 1 === stop_at)
+        {
+            break;
+        }
     }
 
     console.log("\n------------------------------------------------------------------------");
@@ -978,6 +973,6 @@ function tests()
 }
 
 const DEBUG = false;
-tests();
+//tests(); // 4 pour arrêter au test 4. true pour ne faire QUE le test 4.
 
 export {ln, Language, Token, Lexer, LANGUAGES, PATTERNS, LEXERS};
