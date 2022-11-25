@@ -28,6 +28,8 @@
 // Imports
 //-------------------------------------------------------------------------------
 
+import {LANGUAGES, LEXERS} from "./weyland.mjs";
+
 let fs = null;
 if (typeof process !== 'undefined' && process !== null && typeof process.version !== 'undefined' && process.version !== null && typeof process.version === "string")
 {
@@ -414,7 +416,7 @@ class Composite extends EmptyNode
     }
     add_child(o)
     {
-        if (! o instanceof EmptyNode)
+        if (!(o instanceof EmptyNode))
         {
             throw new Error("A composite can only be made of EmptyNode and subclasses");
         }
@@ -427,7 +429,6 @@ class Composite extends EmptyNode
     }
     add_children(ls)
     {
-        //this.children = this.children.concat(ls);
         for (let e of ls)
         {
             this.add_child(e);
@@ -593,7 +594,18 @@ class Code extends Node
         //return '<code><span class="game-normal">' + this.content + '</span></code>';
         if (this.inline)
         {
-            return '<code>' + this.content + '</code>';
+            let language = this.content.split(' ')[0];
+            let output = "";
+            if (language in LANGUAGES)
+            {
+                this.content = this.content.substring(language.length + 1);
+                output = LEXERS[language].to_html(this.content, null, ['blank']);
+            }
+            else
+            {
+                output = this.content;
+            }
+            return '<code>' + output + '</code>';
         } else {
             throw new Error("It's done elsewhere.");
         }
@@ -712,7 +724,6 @@ class Document
 
     set_variable(k, v, t='string', c=false)
     {
-        //console.log(`Setting ${k} to ${v}`);
         if (k in this.variables)
         {
             this.variables[k].set_variable(v);
@@ -736,7 +747,7 @@ class Document
         else
         {
             console.log('Dumping variables:');
-            for (const [k, v] of Object.entries(this.variables))
+            for (const v of Object.values(this.variables))
             {
                 console.log('   ', v.name, '=', v.value);
             }
@@ -829,8 +840,6 @@ class Document
             }
             else if (node instanceof ParagraphIndicator)
             {
-                //let ret = content.lastIndexOf("<p>");
-                //content = content.substring(0, ret) + node.to_html() + content.substring(ret + 3);
                 content += node.to_html();
             }
             else if (node instanceof Code)
@@ -845,7 +854,7 @@ class Document
         return content;
     }
 
-    to_html(header=false)
+    to_html(header=false, skip_error=false)
     {
         let start_time = new Date();
         let content = '';
@@ -890,21 +899,18 @@ class Document
                     }
                 }
             }
-            if (header)
+            content += "</head>\n";
+            let bclass = "";
+            let bid= "";
+            if (this.has_variable("BODY_ID"))
             {
-                content += "</head>\n";
-                let bclass = "";
-                let bid= "";
-                if (this.has_variable("BODY_ID"))
-                {
-                    bid = ' id="' + this.get_variable("BODY_ID") + '"';
-                }
-                if (this.has_variable("BODY_CLASS"))
-                {
-                    bclass = ' class="' + this.get_variable("BODY_CLASS") + '"';
-                }
-                content += `<body${bid}${bclass}>\n`;
+                bid = ' id="' + this.get_variable("BODY_ID") + '"';
             }
+            if (this.has_variable("BODY_CLASS"))
+            {
+                bclass = ' class="' + this.get_variable("BODY_CLASS") + '"';
+            }
+            content += `<body${bid}${bclass}>\n`;
         }
         let first_text = true;
         let not_processed = 0;
@@ -918,11 +924,8 @@ class Document
         let in_def_list = false;
         let in_code_block = false;
         let in_quote_block = false;
-        for (const [index, node] of this.nodes.entries())
+        for (const node of this.nodes)
         {
-            //console.log(content.substring(content.indexOf('<body>')));
-            //console.log(index, node);
-
             // Consistency
             if (!(node instanceof TextLine) && in_paragraph)
             {
@@ -1096,7 +1099,6 @@ class Document
                 for (let node_list of node.node_list_list)
                 {
                     let center = '';
-                    //console.log(node_list[0]);
                     if (node_list.length > 0
                         && node_list[0] instanceof Node // for content
                         && node_list[0].content.length > 0
@@ -1113,20 +1115,24 @@ class Document
             }
             else
             {
-                throw new Error(`Unknown node: ${node.constructor.name}`);
-                //console.log(index, node);
-                not_processed += 1;
-                if (!(node.constructor.name in types_not_processed))
+                if (skip_error)
                 {
-                    types_not_processed[node.constructor.name] = 0;
+                    not_processed += 1;
+                    if (!(node.constructor.name in types_not_processed))
+                    {
+                        types_not_processed[node.constructor.name] = 0;
+                    }
+                    types_not_processed[node.constructor.name] += 1;
                 }
-                types_not_processed[node.constructor.name] += 1;
+                else
+                {
+                    throw new Error(`Unknown node: ${node.constructor.name}`);
+                }
             }
         }
         if (in_paragraph)
         {
             content += "</p>\n";
-            in_paragraph = false;
         }
         if (stack.length > 0)
         {
@@ -1297,7 +1303,7 @@ class Hamill
         let next_is_def = false;
         let in_code_block = false;
         let in_quote_block = false;
-        for (const [index, value] of raw.entries())
+        for (const value of raw)
         {
             let trimmed = value.trim();
             if (in_code_block)
@@ -1452,11 +1458,11 @@ class Hamill
         let actual_list = null;
         let actual_level = 0;
         let starting_level = 0;
-        //let root = null;
+        // On pourrait avoir un root aussi
         // Div & Details
         let heap = [];
         // Main loop
-        for (const [index, line] of lines.entries())
+        for (const line of lines)
         {
             let text = undefined;
             let id = undefined;
@@ -1513,7 +1519,6 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, false, false);
-                        //root = actual_list;
                         actual_level = 1;
                         starting_level = line.param;
                     }
@@ -1523,7 +1528,6 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, true, false);
-                        //root = actual_list;
                         actual_level = 1;
                         starting_level = line.param;
                     }
@@ -1533,7 +1537,6 @@ class Hamill
                     if (actual_list === null)
                     {
                         actual_list = new List(doc, null, true, true);
-                        //root = actual_list;
                         actual_level = 1;
                         starting_level = line.param;
                     }
@@ -1579,7 +1582,7 @@ class Hamill
                             actual_list = actual_list.get_parent();
                         }
                         actual_level -= 1;
-                        if (!(actual_list.constructor.name === 'List'))
+                        if (actual_list.constructor.name !== 'List')
                         {
                             throw new Error(`List incoherency: last element is not a list but a ${actual_list.constructor.name}`);
                         }
@@ -1682,7 +1685,7 @@ class Hamill
                     break;
                 case 'row':
                     let content = line.value.substring(1, line.value.length - 1);
-                    if (content.length === (content.match(/(-|\|)/g) || []).length)
+                    if (content.length === (content.match(/[-\|]/g) || []).length)
                     {
                         let i = doc.nodes.length - 1;
                         while (doc.get_node(i) instanceof Row)
@@ -1705,7 +1708,7 @@ class Hamill
                     break;
                 case 'empty':
                     // Prevent multiple empty nodes
-                    if (doc.nodes.length === 0 || (! (doc.nodes[doc.nodes.length-1].constructor.name === "EmptyNode")))
+                    if (doc.nodes.length === 0 || (doc.nodes[doc.nodes.length-1].constructor.name !== "EmptyNode"))
                     {
                         doc.add_node(new EmptyNode(doc));
                     }
@@ -1770,8 +1773,8 @@ class Hamill
             let next = index + 1 < str.length ? str[index + 1] : null;
             let next_next = index + 2 < str.length ? str[index + 2] : null;
             let prev = index - 1 >= 0 ? str[index - 1] : null;
-            // Glyphs
-            // Glyphs - Solo
+            // Remplacement des glyphes
+            // Glyphs sur un caractère
             if (char === '&')
             {
                 word += '&amp;';
@@ -1979,7 +1982,6 @@ class Hamill
         if (word.length > 0)
         {
             nodes.push(new Text(doc, word));
-            word = '';
         }
         return nodes;
     }
@@ -2123,7 +2125,10 @@ function tests(stop_on_first_error=false, stop_at=null)
         ["{{small => petit}}", "<details><summary>small</summary>petit</details>\n"],
         ["{{big =>}}\n* This is very big!\n* Indeed\n{{end}}", "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n"],
         // Code
+        ["Voici du code : @@if a == 5 then puts('hello 5') end@@", "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n"],
+        ["Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@", `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`],
         // Quotes
+
         // Lists
         ["* Bloc1\n  * A\n  * B\n* Bloc2\n  * C", "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n"],
         ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
@@ -2132,6 +2137,7 @@ function tests(stop_on_first_error=false, stop_at=null)
         // Links
         ["[[Ceci est un mauvais lien->", "", "Unclosed link in [[Ceci est un mauvais lien->"],
         // Images
+
         // Constants
         ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
         ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
@@ -2191,7 +2197,6 @@ function test(text, result, error=null)
 {
     try
     {
-        //let doc = Hamill.process_string(text);
         let doc = Hamill.process(text);
         let output = doc.to_html();
         console.log("RESULT:");
@@ -2244,11 +2249,10 @@ function test(text, result, error=null)
 // Main
 //-------------------------------------------------------------------------------
 
-var DEBUG = false;
-if (/*DEBUG &&*/ fs !== null)
+const DEBUG = false;
+if (fs !== null)
 {
     const do_test = true;
-    //const do_test = false;
     if (do_test)
     {
         tests(true); //, 5);
