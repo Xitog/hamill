@@ -28,23 +28,27 @@
 // Imports
 //-------------------------------------------------------------------------------
 
-import {LANGUAGES, LEXERS} from "./weyland.mjs";
+import { LANGUAGES, LEXERS } from "./weyland.mjs";
 
 let fs = null;
-if (typeof process !== 'undefined' && process !== null && typeof process.version !== 'undefined' && process.version !== null && typeof process.version === "string")
-{
+if (
+    typeof process !== "undefined" &&
+    process !== null &&
+    typeof process.version !== "undefined" &&
+    process.version !== null &&
+    typeof process.version === "string"
+) {
     // Node code only
     //import fs from 'fs';
-    fs = await import('fs');
+    fs = await import("fs");
 }
 
 //-----------------------------------------------------------------------------
 // Functions
 //-----------------------------------------------------------------------------
 
-function pp(o)
-{
-    o.document = 'redacted';
+function pp(o) {
+    o.document = "redacted";
     return o;
 }
 
@@ -54,19 +58,15 @@ function pp(o)
 
 // Tagged lines
 
-class Line
-{
-    constructor(value, type, param=null)
-    {
+class Line {
+    constructor(value, type, param = null) {
         this.value = value;
         this.type = type;
         this.param = param;
     }
 
-    toString()
-    {
-        if (this.param === null)
-        {
+    toString() {
+        if (this.param === null) {
             return `${this.type} |${this.value}|`;
         } else {
             return `${this.type} |${this.value}| (${this.param})`;
@@ -76,34 +76,26 @@ class Line
 
 // Document nodes
 
-class EmptyNode
-{
-    constructor(document)
-    {
+class EmptyNode {
+    constructor(document) {
         this.document = document;
-        if (this.document === undefined || this.document === null)
-        {
+        if (this.document === undefined || this.document === null) {
             throw new Error("Undefined or null document");
         }
     }
-    toString()
-    {
+    toString() {
         return this.constructor.name;
     }
 }
 
-class Node extends EmptyNode
-{
-    constructor(document, content=null)
-    {
+class Node extends EmptyNode {
+    constructor(document, content = null) {
         super(document);
         this.content = content;
     }
 
-    toString()
-    {
-        if (this.content === null)
-        {
+    toString() {
+        if (this.content === null) {
             return this.constructor.name;
         } else {
             return this.constructor.name + " { content: " + this.content + " }";
@@ -111,128 +103,103 @@ class Node extends EmptyNode
     }
 }
 
-class Text extends Node
-{
-    to_html()
-    {
+class Text extends Node {
+    to_html() {
         return this.content;
     }
 }
 
-class Start extends Node
-{
-    to_html()
-    {
+class Start extends Node {
+    to_html() {
         let markups = {
-            'bold': 'b',
-            'italic': 'i',
-            'stroke': 's',
-            'underline': 'u',
-            'sup': 'sup',
-            'sub': 'sub',
-            'strong': 'strong',
-            'em': 'em',
-           // 'code': 'code'
-        }
-        if (!(this.content in markups))
-        {
+            bold: "b",
+            italic: "i",
+            stroke: "s",
+            underline: "u",
+            sup: "sup",
+            sub: "sub",
+            strong: "strong",
+            em: "em",
+            // 'code': 'code'
+        };
+        if (!(this.content in markups)) {
             throw new Error(`Unknown text style:${this.content}`);
         }
         return `<${markups[this.content]}>`;
     }
 }
 
-class Stop extends Node
-{
-    to_html()
-    {
+class Stop extends Node {
+    to_html() {
         let markups = {
-            'bold': 'b',
-            'italic': 'i',
-            'stroke': 's',
-            'underline': 'u',
-            'sup': 'sup',
-            'sub': 'sub',
-            'strong': 'strong',
-            'em': 'em',
-           // 'code': 'code'
-        }
-        if (!(this.content in markups))
-        {
+            bold: "b",
+            italic: "i",
+            stroke: "s",
+            underline: "u",
+            sup: "sup",
+            sub: "sub",
+            strong: "strong",
+            em: "em",
+            // 'code': 'code'
+        };
+        if (!(this.content in markups)) {
             throw new Error(`Unknown text style:${this.content}`);
         }
-        return  `</${markups[this.content]}>`;
+        return `</${markups[this.content]}>`;
     }
 }
 
-class Picture extends Node
-{
-    constructor(document, url, text=null, cls=null, ids=null)
-    {
+class Picture extends Node {
+    constructor(document, url, text = null, cls = null, ids = null) {
         super(document, url);
         this.text = text;
         this.cls = cls;
         this.ids = ids;
     }
 
-    to_html()
-    {
-        let cls = '';
-        if (this.cls !== null)
-        {
+    to_html() {
+        let cls = "";
+        if (this.cls !== null) {
             cls = ` class="${this.cls}"`;
         }
-        let ids = '';
-        if (this.ids !== null)
-        {
+        let ids = "";
+        if (this.ids !== null) {
             ids = ` id="${this.ids}"`;
         }
-        if (this.text !== null)
-        {
+        if (this.text !== null) {
             return `<figure><img ${cls} ${ids} src="${this.content}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
-        }
-        else
-        {
+        } else {
             return `<img ${cls} ${ids} src="${this.content}"/>`;
         }
     }
 }
 
-class HR extends EmptyNode
-{
-    to_html()
-    {
+class HR extends EmptyNode {
+    to_html() {
         return "<hr>\n";
     }
 }
 
-class BR extends EmptyNode
-{
-    to_html()
-    {
-        return '<br>';
+class BR extends EmptyNode {
+    to_html() {
+        return "<br>";
     }
 }
 
-class Span extends EmptyNode
-{
-    constructor(document, ids, cls, text)
-    {
+class Span extends EmptyNode {
+    constructor(document, ids, cls, text) {
         super(document);
         this.ids = ids;
         this.cls = cls;
         this.text = text;
     }
 
-    to_html()
-    {
-        let r = "<span"
-        if (this.ids !== null)
-        {
+    to_html() {
+        let r = "<span";
+        if (this.ids !== null) {
             r += ` id="${this.ids}"`;
         }
-        if (this.cls !== null)
-        {
+        if (this.cls !== null) {
             r += ` class="${this.cls}"`;
         }
         r += `>${this.text}</span>`;
@@ -240,24 +207,19 @@ class Span extends EmptyNode
     }
 }
 
-class ParagraphIndicator extends EmptyNode
-{
-    constructor(document, ids, cls)
-    {
+class ParagraphIndicator extends EmptyNode {
+    constructor(document, ids, cls) {
         super(document);
         this.ids = ids;
         this.cls = cls;
     }
 
-    to_html()
-    {
-        let r = "<p"
-        if (this.ids !== null)
-        {
+    to_html() {
+        let r = "<p";
+        if (this.ids !== null) {
             r += ` id="${this.ids}"`;
         }
-        if (this.cls !== null)
-        {
+        if (this.cls !== null) {
             r += ` class="${this.cls}"`;
         }
         r += ">";
@@ -267,70 +229,52 @@ class ParagraphIndicator extends EmptyNode
 
 class Comment extends Node {}
 
-class Row extends EmptyNode
-{
-    constructor(document, node_list_list)
-    {
+class Row extends EmptyNode {
+    constructor(document, node_list_list) {
         super(document);
         this.node_list_list = node_list_list;
         this.is_header = false;
     }
 }
 
-class RawHTML extends Node
-{
-    to_html()
-    {
+class RawHTML extends Node {
+    to_html() {
         return this.content + "\n";
     }
 }
 
 class Include extends Node {}
 
-class Title extends Node
-{
-    constructor(document, content, level)
-    {
+class Title extends Node {
+    constructor(document, content, level) {
         super(document, content);
         this.level = level;
     }
 }
 
-class StartDetail extends EmptyNode
-{
-    constructor(document, target, id=null, cls=null)
-    {
+class StartDetail extends EmptyNode {
+    constructor(document, target, id = null, cls = null) {
         super(document);
         this.target = target;
         this.id = id;
         this.cls = cls;
     }
 
-    to_html()
-    {
-        if (this.id !== null && this.cls !== null)
-        {
+    to_html() {
+        if (this.id !== null && this.cls !== null) {
             return `<details id="${this.id}" class="${this.cls}"><summary>${this.target}</summary>\n`;
-        }
-        else if (this.id !== null)
-        {
+        } else if (this.id !== null) {
             return `<details id="${this.id}"><summary>${this.target}</summary>\n`;
-        }
-        else if (this.cls !== null)
-        {
+        } else if (this.cls !== null) {
             return `<details class="${this.cls}"><summary>${this.target}</summary>\n`;
-        }
-        else
-        {
+        } else {
             return `<details><summary>${this.target}</summary>\n`;
         }
     }
 }
 
-class Detail extends EmptyNode
-{
-    constructor(document, target, content, id=null, cls=null)
-    {
+class Detail extends EmptyNode {
+    constructor(document, target, content, id = null, cls = null) {
         super(document);
         this.target = target;
         this.content = content;
@@ -338,134 +282,97 @@ class Detail extends EmptyNode
         this.cls = cls;
     }
 
-    to_html()
-    {
-        if (this.id !== null && this.cls !== null)
-        {
+    to_html() {
+        if (this.id !== null && this.cls !== null) {
             return `<details id="${this.id}" class="${this.cls}"><summary>${this.target}</summary>${this.content}</details>\n`;
-        }
-        else if (this.id !== null)
-        {
+        } else if (this.id !== null) {
             return `<details id="${this.id}"><summary>${this.target}</summary>${this.content}</details>\n`;
-        }
-        else if (this.cls !== null)
-        {
+        } else if (this.cls !== null) {
             return `<details class="${this.cls}"><summary>${this.target}</summary>${this.content}</details>\n`;
-        }
-        else
-        {
+        } else {
             return `<details><summary>${this.target}</summary>${this.content}</details>\n`;
         }
     }
-
 }
 
-class EndDetail extends EmptyNode
-{
-    to_html()
-    {
+class EndDetail extends EmptyNode {
+    to_html() {
         return "</details>\n";
     }
 }
 
-class StartDiv extends EmptyNode
-{
-    constructor(document, id=null, cls=null)
-    {
+class StartDiv extends EmptyNode {
+    constructor(document, id = null, cls = null) {
         super(document);
         this.id = id;
         this.cls = cls;
     }
 
-    to_html()
-    {
-        if (this.id !== null && this.cls !== null)
-        {
+    to_html() {
+        if (this.id !== null && this.cls !== null) {
             return `<div id="${this.id}" class="${this.cls}">\n`;
-        }
-        else if (this.id !== null)
-        {
+        } else if (this.id !== null) {
             return `<div id="${this.id}">\n`;
-        }
-        else if (this.cls !== null)
-        {
+        } else if (this.cls !== null) {
             return `<div class="${this.cls}">\n`;
-        }
-        else
-        {
-            return '<div>\n';
+        } else {
+            return "<div>\n";
         }
     }
 }
 
-class EndDiv extends EmptyNode
-{
-    to_html()
-    {
+class EndDiv extends EmptyNode {
+    to_html() {
         return "</div>\n";
     }
 }
 
-class Composite extends EmptyNode
-{
-    constructor(document, parent=null)
-    {
+class Composite extends EmptyNode {
+    constructor(document, parent = null) {
         super(document);
         this.children = [];
         this.parent = parent;
     }
-    add_child(o)
-    {
-        if (!(o instanceof EmptyNode))
-        {
-            throw new Error("A composite can only be made of EmptyNode and subclasses");
+    add_child(o) {
+        if (!(o instanceof EmptyNode)) {
+            throw new Error(
+                "A composite can only be made of EmptyNode and subclasses"
+            );
         }
         this.children.push(o);
-        if (o instanceof Composite)
-        {
+        if (o instanceof Composite) {
             o.parent = this;
         }
         return o;
     }
-    add_children(ls)
-    {
-        for (let e of ls)
-        {
+    add_children(ls) {
+        for (let e of ls) {
             this.add_child(e);
         }
     }
-    last()
-    {
-        return this.children[this.children.length-1];
+    last() {
+        return this.children[this.children.length - 1];
     }
-    get_parent()
-    {
+    get_parent() {
         return this.parent;
     }
-    root()
-    {
-        if (this.parent === null)
-        {
+    root() {
+        if (this.parent === null) {
             return this;
         } else {
             return this.parent.root();
         }
     }
-    toString()
-    {
+    toString() {
         return this.constructor.name + ` (${this.children.length})`;
     }
-    pop()
-    {
+    pop() {
         return this.children.pop();
     }
-    to_html(level=0)
-    {
+    to_html(level = 0) {
         let s = "";
-        for (const child of this.children)
-        {
-            if (child instanceof List)
-            {
+        for (const child of this.children) {
+            if (child instanceof List) {
                 s += "\n" + child.to_html(level);
             } else {
                 s += child.to_html();
@@ -475,23 +382,25 @@ class Composite extends EmptyNode
     }
 }
 
-class TextLine extends Composite
-{
-    constructor(document, children=[])
-    {
+class TextLine extends Composite {
+    constructor(document, children = []) {
         super(document);
         this.add_children(children);
     }
-    to_html()
-    {
-        return this.document.string_to_html('', this.children);
+    to_html() {
+        return this.document.string_to_html("", this.children);
     }
 }
 
-class List extends Composite
-{
-    constructor(document, parent, ordered=false, reverse=false, level=0, children=[])
-    {
+class List extends Composite {
+    constructor(
+        document,
+        parent,
+        ordered = false,
+        reverse = false,
+        level = 0,
+        children = []
+    ) {
         super(document, parent);
         this.add_children(children);
         this.level = level;
@@ -499,12 +408,10 @@ class List extends Composite
         this.reverse = reverse;
     }
 
-    to_html(level=0)
-    {
+    to_html(level = 0) {
         let start = "    ".repeat(level);
         let end = "    ".repeat(level);
-        if (this.ordered)
-        {
+        if (this.ordered) {
             start += "<ol>";
             end += "</ol>";
         } else {
@@ -512,14 +419,15 @@ class List extends Composite
             end += "</ul>";
         }
         let s = start + "\n";
-        for (const child of this.children)
-        {
-            s +=  "    ".repeat(level) + "  <li>";
-            if (child instanceof List)
-            {
-                s += "\n" + child.to_html(level+1) + "  </li>\n";
-            } else if (child instanceof Composite && !(child instanceof TextLine)) {
-                s += child.to_html(level+1) + "  </li>\n";
+        for (const child of this.children) {
+            s += "    ".repeat(level) + "  <li>";
+            if (child instanceof List) {
+                s += "\n" + child.to_html(level + 1) + "  </li>\n";
+            } else if (
+                child instanceof Composite &&
+                !(child instanceof TextLine)
+            ) {
+                s += child.to_html(level + 1) + "  </li>\n";
             } else {
                 s += child.to_html() + "</li>\n";
             }
@@ -534,100 +442,84 @@ class List extends Composite
 // [[display->label]] (you must define somewhere ::label:: https://)
 // [[display->https://...]]
 // http[s] can be omitted, but in this case the url should start by www.
-class Link extends EmptyNode
-{
-    constructor(document, url, display=null)
-    {
+class Link extends EmptyNode {
+    constructor(document, url, display = null) {
         super(document);
         this.url = url;
         this.display = display; // list of nodes
     }
-    toString()
-    {
+    toString() {
         return this.constructor.name + ` ${this.display} -> ${this.url}`;
     }
-    to_html()
-    {
+    to_html() {
         let url = this.url;
         let display = null;
-        if (this.display !== null)
-        {
-            display = this.document.string_to_html('', this.display);
+        if (this.display !== null) {
+            display = this.document.string_to_html("", this.display);
         }
-        if (!url.startsWith('https://') && !url.startsWith('http://') && !url.startsWith('www.'))
-        {
-            if (url === '#')
-            {
-                url = this.document.get_label( this.document.make_anchor(display));
-            }
-            else
-            {
+        if (
+            !url.startsWith("https://") &&
+            !url.startsWith("http://") &&
+            !url.startsWith("www.")
+        ) {
+            if (url === "#") {
+                url = this.document.get_label(
+                    this.document.make_anchor(display)
+                );
+            } else {
                 url = this.document.get_label(url);
             }
         }
-        if (display === undefined || display === null)
-        {
+        if (display === undefined || display === null) {
             display = url;
         }
         return `<a href="${url}">${display}</a>`;
     }
 }
-class Definition extends Node
-{
-    constructor(document, header, content)
-    {
+class Definition extends Node {
+    constructor(document, header, content) {
         super(document, content);
         this.header = header;
     }
 }
 class Quote extends Node {}
-class Code extends Node
-{
-    constructor(document, content, inline=false)
-    {
+class Code extends Node {
+    constructor(document, content, inline = false) {
         super(document, content);
         this.inline = inline;
     }
-    to_html()
-    {
+    to_html() {
         // appelé uniquement par string_to_html pour le code inline
         //return '<code><span class="game-normal">' + this.content + '</span></code>';
-        if (this.inline)
-        {
-            let language = this.content.split(' ')[0];
+        if (this.inline) {
+            let language = this.content.split(" ")[0];
             let output = "";
-            if (language in LANGUAGES)
-            {
+            if (language in LANGUAGES) {
                 this.content = this.content.substring(language.length + 1);
-                output = LEXERS[language].to_html(this.content, null, ['blank']);
-            }
-            else
-            {
+                output = LEXERS[language].to_html(this.content, null, [
+                    "blank",
+                ]);
+            } else {
                 output = this.content;
             }
-            return '<code>' + output + '</code>';
+            return "<code>" + output + "</code>";
         } else {
             throw new Error("It's done elsewhere.");
         }
     }
 }
 
-class GetVar extends Node
-{
-    constructor(document, content)
-    {
+class GetVar extends Node {
+    constructor(document, content) {
         super(document, content);
-        if (content === null || content === undefined)
-        {
+        if (content === null || content === undefined) {
             throw new Error("A GetVar node must have a content");
         }
     }
 }
 
-class SetVar extends EmptyNode
-{
-    constructor(document, id, value, type, constant)
-    {
+class SetVar extends EmptyNode {
+    constructor(document, id, value, type, constant) {
         super(document);
         this.id = id;
         this.value = value;
@@ -639,14 +531,11 @@ class Markup extends Node {}
 
 // Variable & document
 
-class Variable
-{
-    constructor(document, name, type, constant=false, value=null)
-    {
+class Variable {
+    constructor(document, name, type, constant = false, value = null) {
         this.document = document;
         this.name = name;
-        if (type !== 'number' && type !== 'string' && type !== 'boolean')
-        {
+        if (type !== "number" && type !== "string" && type !== "boolean") {
             throw new Error(`Unknown type ${type} for variable ${name}`);
         }
         this.type = type;
@@ -654,46 +543,73 @@ class Variable
         this.value = value;
     }
 
-    set_variable(value)
-    {
-        if (this.value !== null && this.constant)
-        {
-            throw new Error(`Can't set the value of the already defined constant: ${this.name} of type ${this.type}`);
+    set_variable(value) {
+        if (this.value !== null && this.constant) {
+            throw new Error(
+                `Can't set the value of the already defined constant: ${this.name} of type ${this.type}`
+            );
         }
-        if ((isNaN(value) && this.type === 'number') ||
-            (typeof value === 'string' && this.type !== 'string') ||
-            (typeof value === 'boolean' && this.type !== 'boolean'))
-        {
-            throw new Error(`Cant't set the value to ${value} for variable ${this.name} of type ${this.type}`);
+        if (
+            (isNaN(value) && this.type === "number") ||
+            (typeof value === "string" && this.type !== "string") ||
+            (typeof value === "boolean" && this.type !== "boolean")
+        ) {
+            throw new Error(
+                `Cant't set the value to ${value} for variable ${this.name} of type ${this.type}`
+            );
         }
         this.value = value;
     }
 
-    get_value()
-    {
-        if (this.name === 'NOW')
-        {
-            return new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        }
-        else
-        return this.value;
+    get_value() {
+        if (this.name === "NOW") {
+            return new Date().toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+            });
+        } else return this.value;
     }
 }
 
-class Document
-{
-    constructor(name=null)
-    {
+class Document {
+    constructor(name = null) {
         this.predefined_constants = [
-            "TITLE", "ICON", "LANG", "ENCODING", "BODY_CLASS", "BODY_ID", "VERSION", "NOW"
+            "TITLE",
+            "ICON",
+            "LANG",
+            "ENCODING",
+            "BODY_CLASS",
+            "BODY_ID",
+            "VERSION",
+            "NOW",
         ];
         this.name = name;
         this.variables = {
-            'VERSION': new Variable(this, 'VERSION', 'string', 'true', 'Hamill 2.00'),
-            'NOW': new Variable(this, 'NOW', 'string', 'true', ''),
-            'PARAGRAPH_DEFINITION': new Variable(this, 'PARAGRAPH_DEFINITION', 'boolean', false, false),
-            'EXPORT_COMMENT': new Variable(this, 'EXPORT_COMMENT', 'boolean', false, false),
-            'DEFAULT_CODE': new Variable(this, 'DEFAULT_CODE', 'string', 'false')
+            VERSION: new Variable(
+                this,
+                "VERSION",
+                "string",
+                "true",
+                "Hamill 2.00"
+            ),
+            NOW: new Variable(this, "NOW", "string", "true", ""),
+            PARAGRAPH_DEFINITION: new Variable(
+                this,
+                "PARAGRAPH_DEFINITION",
+                "boolean",
+                false,
+                false
+            ),
+            EXPORT_COMMENT: new Variable(
+                this,
+                "EXPORT_COMMENT",
+                "boolean",
+                false,
+                false
+            ),
+            DEFAULT_CODE: new Variable(this, "DEFAULT_CODE", "string", "false"),
         };
         this.required = [];
         this.css = [];
@@ -701,95 +617,74 @@ class Document
         this.nodes = [];
     }
 
-    set_name(name)
-    {
+    set_name(name) {
         this.name = name;
     }
 
-    to_html_file(output_directory)
-    {
-        let parts = this.name.split('/');
+    to_html_file(output_directory) {
+        let parts = this.name.split("/");
         let outfilename = parts[parts.length - 1];
-        outfilename = outfilename.substring(0, outfilename.lastIndexOf('.hml')) + '.html';
-        let sep = output_directory[output_directory.length - 1] === '/' ? '' : '/';
+        outfilename =
+            outfilename.substring(0, outfilename.lastIndexOf(".hml")) + ".html";
+        let sep =
+            output_directory[output_directory.length - 1] === "/" ? "" : "/";
         let target = output_directory + sep + outfilename;
         fs.writeFileSync(target, this.to_html(true)); // with header
-        console.log('Outputting in:', target);
+        console.log("Outputting in:", target);
     }
 
-    has_variable(k)
-    {
-        return ((k in this.variables) && this.variables[k] !== null);
+    has_variable(k) {
+        return k in this.variables && this.variables[k] !== null;
     }
 
-    set_variable(k, v, t='string', c=false)
-    {
-        if (k in this.variables)
-        {
+    set_variable(k, v, t = "string", c = false) {
+        if (k in this.variables) {
             this.variables[k].set_variable(v);
-        }
-        else
-        {
+        } else {
             this.variables[k] = new Variable(this, k, t, c, v);
         }
     }
 
-    get_variable(k, default_value=null)
-    {
-        if (k in this.variables)
-        {
+    get_variable(k, default_value = null) {
+        if (k in this.variables) {
             return this.variables[k].get_value();
-        }
-        else if (default_value !== null)
-        {
+        } else if (default_value !== null) {
             return default_value;
-        }
-        else
-        {
-            console.log('Dumping variables:');
-            for (const v of Object.values(this.variables))
-            {
-                console.log('   ', v.name, '=', v.value);
+        } else {
+            console.log("Dumping variables:");
+            for (const v of Object.values(this.variables)) {
+                console.log("   ", v.name, "=", v.value);
             }
             throw new Error(`Unknown variable: ${k}`);
         }
     }
 
-    add_required(r)
-    {
+    add_required(r) {
         this.required.push(r);
     }
 
-    add_css(c)
-    {
+    add_css(c) {
         this.css.push(c);
     }
 
-    add_label(l, v)
-    {
+    add_label(l, v) {
         this.labels[l] = v;
     }
 
-    add_node(n)
-    {
-        if (n === undefined || n === null)
-        {
+    add_node(n) {
+        if (n === undefined || n === null) {
             throw new Error("Trying to add an undefined or null node");
         }
         this.nodes.push(n);
     }
 
-    get_node(i)
-    {
+    get_node(i) {
         return this.nodes[i];
     }
 
-    get_label(target)
-    {
-        if (! (target in this.labels))
-        {
-            for (const label in this.labels)
-            {
+    get_label(target) {
+        if (!(target in this.labels)) {
+            for (const label in this.labels) {
                 console.log(label);
             }
             throw new Error("Label not found : " + target);
@@ -797,117 +692,106 @@ class Document
         return this.labels[target];
     }
 
-    make_anchor(text)
-    {
-        return text.toLocaleLowerCase().replace(/ /g, '-');
+    make_anchor(text) {
+        return text.toLocaleLowerCase().replace(/ /g, "-");
     }
 
-    string_to_html(content, nodes)
-    {
-        if (nodes === undefined || nodes === null)
-        {
+    string_to_html(content, nodes) {
+        if (nodes === undefined || nodes === null) {
             throw new Error("No nodes to process");
         }
-        if (typeof content !== 'string') throw new Error('Parameter content should be of type string');
-        if (!Array.isArray(nodes) || (!(nodes[0] instanceof Start)
-            && !(nodes[0] instanceof Stop) && !(nodes[0] instanceof Text)
-            && !(nodes[0] instanceof Link) && !(nodes[0] instanceof GetVar))
-            && !(nodes[0] instanceof ParagraphIndicator)
-            && !(nodes[0] instanceof Picture)
-            && !(nodes[0] instanceof Code)
-            && (nodes[0] instanceof Code && !nodes[0].inline))
-        {
-            throw new Error(`Parameter nodes should be an array of Start|Stop|Text|Link|GetVar|Code(inline) and is: ${typeof nodes[0]}`);
+        if (typeof content !== "string")
+            throw new Error("Parameter content should be of type string");
+        if (
+            !Array.isArray(nodes) ||
+            (!(nodes[0] instanceof Start) &&
+                !(nodes[0] instanceof Stop) &&
+                !(nodes[0] instanceof Text) &&
+                !(nodes[0] instanceof Link) &&
+                !(nodes[0] instanceof GetVar) &&
+                !(nodes[0] instanceof ParagraphIndicator) &&
+                !(nodes[0] instanceof Picture) &&
+                !(nodes[0] instanceof Code) &&
+                nodes[0] instanceof Code &&
+                !nodes[0].inline)
+        ) {
+            throw new Error(
+                `Parameter nodes should be an array of Start|Stop|Text|Link|GetVar|Code(inline) and is: ${typeof nodes[0]}`
+            );
         }
-        for (let node of nodes)
-        {
-            if (node instanceof Start
-                || node instanceof Stop
-                || node instanceof Span
-                || node instanceof Picture
-                || node instanceof BR
-                || node instanceof Text)
-            {
+        for (let node of nodes) {
+            if (
+                node instanceof Start ||
+                node instanceof Stop ||
+                node instanceof Span ||
+                node instanceof Picture ||
+                node instanceof BR ||
+                node instanceof Text
+            ) {
                 content += node.to_html();
-            }
-            else if (node instanceof Link)
-            {
+            } else if (node instanceof Link) {
                 content += node.to_html(this);
-            }
-            else if (node instanceof GetVar)
-            {
+            } else if (node instanceof GetVar) {
                 content += this.get_variable(node.content);
-            }
-            else if (node instanceof ParagraphIndicator)
-            {
+            } else if (node instanceof ParagraphIndicator) {
                 content += node.to_html();
-            }
-            else if (node instanceof Code)
-            {
+            } else if (node instanceof Code) {
                 content += node.to_html();
-            }
-            else
-            {
-                throw new Error("Impossible to handle this type of node: " + node.constructor.name);
+            } else {
+                throw new Error(
+                    "Impossible to handle this type of node: " +
+                        node.constructor.name
+                );
             }
         }
         return content;
     }
 
-    to_html(header=false, skip_error=false)
-    {
+    to_html(header = false, skip_error = false) {
         let start_time = new Date();
-        let content = '';
-        if (header)
-        {
-            content = `<html lang="${this.get_variable('LANG', 'en')}">
+        let content = "";
+        if (header) {
+            content = `<html lang="${this.get_variable("LANG", "en")}">
 <head>
-  <meta charset="${this.get_variable('ENCODING', 'utf-8')}">
+  <meta charset="${this.get_variable("ENCODING", "utf-8")}">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${this.get_variable('TITLE', 'Undefined title')}</title>
-  <link rel="icon" href="${this.get_variable('ICON', 'Undefined icon')}" type="image/x-icon" />
+  <title>${this.get_variable("TITLE", "Undefined title")}</title>
+  <link rel="icon" href="${this.get_variable(
+      "ICON",
+      "Undefined icon"
+  )}" type="image/x-icon" />
   <link rel="shortcut icon" href="https://xitog.github.io/dgx/img/favicon.ico" type="image/x-icon" />\n`;
             // For CSS
-            if (this.required.length > 0)
-            {
-                for (let req of this.required)
-                {
-                    if (req.endsWith('.css'))
-                    {
+            if (this.required.length > 0) {
+                for (let req of this.required) {
+                    if (req.endsWith(".css")) {
                         content += `  <link href="${req}" rel="stylesheet">\n`;
                     }
                 }
             }
-            if (this.css.length > 0)
-            {
+            if (this.css.length > 0) {
                 content += '  <style type="text/css">\n';
-                for (let cs of this.css)
-                {
+                for (let cs of this.css) {
                     content += "    " + cs + "\n";
                 }
-                content += '  </style>\n';
+                content += "  </style>\n";
             }
             // For javascript
-            if (this.required.length > 0)
-            {
-                for (let req of this.required)
-                {
-                    if (req.endsWith('.js'))
-                    {
+            if (this.required.length > 0) {
+                for (let req of this.required) {
+                    if (req.endsWith(".js")) {
                         content += `  <script src="${req}"></script>\n`;
                     }
                 }
             }
             content += "</head>\n";
             let bclass = "";
-            let bid= "";
-            if (this.has_variable("BODY_ID"))
-            {
+            let bid = "";
+            if (this.has_variable("BODY_ID")) {
                 bid = ' id="' + this.get_variable("BODY_ID") + '"';
             }
-            if (this.has_variable("BODY_CLASS"))
-            {
+            if (this.has_variable("BODY_CLASS")) {
                 bclass = ' class="' + this.get_variable("BODY_CLASS") + '"';
             }
             content += `<body${bid}${bclass}>\n`;
@@ -924,187 +808,155 @@ class Document
         let in_def_list = false;
         let in_code_block = false;
         let in_quote_block = false;
-        for (const node of this.nodes)
-        {
+        for (const node of this.nodes) {
             // Consistency
-            if (!(node instanceof TextLine) && in_paragraph)
-            {
+            if (!(node instanceof TextLine) && in_paragraph) {
                 content += "</p>\n";
                 in_paragraph = false;
             }
-            if (!(node instanceof Definition) && in_def_list)
-            {
+            if (!(node instanceof Definition) && in_def_list) {
                 content += "</dl>\n";
                 in_def_list = false;
             }
-            if (!(node instanceof Row) && in_table)
-            {
+            if (!(node instanceof Row) && in_table) {
                 content += "</table>\n";
                 in_table = false;
             }
-            if (!(node instanceof Quote) && in_quote_block)
-            {
+            if (!(node instanceof Quote) && in_quote_block) {
                 content += "</blockquote>\n";
                 in_quote_block = false;
             }
-            if (!(node instanceof Code) && in_code_block)
-            {
+            if (!(node instanceof Code) && in_code_block) {
                 content += "</pre>\n";
                 in_code_block = false;
             }
             // Handling of nodes
-            if (node.constructor.name === 'EmptyNode')
-            {
+            if (node.constructor.name === "EmptyNode") {
                 // Nothing, it is just too close the paragraph, done above.
-            }
-            else if (node instanceof Include)
-            {
+            } else if (node instanceof Include) {
                 let file = fs.readFileSync(node.content);
                 content += file + "\n";
-            }
-            else if (node instanceof Title)
-            {
-                content += `<h${node.level} id="${this.make_anchor(node.content)}">${node.content}</h${node.level}>\n`;
-            }
-            else if (node instanceof Comment)
-            {
-                if (this.get_variable('EXPORT_COMMENT'))
-                {
-                    content += '<!--' + node.content + ' -->\n';
+            } else if (node instanceof Title) {
+                content += `<h${node.level} id="${this.make_anchor(
+                    node.content
+                )}">${node.content}</h${node.level}>\n`;
+            } else if (node instanceof Comment) {
+                if (this.get_variable("EXPORT_COMMENT")) {
+                    content += "<!--" + node.content + " -->\n";
                 }
-            }
-            else if (node instanceof SetVar)
-            {
-                if (!node.constant)
-                {
-                    if (this.predefined_constants.includes(node.id))
-                    {
-                        throw new Error(`You cannot use ${node.id} for a variable because it is a predefined constant.`);
+            } else if (node instanceof SetVar) {
+                if (!node.constant) {
+                    if (this.predefined_constants.includes(node.id)) {
+                        throw new Error(
+                            `You cannot use ${node.id} for a variable because it is a predefined constant.`
+                        );
                     }
                 }
-                this.set_variable(node.id, node.value, node.type, node.constant);
-            }
-            else if (node instanceof HR
-                     || node instanceof StartDiv
-                     || node instanceof EndDiv
-                     || node instanceof StartDetail
-                     || node instanceof EndDetail
-                     || node instanceof Detail
-                     || node instanceof RawHTML
-                     || node instanceof List)
-            {
+                this.set_variable(
+                    node.id,
+                    node.value,
+                    node.type,
+                    node.constant
+                );
+            } else if (
+                node instanceof HR ||
+                node instanceof StartDiv ||
+                node instanceof EndDiv ||
+                node instanceof StartDetail ||
+                node instanceof EndDetail ||
+                node instanceof Detail ||
+                node instanceof RawHTML ||
+                node instanceof List
+            ) {
                 content += node.to_html();
-            }
-            else if (node instanceof TextLine)
-            {
+            } else if (node instanceof TextLine) {
                 // Check that ParagraphIndicator must be only at 0
-                for (let nc = 0; nc < node.children.length; nc++)
-                {
-                    if (node.children[nc] instanceof ParagraphIndicator && nc > 0)
-                    {
-                        throw new Error("A paragraph indicator must always be at the start of a text line/")
+                for (let nc = 0; nc < node.children.length; nc++) {
+                    if (
+                        node.children[nc] instanceof ParagraphIndicator &&
+                        nc > 0
+                    ) {
+                        throw new Error(
+                            "A paragraph indicator must always be at the start of a text line/"
+                        );
                     }
                 }
-                if (!in_paragraph)
-                {
+                if (!in_paragraph) {
                     in_paragraph = true;
                     // If the first child is a pragraph indicator, don't start the paragraph !
-                    if (node.children.length > 0 && !(node.children[0] instanceof ParagraphIndicator))
-                    {
+                    if (
+                        node.children.length > 0 &&
+                        !(node.children[0] instanceof ParagraphIndicator)
+                    ) {
                         content += "<p>";
                     }
                 } else {
                     content += "<br>\n";
                 }
                 content += node.to_html();
-            }
-            else if (node instanceof Definition)
-            {
-                if (!in_def_list)
-                {
+            } else if (node instanceof Definition) {
+                if (!in_def_list) {
                     in_def_list = true;
                     content += "<dl>\n";
                 }
-                content += '<dt>';
+                content += "<dt>";
                 content = this.string_to_html(content, node.header) + "</dt>\n";
-                content += '<dd>'
-                if (this.get_variable('PARAGRAPH_DEFINITION') === true) content += '<p>';
+                content += "<dd>";
+                if (this.get_variable("PARAGRAPH_DEFINITION") === true)
+                    content += "<p>";
                 content = this.string_to_html(content, node.content);
-                if (this.get_variable('PARAGRAPH_DEFINITION') === true) content += '</p>';
-                content += '</dd>\n';
-            }
-            else if (node instanceof Quote)
-            {
-                if (!in_quote_block)
-                {
+                if (this.get_variable("PARAGRAPH_DEFINITION") === true)
+                    content += "</p>";
+                content += "</dd>\n";
+            } else if (node instanceof Quote) {
+                if (!in_quote_block) {
                     in_quote_block = true;
-                    content += '<blockquote>\n';
-                    if (node.content.startsWith('>>>'))
-                    {
+                    content += "<blockquote>\n";
+                    if (node.content.startsWith(">>>")) {
                         content += node.content.substring(3) + "<br>\n";
-                    }
-                    else
-                    {
+                    } else {
                         content += node.content.substring(2) + "<br>\n";
                     }
-                }
-                else
-                {
-                    if (node.content.startsWith('>>'))
-                    {
+                } else {
+                    if (node.content.startsWith(">>")) {
                         content += node.content.substring(2) + "<br>\n";
-                    }
-                    else
-                    {
+                    } else {
                         content += node.content + "<br>\n";
                     }
                 }
-            }
-            else if (node instanceof Code)
-            {
-                if (!in_code_block)
-                {
+            } else if (node instanceof Code) {
+                if (!in_code_block) {
                     in_code_block = true;
-                    content += '<pre>\n';
-                    if (node.content.startsWith('@@@'))
-                    {
+                    content += "<pre>\n";
+                    if (node.content.startsWith("@@@")) {
                         content += node.content.substring(3) + "\n";
-                    }
-                    else
-                    {
+                    } else {
                         content += node.content.substring(2) + "\n";
                     }
-                }
-                else
-                {
-                    if (node.content.startsWith('@@'))
-                    {
+                } else {
+                    if (node.content.startsWith("@@")) {
                         content += node.content.substring(2) + "\n";
-                    }
-                    else
-                    {
+                    } else {
                         content += node.content + "\n";
                     }
                 }
-            }
-            else if (node instanceof Row)
-            {
-                if (!in_table)
-                {
+            } else if (node instanceof Row) {
+                if (!in_table) {
                     in_table = true;
                     content += "<table>\n";
                 }
                 content += "<tr>";
-                let delim = node.is_header ? 'th' : 'td';
-                for (let node_list of node.node_list_list)
-                {
-                    let center = '';
-                    if (node_list.length > 0
-                        && node_list[0] instanceof Node // for content
-                        && node_list[0].content.length > 0
-                        && node_list[0].content[0] === '=')
-                    {
-                        node_list[0].content = node_list[0].content.substring(1);
+                let delim = node.is_header ? "th" : "td";
+                for (let node_list of node.node_list_list) {
+                    let center = "";
+                    if (
+                        node_list.length > 0 &&
+                        node_list[0] instanceof Node && // for content
+                        node_list[0].content.length > 0 &&
+                        node_list[0].content[0] === "="
+                    ) {
+                        node_list[0].content =
+                            node_list[0].content.substring(1);
                         center = ' class="text-center"';
                     }
                     content += `<${delim}${center}>`;
@@ -1112,181 +964,331 @@ class Document
                     content += `</${delim}>`;
                 }
                 content += "</tr>\n";
-            }
-            else
-            {
-                if (skip_error)
-                {
+            } else {
+                if (skip_error) {
                     not_processed += 1;
-                    if (!(node.constructor.name in types_not_processed))
-                    {
+                    if (!(node.constructor.name in types_not_processed)) {
                         types_not_processed[node.constructor.name] = 0;
                     }
                     types_not_processed[node.constructor.name] += 1;
-                }
-                else
-                {
+                } else {
                     throw new Error(`Unknown node: ${node.constructor.name}`);
                 }
             }
         }
-        if (in_paragraph)
-        {
+        if (in_paragraph) {
             content += "</p>\n";
         }
-        if (stack.length > 0)
-        {
-            content = this.assure_list_consistency(content, stack, 0, null, null);
+        if (stack.length > 0) {
+            content = this.assure_list_consistency(
+                content,
+                stack,
+                0,
+                null,
+                null
+            );
         }
-        if (in_table)
-        {
+        if (in_table) {
             content += "</table>\n";
         }
-        if (in_quote_block)
-        {
+        if (in_quote_block) {
             content += "</blockquote>\n";
         }
-        if (in_code_block)
-        {
+        if (in_code_block) {
             content += "</pre>\n";
         }
-        if (!first_text)
-        {
+        if (!first_text) {
             content += "</p>\n";
         }
-        if (header)
-        {
+        if (header) {
             content += "\n  </body>\n</html>";
         }
-        console.log('\nRoot nodes processed:', this.nodes.length - not_processed, '/', this.nodes.length);
-        if (not_processed > 0)
-        {
+        console.log(
+            "\nRoot nodes processed:",
+            this.nodes.length - not_processed,
+            "/",
+            this.nodes.length
+        );
+        if (not_processed > 0) {
             console.log(`Nodes not processed ${not_processed}:`);
-            for (let [k, v] of Object.entries(types_not_processed))
-            {
-                console.log('   -', k, v);
+            for (let [k, v] of Object.entries(types_not_processed)) {
+                console.log("   -", k, v);
             }
         }
         let end_time = new Date();
-        let elapsed = (end_time - start_time)/1000;
-        console.log('Processed in:        %ds', elapsed, '\n');
+        let elapsed = (end_time - start_time) / 1000;
+        console.log("Processed in:        %ds", elapsed, "\n");
         return content;
     }
 
-    to_s(level=0, node=null, header=false)
-    {
+    to_s(level = 0, node = null, header = false) {
         let out = "";
-        if (node === null || node === undefined)
-        {
-            if (header === true)
-            {
-                out += '\n------------------------------------------------------------------------\n';
-                out += 'Liste des nodes du document\n';
-                out += '------------------------------------------------------------------------\n\n';
+        if (node === null || node === undefined) {
+            if (header === true) {
+                out +=
+                    "\n------------------------------------------------------------------------\n";
+                out += "Liste des nodes du document\n";
+                out +=
+                    "------------------------------------------------------------------------\n\n";
             }
-            for (const n of this.nodes)
-            {
+            for (const n of this.nodes) {
                 out += this.to_s(level, n);
             }
         } else {
             let info = "    " + node.toString();
-            out += "    ".repeat(level) + info + '\n';
-            if (node instanceof Composite)
-            {
-                for (const n of node.children)
-                {
+            out += "    ".repeat(level) + info + "\n";
+            if (node instanceof Composite) {
+                for (const n of node.children) {
                     out += this.to_s(level + 1, n);
                 }
             }
         }
         return out;
     }
-
 }
 
-class Hamill
-{
-    static process(string_or_filename)
-    {
+class Hamill {
+    static process(string_or_filename) {
         // Try to read as a file name, if it fails, take it as a string
         let data = null;
         let name = null;
-        if (fs !== null)
-        {
-            try
-            {
-                data = fs.readFileSync(string_or_filename, 'utf-8');
+        if (fs !== null) {
+            try {
+                data = fs.readFileSync(string_or_filename, "utf-8");
                 console.log(`Data read from file: ${string_or_filename}`);
                 name = string_or_filename;
-            }
-            catch
-            {
+            } catch {
                 // Nothing
             }
         }
-        if (data === null)
-        {
+        if (data === null) {
             data = string_or_filename;
             console.log(`Data read from string:`);
         }
         // Check authorized characters
         let filtered = "";
         const authorized = [
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-            'á', 'à', 'â', 'ä', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'ö', 'ú', 'ù', 'û', 'ü', 'ý', 'ÿ',
-            'Á', 'À', 'Â', 'Ä', 'É', 'È', 'Ê', 'Ë', 'Í', 'Ì', 'Î', 'Ï', 'Ó', 'Ò', 'Ô', 'Ö', 'Ú', 'Ù', 'Û', 'Ü', 'Ý',
-            'ã', 'Ã', 'õ', 'Õ', 'œ', 'Œ', 'ß', 'ẞ', 'ñ', 'Ñ', 'ç', 'Ç',
-            ' ',
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            '$', '€', '£', '¥', '₹', '₽',                          // Common currency : dollar, euro, pound, yen, rupee, ruble
-            '+', '-', '*', '/', '%', '^',                          // Common mathematical operators
-            '>', '<', '=', '!', '~',                               // Common comparison operators
-            '&', '|', '#', '"', "'", '°', '@', '–',                // Common various
-            '{', '}', '(', ')', '[', ']',                          // Common opening/closing
-            '.', ',', ';', ':', '?', '!', '«', '»', '’', '‘', '…', // Common ponctuations
-            '\n', '\t',                                            // Common whitespaces \r is NOT AUTHORIZED
-            '❤',                                                  // Some love
-            '*', "'", "-", "_", "^", "%", '@', '!', '/',           // Hamill text modifiers
-            '+', '-', '*', '|',                                    // Hamill lists
-            '{', '#', '.',                                         // Hamill structure tags (div, p and span)
-            '\\',                                                  // Hamill escape
-            '>',                                                   // Hamill blocks
-            '$',                                                   // Hamill definition lists and display vars/consts
-            '/',                                                   // Hamill comments
-            '|', '-',                                              // Hamill tables
-            '[', '-', '>', ']', '#', ':',                          // Hamill links and labels
-            '(', '-', '>', ')', '.', '#',                          // Hamill images
-            '=',                                                   // Hamill define vars/consts
-            '#',                                                   // Hamill titles
-            '§',                                                   // Hamill comments
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "k",
+            "l",
+            "m",
+            "n",
+            "o",
+            "p",
+            "q",
+            "r",
+            "s",
+            "t",
+            "u",
+            "v",
+            "w",
+            "x",
+            "y",
+            "z",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "O",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "U",
+            "V",
+            "W",
+            "X",
+            "Y",
+            "Z",
+            "á",
+            "à",
+            "â",
+            "ä",
+            "é",
+            "è",
+            "ê",
+            "ë",
+            "í",
+            "ì",
+            "î",
+            "ï",
+            "ó",
+            "ò",
+            "ô",
+            "ö",
+            "ú",
+            "ù",
+            "û",
+            "ü",
+            "ý",
+            "ÿ",
+            "Á",
+            "À",
+            "Â",
+            "Ä",
+            "É",
+            "È",
+            "Ê",
+            "Ë",
+            "Í",
+            "Ì",
+            "Î",
+            "Ï",
+            "Ó",
+            "Ò",
+            "Ô",
+            "Ö",
+            "Ú",
+            "Ù",
+            "Û",
+            "Ü",
+            "Ý",
+            "ã",
+            "Ã",
+            "õ",
+            "Õ",
+            "œ",
+            "Œ",
+            "ß",
+            "ẞ",
+            "ñ",
+            "Ñ",
+            "ç",
+            "Ç",
+            " ",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "$",
+            "€",
+            "£",
+            "¥",
+            "₹",
+            "₽", // Common currency : dollar, euro, pound, yen, rupee, ruble
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "^", // Common mathematical operators
+            ">",
+            "<",
+            "=",
+            "!",
+            "~", // Common comparison operators
+            "&",
+            "|",
+            "#",
+            '"',
+            "'",
+            "°",
+            "@",
+            "–", // Common various
+            "{",
+            "}",
+            "(",
+            ")",
+            "[",
+            "]", // Common opening/closing
+            ".",
+            ",",
+            ";",
+            ":",
+            "?",
+            "!",
+            "«",
+            "»",
+            "’",
+            "‘",
+            "…", // Common ponctuations
+            "\n",
+            "\t", // Common whitespaces \r is NOT AUTHORIZED
+            "❤", // Some love
+            "*",
+            "'",
+            "-",
+            "_",
+            "^",
+            "%",
+            "@",
+            "!",
+            "/", // Hamill text modifiers
+            "+",
+            "-",
+            "*",
+            "|", // Hamill lists
+            "{",
+            "#",
+            ".", // Hamill structure tags (div, p and span)
+            "\\", // Hamill escape
+            ">", // Hamill blocks
+            "$", // Hamill definition lists and display vars/consts
+            "/", // Hamill comments
+            "|",
+            "-", // Hamill tables
+            "[",
+            "-",
+            ">",
+            "]",
+            "#",
+            ":", // Hamill links and labels
+            "(",
+            "-",
+            ">",
+            ")",
+            ".",
+            "#", // Hamill images
+            "=", // Hamill define vars/consts
+            "#", // Hamill titles
+            "§", // Hamill comments
         ];
-        data = data.replace(/\r\n/g, '\n');
-        data = data.replace(/\r/g, '\n');
-        for (let char of data)
-        {
+        data = data.replace(/\r\n/g, "\n");
+        data = data.replace(/\r/g, "\n");
+        for (let char of data) {
             // And removes multiple new lines
-            if (authorized.includes(char))
-            {
+            if (authorized.includes(char)) {
                 filtered += char;
-            }
-            else
-            {
+            } else {
                 throw new Error(`Unauthorized char: ${char}`);
             }
         }
         // Display raw lines
         let lines = filtered.split("\n");
-        for (let [index, line] of lines.entries())
-        {
-            console.log(`    ${index+1}. ${line.replace('\n', '<NL>')}`);
+        for (let [index, line] of lines.entries()) {
+            console.log(`    ${index + 1}. ${line.replace("\n", "<NL>")}`);
         }
         // Tag lines
         let tagged = Hamill.tag_lines(filtered.split("\n"));
-        console.log('\nTagged Lines:');
-        for (const [index, line] of tagged.entries())
-        {
-            console.log(`    ${index+1}. ${line}`);
+        console.log("\nTagged Lines:");
+        for (const [index, line] of tagged.entries()) {
+            console.log(`    ${index + 1}. ${line}`);
         }
         // Make a document
         let doc = Hamill.parse_tagged_lines(tagged);
@@ -1297,150 +1299,124 @@ class Hamill
     }
 
     // First pass: we tag all the lines
-    static tag_lines(raw)
-    {
+    static tag_lines(raw) {
         let lines = [];
         let next_is_def = false;
         let in_code_block = false;
         let in_quote_block = false;
-        for (const value of raw)
-        {
+        for (const value of raw) {
             let trimmed = value.trim();
-            if (in_code_block)
-            {
-                lines.push(new Line(value, 'code'))
-            }
-            else if (in_quote_block)
-            {
-                lines.push(new Line(value, 'quote'))
-            }
-            else if (trimmed.length === 0)
-            {
-                lines.push(new Line('', 'empty'));
+            if (in_code_block) {
+                lines.push(new Line(value, "code"));
+            } else if (in_quote_block) {
+                lines.push(new Line(value, "quote"));
+            } else if (trimmed.length === 0) {
+                lines.push(new Line("", "empty"));
             }
             // Titles :
-            else if (trimmed[0] === '#')
-            {
-                lines.push(new Line(trimmed, 'title'));
+            else if (trimmed[0] === "#") {
+                lines.push(new Line(trimmed, "title"));
             }
             // HR :
-            else if ((trimmed.match(/-/g)||[]).length === trimmed.length)
-            {
-                lines.push(new Line('', 'separator'));
+            else if ((trimmed.match(/-/g) || []).length === trimmed.length) {
+                lines.push(new Line("", "separator"));
             }
             // Lists, line with the first non empty character is "* " or "+ " or "- " :
-            else if (trimmed.substring(0, 2) === '* ')
-            {
-                let start = value.indexOf('* ');
+            else if (trimmed.substring(0, 2) === "* ") {
+                let start = value.indexOf("* ");
                 let level = Math.trunc(start / 2);
-                if (level * 2 !== start)
-                {
-                    throw new Error("Level list must be indented by a multiple of two");
+                if (level * 2 !== start) {
+                    throw new Error(
+                        "Level list must be indented by a multiple of two"
+                    );
                 }
-                lines.push(new Line(value, 'unordered_list', level+1));
-            }
-            else if (trimmed.substring(0, 2) === '+ ')
-            {
-                let start = value.indexOf('+ ');
+                lines.push(new Line(value, "unordered_list", level + 1));
+            } else if (trimmed.substring(0, 2) === "+ ") {
+                let start = value.indexOf("+ ");
                 let level = Math.trunc(start / 2);
-                if (level * 2 !== start)
-                {
-                    throw new Error("Level list must be indented by a multiple of two");
+                if (level * 2 !== start) {
+                    throw new Error(
+                        "Level list must be indented by a multiple of two"
+                    );
                 }
-                lines.push(new Line(value, 'ordered_list', level+1));
-            }
-            else if (trimmed.substring(0, 2) === '- ')
-            {
-                let start = value.indexOf('- ');
+                lines.push(new Line(value, "ordered_list", level + 1));
+            } else if (trimmed.substring(0, 2) === "- ") {
+                let start = value.indexOf("- ");
                 let level = Math.trunc(start / 2);
-                if (level * 2 !== start)
-                {
-                    throw new Error("Level list must be indented by a multiple of two");
+                if (level * 2 !== start) {
+                    throw new Error(
+                        "Level list must be indented by a multiple of two"
+                    );
                 }
-                lines.push(new Line(value, 'reverse_list', level+1));
+                lines.push(new Line(value, "reverse_list", level + 1));
             }
             // Keywords, line with the first non empty character is "!" :
             //     var, const, include, require, css, html, comment
-            else if (trimmed.startsWith('!var '))
-            {
-                lines.push(new Line(trimmed, 'var'));
-            }
-            else if (trimmed.startsWith('!const '))
-            {
-                lines.push(new Line(trimmed, 'const'));
-            }
-            else if (trimmed.startsWith('!include '))
-            {
-                lines.push(new Line(trimmed, 'include'));
-            }
-            else if (trimmed.startsWith('!require '))
-            {
-                lines.push(new Line(trimmed, 'require'));
-            }
-            else if (trimmed.startsWith('!css '))
-            {
-                lines.push(new Line(trimmed, 'css'));
-            }
-            else if (trimmed.startsWith('!html'))
-            {
-                lines.push(new Line(trimmed, 'html'));
-            }
-            else if (trimmed.startsWith('!rem') || trimmed.substring(0, 2) === '§§')
-            {
-                lines.push(new Line(trimmed, 'comment'));
+            else if (trimmed.startsWith("!var ")) {
+                lines.push(new Line(trimmed, "var"));
+            } else if (trimmed.startsWith("!const ")) {
+                lines.push(new Line(trimmed, "const"));
+            } else if (trimmed.startsWith("!include ")) {
+                lines.push(new Line(trimmed, "include"));
+            } else if (trimmed.startsWith("!require ")) {
+                lines.push(new Line(trimmed, "require"));
+            } else if (trimmed.startsWith("!css ")) {
+                lines.push(new Line(trimmed, "css"));
+            } else if (trimmed.startsWith("!html")) {
+                lines.push(new Line(trimmed, "html"));
+            } else if (
+                trimmed.startsWith("!rem") ||
+                trimmed.substring(0, 2) === "§§"
+            ) {
+                lines.push(new Line(trimmed, "comment"));
             }
             // Block of code
-            else if (trimmed.substring(0, 2) === '@@@')
-            {
+            else if (trimmed.substring(0, 2) === "@@@") {
                 in_code_block = !in_code_block;
-                lines.push(new Line(value, 'code'))
-            }
-            else if (trimmed.substring(0, 2) === '@@' && trimmed.substring(trimmed.length-2, trimmed.length) !== '@@') // :TODO: Escaping @@ in code for Ruby. @@code@@ should be a <p> not a <pre>!
-            {
-                lines.push(new Line(value, 'code'));
+                lines.push(new Line(value, "code"));
+            } else if (
+                trimmed.substring(0, 2) === "@@" &&
+                trimmed.substring(trimmed.length - 2, trimmed.length) !== "@@"
+            ) {
+                // :TODO: Escaping @@ in code for Ruby. @@code@@ should be a <p> not a <pre>!
+                lines.push(new Line(value, "code"));
             }
             // Block of quote
-            else if (trimmed.substring(0, 2) === '>>>')
-            {
+            else if (trimmed.substring(0, 2) === ">>>") {
                 in_quote_block = !in_quote_block;
-                lines.push(new Line(value, 'quote'))
-            }
-            else if (trimmed.substring(0, 2) === '>>')
-            {
-                lines.push(new Line(value, 'quote'));
+                lines.push(new Line(value, "quote"));
+            } else if (trimmed.substring(0, 2) === ">>") {
+                lines.push(new Line(value, "quote"));
             }
             // Labels
-            else if (trimmed.substring(0, 2) === '::')
-            {
-                lines.push(new Line(trimmed, 'label'));
+            else if (trimmed.substring(0, 2) === "::") {
+                lines.push(new Line(trimmed, "label"));
             }
             // Div (Si la ligne entière est {{ }}, c'est une div. On ne fait pas de span d'une ligne)
-            else if (trimmed.substring(0, 2) === '{{'
-                     && trimmed.substring(trimmed.length - 2) === '}}'
-                     && trimmed.lastIndexOf('{{') == 0) // span au début et à la fin = erreur
-            {
-                lines.push(new Line(trimmed, 'div'));
+            else if (
+                trimmed.substring(0, 2) === "{{" &&
+                trimmed.substring(trimmed.length - 2) === "}}" &&
+                trimmed.lastIndexOf("{{") == 0
+            ) {
+                // span au début et à la fin = erreur
+                lines.push(new Line(trimmed, "div"));
             }
             // Tables
-            else if (trimmed[0] === '|' && trimmed[trimmed.length - 1] === '|')
-            {
-                lines.push(new Line(trimmed, 'row'));
+            else if (
+                trimmed[0] === "|" &&
+                trimmed[trimmed.length - 1] === "|"
+            ) {
+                lines.push(new Line(trimmed, "row"));
             }
             // Definition lists
-            else if (trimmed.substring(0, 2) === '$ ')
-            {
-                lines.push(new Line(trimmed.substring(2), 'definition-header'));
+            else if (trimmed.substring(0, 2) === "$ ") {
+                lines.push(new Line(trimmed.substring(2), "definition-header"));
                 next_is_def = true;
-            }
-            else
-            {
-                if (!next_is_def)
-                {
-                    lines.push(new Line(trimmed, 'text'));
-                }
-                else
-                {
-                    lines.push(new Line(trimmed, 'definition-content'));
+            } else {
+                if (!next_is_def) {
+                    lines.push(new Line(trimmed, "text"));
+                } else {
+                    lines.push(new Line(trimmed, "definition-content"));
                     next_is_def = false;
                 }
             }
@@ -1449,8 +1425,7 @@ class Hamill
     }
 
     // Take a list of tagged lines return a valid Hamill document
-    static parse_tagged_lines(lines)
-    {
+    static parse_tagged_lines(lines) {
         if (DEBUG) console.log(`Processing ${lines.length} lines`);
         let doc = new Document();
         let definition = null;
@@ -1462,16 +1437,17 @@ class Hamill
         // Div & Details
         let heap = [];
         // Main loop
-        for (const line of lines)
-        {
+        for (const line of lines) {
             let text = undefined;
             let id = undefined;
             let value = undefined;
             // List
-            if (actual_list !== null && line.type !== 'unordered_list'
-                                     && line.type !== 'ordered_list'
-                                     && line.type !== 'reverse_list')
-            {
+            if (
+                actual_list !== null &&
+                line.type !== "unordered_list" &&
+                line.type !== "ordered_list" &&
+                line.type !== "reverse_list"
+            ) {
                 doc.add_node(actual_list.root());
                 actual_list = null;
                 actual_level = 0;
@@ -1479,255 +1455,297 @@ class Hamill
             let elem_is_unordered = false;
             let elem_is_ordered = false;
             let elem_is_reverse = false;
-            switch (line.type)
-            {
-                case 'title':
+            switch (line.type) {
+                case "title":
                     let lvl = 0;
-                    for (const char of line.value)
-                    {
-                        if (char === '#')
-                        {
+                    for (const char of line.value) {
+                        if (char === "#") {
                             lvl += 1;
-                        }
-                        else
-                        {
+                        } else {
                             break;
                         }
                     }
                     text = line.value.substring(lvl).trim();
                     doc.add_node(new Title(doc, text, lvl));
-                    doc.add_label(doc.make_anchor(text), '#' + doc.make_anchor(text));
+                    doc.add_label(
+                        doc.make_anchor(text),
+                        "#" + doc.make_anchor(text)
+                    );
                     break;
-                case 'separator':
+                case "separator":
                     doc.add_node(new HR(doc));
                     break;
-                case 'text':
-                    if (line.value.trim().startsWith('\\* ')
-                       || line.value.trim().startsWith('\\!html')
-                       || line.value.trim().startsWith('\\!var')
-                       || line.value.trim().startsWith('\\!const')
-                       || line.value.trim().startsWith('\\!include')
-                       || line.value.trim().startsWith('\\!require'))
-                    {
+                case "text":
+                    if (
+                        line.value.trim().startsWith("\\* ") ||
+                        line.value.trim().startsWith("\\!html") ||
+                        line.value.trim().startsWith("\\!var") ||
+                        line.value.trim().startsWith("\\!const") ||
+                        line.value.trim().startsWith("\\!include") ||
+                        line.value.trim().startsWith("\\!require")
+                    ) {
                         line.value = line.value.trim().substring(1);
                     }
                     let n = Hamill.parse_inner_string(doc, line.value);
                     doc.add_node(new TextLine(doc, n));
                     break;
-                case 'unordered_list':
+                case "unordered_list":
                     elem_is_unordered = true;
-                    if (actual_list === null)
-                    {
+                    if (actual_list === null) {
                         actual_list = new List(doc, null, false, false);
                         actual_level = 1;
                         starting_level = line.param;
                     }
-                    // next
-                case 'ordered_list':
-                    if (line.type === 'ordered_list') elem_is_ordered = true;
-                    if (actual_list === null)
-                    {
+                // next
+                case "ordered_list":
+                    if (line.type === "ordered_list") elem_is_ordered = true;
+                    if (actual_list === null) {
                         actual_list = new List(doc, null, true, false);
                         actual_level = 1;
                         starting_level = line.param;
                     }
-                    // next
-                case 'reverse_list':
-                    if (line.type === 'reverse_list') elem_is_reverse = true;
-                    if (actual_list === null)
-                    {
+                // next
+                case "reverse_list":
+                    if (line.type === "reverse_list") elem_is_reverse = true;
+                    if (actual_list === null) {
                         actual_list = new List(doc, null, true, true);
                         actual_level = 1;
                         starting_level = line.param;
                     }
                     // common code
                     // compute item level
-                    let delimiters = {'unordered_list': '* ', 'ordered_list': '+ ', 'reverse_list': '- '};
+                    let delimiters = {
+                        unordered_list: "* ",
+                        ordered_list: "+ ",
+                        reverse_list: "- ",
+                    };
                     let delimiter = delimiters[line.type];
                     let list_level = line.param; //Math.floor(line.value.indexOf(delimiter) / 2) + 1;
                     // check coherency with the starting level
-                    if (list_level < starting_level)
-                    {
-                        throw new Error("Coherency error: a following item of list has a lesser level than its starting level.");
-                    }
-                    else
-                    {
+                    if (list_level < starting_level) {
+                        throw new Error(
+                            "Coherency error: a following item of list has a lesser level than its starting level."
+                        );
+                    } else {
                         list_level = list_level - (starting_level - 1);
                     }
                     // coherency
-                    if (list_level === actual_level)
-                    {
-                        if ((elem_is_unordered && (actual_list.ordered || actual_list.reverse))
-                            || (elem_is_ordered && !actual_list.ordered)
-                            || (elem_is_reverse && !actual_list.reverse))
-                        {
-                            throw new Error(`Incoherency with previous item ${actual_level} at this level ${list_level}: ul:${elem_is_unordered} ol:${elem_is_unordered} r:${elem_is_reverse} vs o:${actual_list.ordered} r:${actual_list.reverse}`);
+                    if (list_level === actual_level) {
+                        if (
+                            (elem_is_unordered &&
+                                (actual_list.ordered || actual_list.reverse)) ||
+                            (elem_is_ordered && !actual_list.ordered) ||
+                            (elem_is_reverse && !actual_list.reverse)
+                        ) {
+                            throw new Error(
+                                `Incoherency with previous item ${actual_level} at this level ${list_level}: ul:${elem_is_unordered} ol:${elem_is_unordered} r:${elem_is_reverse} vs o:${actual_list.ordered} r:${actual_list.reverse}`
+                            );
                         }
                     }
-                    while (list_level > actual_level)
-                    {
+                    while (list_level > actual_level) {
                         let last = actual_list.pop(); // get and remove the last item
                         let c = new Composite(doc, actual_list); // create a new composite
                         c.add_child(last); // put the old last item in it
                         actual_list = actual_list.add_child(c); // link the new composite to the list
-                        let sub = new List(doc, c, elem_is_ordered, elem_is_reverse); // create a new list
+                        let sub = new List(
+                            doc,
+                            c,
+                            elem_is_ordered,
+                            elem_is_reverse
+                        ); // create a new list
                         actual_list = actual_list.add_child(sub);
                         actual_level += 1;
                     }
-                    while (list_level < actual_level)
-                    {
+                    while (list_level < actual_level) {
                         actual_list = actual_list.get_parent();
-                        if (actual_list.constructor.name === 'Composite') // L'item était un composite, il faut remonter à la liste mère !
-                        {
+                        if (actual_list.constructor.name === "Composite") {
+                            // L'item était un composite, il faut remonter à la liste mère !
                             actual_list = actual_list.get_parent();
                         }
                         actual_level -= 1;
-                        if (actual_list.constructor.name !== 'List')
-                        {
-                            throw new Error(`List incoherency: last element is not a list but a ${actual_list.constructor.name}`);
+                        if (actual_list.constructor.name !== "List") {
+                            throw new Error(
+                                `List incoherency: last element is not a list but a ${actual_list.constructor.name}`
+                            );
                         }
                     }
                     // creation
-                    let item_text = line.value.substring(line.value.indexOf(delimiter) + 2).trim();
+                    let item_text = line.value
+                        .substring(line.value.indexOf(delimiter) + 2)
+                        .trim();
                     let item_nodes = Hamill.parse_inner_string(doc, item_text);
                     actual_list.add_child(new TextLine(doc, item_nodes));
                     break;
-                case 'html':
-                    doc.add_node(new RawHTML(doc, line.value.replace('!html ', '').trim()));
+                case "html":
+                    doc.add_node(
+                        new RawHTML(
+                            doc,
+                            line.value.replace("!html ", "").trim()
+                        )
+                    );
                     break;
-                case 'css':
-                    text = line.value.replace('!css ', '').trim();
+                case "css":
+                    text = line.value.replace("!css ", "").trim();
                     doc.add_css(text);
                     break;
-                case 'include':
-                    let include = line.value.replace('!include ', '').trim();
+                case "include":
+                    let include = line.value.replace("!include ", "").trim();
                     doc.add_node(new Include(doc, include));
                     break;
-                case 'require':
-                    text = line.value.replace('!require ', '').trim();
+                case "require":
+                    text = line.value.replace("!require ", "").trim();
                     doc.add_required(text);
                     break;
-                case 'const':
-                    text = line.value.replace('!const ', '').split('=');
+                case "const":
+                    text = line.value.replace("!const ", "").split("=");
                     id = text[0].trim();
                     value = text[1].trim();
-                    doc.set_variable(id, value, 'string', true);
+                    doc.set_variable(id, value, "string", true);
                     break;
-                case 'var':
-                    text = line.value.replace('!var ', '').split('=');
+                case "var":
+                    text = line.value.replace("!var ", "").split("=");
                     id = text[0].trim();
                     value = text[1].trim();
-                    if (value === 'true') value = true;
-                    if (value === 'TRUE') value = true;
-                    if (value === 'false') value = false;
-                    if (value === 'FALSE') value = false;
-                    let type = 'string';
-                    if (typeof value === 'boolean')
-                    {
-                        type = 'boolean';
+                    if (value === "true") value = true;
+                    if (value === "TRUE") value = true;
+                    if (value === "false") value = false;
+                    if (value === "FALSE") value = false;
+                    let type = "string";
+                    if (typeof value === "boolean") {
+                        type = "boolean";
                     }
                     doc.add_node(new SetVar(doc, id, value, type, false));
                     break;
-                case 'label':
-                    value = line.value.replace(/::/, '').trim();
-                    text = value.split('::');
+                case "label":
+                    value = line.value.replace(/::/, "").trim();
+                    text = value.split("::");
                     let label = text[0].trim();
                     let url = text[1].trim();
                     doc.add_label(label, url);
                     break;
-                case 'div':
-                    value = line.value.substring(2, line.value.length - 2).trim();
+                case "div":
+                    value = line.value
+                        .substring(2, line.value.length - 2)
+                        .trim();
                     let res = Hamill.parse_inner_markup(value);
-                    if (res['text'] === 'end')
-                    {
+                    if (res["text"] === "end") {
                         let p = heap.pop();
-                        if (p === 'Div' || p === null || p === undefined)
-                        {
+                        if (p === "Div" || p === null || p === undefined) {
                             doc.add_node(new EndDiv(doc)); // We can put {{end .myclass #myid}} but it has no meaning except to code reading
-                        } else if (p === 'Detail')
-                        {
+                        } else if (p === "Detail") {
                             doc.add_node(new EndDetail(doc));
                         }
-                    }
-                    else if (res['text'] !== null && res['text'].indexOf('=>') !== -1)
-                    {
-                        let parts = res['text'].split('=>');
-                        if (parts.length === 1 || parts[1].trim().length === 0)
-                        {
-                            doc.add_node(new StartDetail(doc, parts[0].trim(), res['id'], res['class']));
-                            heap.push('Detail');
+                    } else if (
+                        res["text"] !== null &&
+                        res["text"].indexOf("=>") !== -1
+                    ) {
+                        let parts = res["text"].split("=>");
+                        if (
+                            parts.length === 1 ||
+                            parts[1].trim().length === 0
+                        ) {
+                            doc.add_node(
+                                new StartDetail(
+                                    doc,
+                                    parts[0].trim(),
+                                    res["id"],
+                                    res["class"]
+                                )
+                            );
+                            heap.push("Detail");
+                        } else {
+                            doc.add_node(
+                                new Detail(
+                                    doc,
+                                    parts[0].trim(),
+                                    parts[1].trim(),
+                                    res["id"],
+                                    res["class"]
+                                )
+                            );
                         }
-                        else
-                        {
-                            doc.add_node(new Detail(doc, parts[0].trim(), parts[1].trim(), res['id'], res['class']));
-                        }
-                    }
-                    else if (res['has_only_text'] && res['text'] !== 'begin')
-                    {
+                    } else if (
+                        res["has_only_text"] &&
+                        res["text"] !== "begin"
+                    ) {
                         console.log(res);
-                        throw new Error(`Unknown quick markup: ${res['text']} in ${line}`);
-                    }
-                    else if (res['text'] === 'begin' || res['text'] === null) // begin can be omitted if there is no class nor id
-                    {
-                        doc.add_node(new StartDiv(doc, res['id'], res['class']));
-                        heap.push('Div');
+                        throw new Error(
+                            `Unknown quick markup: ${res["text"]} in ${line}`
+                        );
+                    } else if (
+                        res["text"] === "begin" ||
+                        res["text"] === null
+                    ) {
+                        // begin can be omitted if there is no class nor id
+                        doc.add_node(
+                            new StartDiv(doc, res["id"], res["class"])
+                        );
+                        heap.push("Div");
                     }
                     break;
-                case 'comment':
-                    if(line.value.startsWith('!rem '))
-                    {
+                case "comment":
+                    if (line.value.startsWith("!rem ")) {
                         doc.add_node(new Comment(doc, line.value.substring(4)));
-                    }
-                    else
-                    {
+                    } else {
                         doc.add_node(new Comment(doc, line.value.substring(2)));
                     }
                     break;
-                case 'row':
-                    let content = line.value.substring(1, line.value.length - 1);
-                    if (content.length === (content.match(/[-\|]/g) || []).length)
-                    {
+                case "row":
+                    let content = line.value.substring(
+                        1,
+                        line.value.length - 1
+                    );
+                    if (
+                        content.length ===
+                        (content.match(/[-\|]/g) || []).length
+                    ) {
                         let i = doc.nodes.length - 1;
-                        while (doc.get_node(i) instanceof Row)
-                        {
+                        while (doc.get_node(i) instanceof Row) {
                             doc.get_node(i).is_header = true;
                             i -= 1;
                         }
-                    }
-                    else
-                    {
-                        let parts = content.split('|'); // Handle escape
+                    } else {
+                        let parts = content.split("|"); // Handle escape
                         let all_nodes = [];
-                        for (let p of parts)
-                        {
+                        for (let p of parts) {
                             let nodes = Hamill.parse_inner_string(doc, p);
                             all_nodes.push(nodes);
                         }
                         doc.add_node(new Row(doc, all_nodes));
                     }
                     break;
-                case 'empty':
+                case "empty":
                     // Prevent multiple empty nodes
-                    if (doc.nodes.length === 0 || (doc.nodes[doc.nodes.length-1].constructor.name !== "EmptyNode"))
-                    {
+                    if (
+                        doc.nodes.length === 0 ||
+                        doc.nodes[doc.nodes.length - 1].constructor.name !==
+                            "EmptyNode"
+                    ) {
                         doc.add_node(new EmptyNode(doc));
                     }
                     break;
-                case 'definition-header':
+                case "definition-header":
                     definition = Hamill.parse_inner_string(doc, line.value);
                     break;
-                case 'definition-content':
-                    if (definition === null)
-                    {
-                        throw new Error('Definition content without header: ' + line.value);
+                case "definition-content":
+                    if (definition === null) {
+                        throw new Error(
+                            "Definition content without header: " + line.value
+                        );
                     }
-                    doc.add_node(new Definition(doc, definition, Hamill.process_inner_string(doc, line.value)));
+                    doc.add_node(
+                        new Definition(
+                            doc,
+                            definition,
+                            Hamill.process_inner_string(doc, line.value)
+                        )
+                    );
                     definition = null;
                     break;
-                case 'quote':
+                case "quote":
                     doc.add_node(new Quote(doc, line.value));
                     break;
-                case 'code':
+                case "code":
                     doc.add_node(new Code(doc, line.value));
                     break;
                 default:
@@ -1735,367 +1753,444 @@ class Hamill
             }
         }
         // List
-        if (actual_list !== null)
-        {
+        if (actual_list !== null) {
             doc.add_node(actual_list.root());
         }
         return doc;
     }
 
-    static parse_inner_string(doc, str)
-    {
+    static parse_inner_string(doc, str) {
         let index = 0;
-        let word = '';
+        let word = "";
         let nodes = [];
         let matches = [
-            ['@', '@', 'code'],
-            ['(', '(', 'picture'],
-            ['[', '[', 'link'],
-            ['{', '{', 'markup'],
-            ['$', '$', 'echo'],
-            ['*', '*', 'bold'],
-            ['!', '!', 'strong'],
-            ["'", "'", 'italic'],
-            ['/', '/', 'em'],
-            ['_', '_', 'underline'],
-            ['^', '^', 'sup'],
-            ['%', '%', 'sub'],
-            ['-', '-', 'stroke'],
+            ["@", "@", "code"],
+            ["(", "(", "picture"],
+            ["[", "[", "link"],
+            ["{", "{", "markup"],
+            ["$", "$", "echo"],
+            ["*", "*", "bold"],
+            ["!", "!", "strong"],
+            ["'", "'", "italic"],
+            ["/", "/", "em"],
+            ["_", "_", "underline"],
+            ["^", "^", "sup"],
+            ["%", "%", "sub"],
+            ["-", "-", "stroke"],
         ];
         let modes = {
-            'bold': false, 'strong': false, 'italic': false, 'em': false,
-            'underline': false, 'sup': false, 'sub': false, 'stroke': false
-        }
+            bold: false,
+            strong: false,
+            italic: false,
+            em: false,
+            underline: false,
+            sup: false,
+            sub: false,
+            stroke: false,
+        };
 
-        while (index < str.length)
-        {
+        while (index < str.length) {
             let char = str[index];
             let next = index + 1 < str.length ? str[index + 1] : null;
             let next_next = index + 2 < str.length ? str[index + 2] : null;
             let prev = index - 1 >= 0 ? str[index - 1] : null;
             // Remplacement des glyphes
             // Glyphs sur un caractère
-            if (char === '&')
-            {
-                word += '&amp;';
-            } else if (char === '<')
-            {
-                word += '&lt;';
-            } else if (char === '>')
-            {
-                word += '&gt;';
-            // Glyphs - Quatuor
-            } else if (char === '\\' && next === '\\' && next_next === ' ' && prev !== "  ") {
-                if (word.length > 0)
-                {
-                    nodes.push(new Text(doc, word.substring(0, word.length - 1))); // remove the last space
-                    word = '';
+            if (char === "&") {
+                word += "&amp;";
+            } else if (char === "<") {
+                word += "&lt;";
+            } else if (char === ">") {
+                word += "&gt;";
+                // Glyphs - Quatuor
+            } else if (
+                char === "\\" &&
+                next === "\\" &&
+                next_next === " " &&
+                prev !== "  "
+            ) {
+                if (word.length > 0) {
+                    nodes.push(
+                        new Text(doc, word.substring(0, word.length - 1))
+                    ); // remove the last space
+                    word = "";
                 }
                 nodes.push(new BR(doc));
                 index += 2;
-            } else if (char === '\\' && next === '\\' && next_next === '\\') { // escape it
-                word += '\\\\';
+            } else if (char === "\\" && next === "\\" && next_next === "\\") {
+                // escape it
+                word += "\\\\";
                 index += 4;
-            // Glyphs - Trio
-            } else if (char === '.' && next === '.' && next_next === '.' && prev !== "\\") {
-                word += '…';
+                // Glyphs - Trio
+            } else if (
+                char === "." &&
+                next === "." &&
+                next_next === "." &&
+                prev !== "\\"
+            ) {
+                word += "…";
                 index += 2;
-            } else if (char === '=' && next === '=' && next_next === '>' && prev !== "\\") {
-                word += '&DoubleRightArrow;'; // ==>
+            } else if (
+                char === "=" &&
+                next === "=" &&
+                next_next === ">" &&
+                prev !== "\\"
+            ) {
+                word += "&DoubleRightArrow;"; // ==>
                 index += 2;
-            } else if (char === '<' && next === '=' && next_next === '=' && prev !== "\\") {
-                word += '&DoubleLeftArrow;';  // <==
+            } else if (
+                char === "<" &&
+                next === "=" &&
+                next_next === "=" &&
+                prev !== "\\"
+            ) {
+                word += "&DoubleLeftArrow;"; // <==
                 index += 2;
-            // Glyphs - Duo
-            } else if (char === '-' && next === '>' && prev !== "\\") {
-                word += '&ShortRightArrow;';  // ->
+                // Glyphs - Duo
+            } else if (char === "-" && next === ">" && prev !== "\\") {
+                word += "&ShortRightArrow;"; // ->
                 index += 1;
-            } else if (char === '<' && next === '-' && prev !== "\\") {
-                word += '&ShortLeftArrow;';   // <-
+            } else if (char === "<" && next === "-" && prev !== "\\") {
+                word += "&ShortLeftArrow;"; // <-
                 index += 1;
-            } else if (char === 'o' && next === 'e' && prev !== "\\") {
-                word += '&oelig;';            // oe
+            } else if (char === "o" && next === "e" && prev !== "\\") {
+                word += "&oelig;"; // oe
                 index += 1;
-            } else if (char === 'O' && next === 'E' && prev !== "\\") {
-                word += '&OElig;';            // OE
+            } else if (char === "O" && next === "E" && prev !== "\\") {
+                word += "&OElig;"; // OE
                 index += 1;
-            } else if (char === '=' && next === '=' && prev !== "\\") {
-                word += '&Equal;';            // ==
+            } else if (char === "=" && next === "=" && prev !== "\\") {
+                word += "&Equal;"; // ==
                 index += 1;
-            } else if (char === '!' && next === '=' && prev !== "\\") {
-                word += '&NotEqual;';         // !=
+            } else if (char === "!" && next === "=" && prev !== "\\") {
+                word += "&NotEqual;"; // !=
                 index += 1;
-            } else if (char === '>' && next === '=' && prev !== "\\") {
-                word += '&GreaterSlantEqual;';// >=
+            } else if (char === ">" && next === "=" && prev !== "\\") {
+                word += "&GreaterSlantEqual;"; // >=
                 index += 1;
-            } else if (char === '<' && next === '=' && prev !== "\\") {
-                word += '&LessSlantEqual;';   // <=
+            } else if (char === "<" && next === "=" && prev !== "\\") {
+                word += "&LessSlantEqual;"; // <=
                 index += 1;
             }
             // Escaping
-            else if (char === '\\'
-                     && ['*', "'", '-', '_', '^', '%', '@', '$', '(', '[', '{'].includes(next)
-                     && ['*', "'", '-', '_', '^', '%', '@', '$', '(', '[', '{'].includes(next_next)
-                     && next === next_next)
-            {
+            else if (
+                char === "\\" &&
+                [
+                    "*",
+                    "'",
+                    "-",
+                    "_",
+                    "^",
+                    "%",
+                    "@",
+                    "$",
+                    "(",
+                    "[",
+                    "{",
+                ].includes(next) &&
+                [
+                    "*",
+                    "'",
+                    "-",
+                    "_",
+                    "^",
+                    "%",
+                    "@",
+                    "$",
+                    "(",
+                    "[",
+                    "{",
+                ].includes(next_next) &&
+                next === next_next
+            ) {
                 // Do nothing, this an escaping slash
             }
             // Text Styles
-            else
-            {
+            else {
                 let match = null;
-                for (let pattern of matches)
-                {
-                    if (char === pattern[0] && next === pattern[1] && prev !== '\\')
-                    {
+                for (let pattern of matches) {
+                    if (
+                        char === pattern[0] &&
+                        next === pattern[1] &&
+                        prev !== "\\"
+                    ) {
                         match = pattern[2];
                         break;
                     }
                 }
-                if (match !== null)
-                {
-                    if (word.length > 0)
-                    {
+                if (match !== null) {
+                    if (word.length > 0) {
                         nodes.push(new Text(doc, word));
-                        word = '';
+                        word = "";
                     }
-                    if (match === 'picture')
-                    {
-                        let end = str.indexOf('))', index);
-                        if (end === -1)
-                        {
+                    if (match === "picture") {
+                        let end = str.indexOf("))", index);
+                        if (end === -1) {
                             throw new Error(`Unclosed image in ${str}`);
                         }
-                        let content = str.substring(index+2, end);
+                        let content = str.substring(index + 2, end);
                         let res = Hamill.parse_inner_picture(content);
-                        nodes.push(new Picture(doc, res["url"], res["text"], res["class"], res["id"]));
+                        nodes.push(
+                            new Picture(
+                                doc,
+                                res["url"],
+                                res["text"],
+                                res["class"],
+                                res["id"]
+                            )
+                        );
                         index = end + 1;
-                    }
-                    else if (match === 'link')
-                    {
-                        let end = str.indexOf(']]', index);
-                        if (end === -1)
-                        {
+                    } else if (match === "link") {
+                        let end = str.indexOf("]]", index);
+                        if (end === -1) {
                             throw new Error(`Unclosed link in ${str}`);
                         }
-                        let content = str.substring(index+2, end);
-                        let parts = content.split('->');
+                        let content = str.substring(index + 2, end);
+                        let parts = content.split("->");
                         let display = undefined;
                         let url = undefined;
-                        if (parts.length === 1)
-                        {
+                        if (parts.length === 1) {
                             url = parts[0].trim();
-                        }
-                        else if (parts.length === 2)
-                        {
-                            display = Hamill.parse_inner_string(doc, parts[0].trim());
+                        } else if (parts.length === 2) {
+                            display = Hamill.parse_inner_string(
+                                doc,
+                                parts[0].trim()
+                            );
                             url = parts[1].trim();
                         }
                         nodes.push(new Link(doc, url, display));
                         index = end + 1;
-                    }
-                    else if (match === 'markup')
-                    {
-                        let end = str.indexOf('}}', index);
-                        if (end === -1)
-                        {
+                    } else if (match === "markup") {
+                        let end = str.indexOf("}}", index);
+                        if (end === -1) {
                             throw new Error(`Unclosed markup in ${str}`);
                         }
-                        let content = str.substring(index+2, end);
+                        let content = str.substring(index + 2, end);
                         let res = Hamill.parse_inner_markup(content);
-                        if (res['has_text'])
-                        {
-                            nodes.push(new Span(doc, res['id'], res['class'], res['text']));
-                        }
-                        else
-                        {
-                            nodes.push(new ParagraphIndicator(doc, res['id'], res['class']));
+                        if (res["has_text"]) {
+                            nodes.push(
+                                new Span(
+                                    doc,
+                                    res["id"],
+                                    res["class"],
+                                    res["text"]
+                                )
+                            );
+                        } else {
+                            nodes.push(
+                                new ParagraphIndicator(
+                                    doc,
+                                    res["id"],
+                                    res["class"]
+                                )
+                            );
                         }
                         index = end + 1;
-                    }
-                    else if (match === 'echo')
-                    {
-                        let end = str.indexOf('$$', index+2);
-                        if (end === -1)
-                        {
+                    } else if (match === "echo") {
+                        let end = str.indexOf("$$", index + 2);
+                        if (end === -1) {
                             throw new Error(`Unclosed display in ${str}`);
                         }
-                        let content = str.substring(index+2, end);
+                        let content = str.substring(index + 2, end);
                         nodes.push(new GetVar(doc, content));
                         index = end + 1;
-                    }
-                    else if (match === 'code')
-                    {
+                    } else if (match === "code") {
                         let is_code_ok = -1;
-                        let code_str = '';
-                        for (let subindex = index  + 2; subindex < str.length; subindex++)
-                        {
+                        let code_str = "";
+                        for (
+                            let subindex = index + 2;
+                            subindex < str.length;
+                            subindex++
+                        ) {
                             let subchar = str[subindex];
-                            let subnext = (subindex + 1) < str.length ? str[subindex + 1] : null;
-                            let subprev = (subindex - 1) > 0 ? str[subindex - 1] : null;
+                            let subnext =
+                                subindex + 1 < str.length
+                                    ? str[subindex + 1]
+                                    : null;
+                            let subprev =
+                                subindex - 1 > 0 ? str[subindex - 1] : null;
                             // Ignore all formatting in a inline code bloc
-                            if (subchar === '@' && subnext === '@' && subprev !== '\\')
-                            {
+                            if (
+                                subchar === "@" &&
+                                subnext === "@" &&
+                                subprev !== "\\"
+                            ) {
                                 nodes.push(new Code(doc, code_str, true));
                                 is_code_ok = subindex + 1;
                                 break;
                             }
                             // We can only escape @@
-                            else if (subchar === '@' && subnext === '@' && subprev === '\\')
-                            {
+                            else if (
+                                subchar === "@" &&
+                                subnext === "@" &&
+                                subprev === "\\"
+                            ) {
                                 code_str = code_str.slice(0, -1); // remove the \
                                 code_str += subchar; // add the first @, the second will be added through the else
-                            }
-                            else
-                            {
+                            } else {
                                 code_str += subchar;
                             }
                         }
-                        if (is_code_ok === -1)
-                        {
-                            throw new Error("Unfinished inline code sequence: " + str);
+                        if (is_code_ok === -1) {
+                            throw new Error(
+                                "Unfinished inline code sequence: " + str
+                            );
                         }
                         index = is_code_ok; // will inc by 1 at the end of the loop
-                    }
-                    else
-                    {
-                        if (!modes[match])
-                        {
+                    } else {
+                        if (!modes[match]) {
                             modes[match] = true;
-                            nodes.push(new Start(doc, match))
-                        }
-                        else
-                        {
+                            nodes.push(new Start(doc, match));
+                        } else {
                             modes[match] = false;
                             nodes.push(new Stop(doc, match));
                         }
                         index += 1;
                     }
-                }
-                else // no match
-                {
+                } // no match
+                else {
                     word += char;
                 }
             }
             index += 1;
         }
-        if (word.length > 0)
-        {
+        if (word.length > 0) {
             nodes.push(new Text(doc, word));
         }
         return nodes;
     }
 
-    static parse_inner_picture(content)
-    {
+    static parse_inner_picture(content) {
         let res = null;
-        let parts = content.split('->');
-        if (parts.length === 1)
-        {
-            return {'has_text': false, 'has_only_text': false,
-                    'class': null, 'id': null, 'text': null,
-                    'url': parts[0]};
-        }
-        else
-        {
+        let parts = content.split("->");
+        if (parts.length === 1) {
+            return {
+                has_text: false,
+                has_only_text: false,
+                class: null,
+                id: null,
+                text: null,
+                url: parts[0],
+            };
+        } else {
             content = parts[0];
             res = Hamill.parse_inner_markup(content);
-            res['url'] = parts[1].trim();
+            res["url"] = parts[1].trim();
         }
         return res;
     }
 
-    static parse_inner_markup(content)
-    {
+    static parse_inner_markup(content) {
         let cls = null;
         let in_class = false;
         let ids = null;
         let in_ids = false;
         let text = null;
         let in_text = false;
-        for (let c of content)
-        {
-            if (c === '.' && in_class === false && in_ids === false && in_text === false && cls === null && text === null)
-            {
+        for (let c of content) {
+            if (
+                c === "." &&
+                in_class === false &&
+                in_ids === false &&
+                in_text === false &&
+                cls === null &&
+                text === null
+            ) {
                 in_class = true;
-                cls = '';
+                cls = "";
                 continue;
-            }
-            else if (c === '.')
-            {
-                throw new Error(`Class or text already defined for this markup: ${content}`);
+            } else if (c === ".") {
+                throw new Error(
+                    `Class or text already defined for this markup: ${content}`
+                );
             }
 
-            if (c === '#' && in_class === false && in_ids === false && in_text === false && ids === null && text === null)
-            {
+            if (
+                c === "#" &&
+                in_class === false &&
+                in_ids === false &&
+                in_text === false &&
+                ids === null &&
+                text === null
+            ) {
                 in_ids = true;
-                ids = '';
+                ids = "";
                 continue;
-            }
-            else if (c === '#')
-            {
-                throw new Error(`ID or text alreay defined for this markup: ${content}`);
+            } else if (c === "#") {
+                throw new Error(
+                    `ID or text alreay defined for this markup: ${content}`
+                );
             }
 
-            if (c === ' ' && in_class)
-            {
+            if (c === " " && in_class) {
                 in_class = false;
             }
 
-            if (c === ' ' && in_ids)
-            {
+            if (c === " " && in_ids) {
                 in_ids = false;
             }
 
-            if (c !== ' ' && in_class === false && in_ids === false && in_text === false && text === null)
-            {
+            if (
+                c !== " " &&
+                in_class === false &&
+                in_ids === false &&
+                in_text === false &&
+                text === null
+            ) {
                 in_text = true;
-                text = '';
+                text = "";
             }
 
-            if (in_class)
-            {
+            if (in_class) {
                 cls += c;
-            }
-            else if (in_ids)
-            {
+            } else if (in_ids) {
                 ids += c;
-            }
-            else if (in_text)
-            {
+            } else if (in_text) {
                 text += c;
             }
         }
-        let has_text = (text !== null) ? true : false;
-        let has_only_text = (has_text && cls === null && ids === null) ? true : false;
-        return {'has_text': has_text, 'has_only_text': has_only_text,  'class': cls, 'id': ids, 'text': text};
+        let has_text = text !== null ? true : false;
+        let has_only_text =
+            has_text && cls === null && ids === null ? true : false;
+        return {
+            has_text: has_text,
+            has_only_text: has_only_text,
+            class: cls,
+            id: ids,
+            text: text,
+        };
     }
-
 }
 
 //-------------------------------------------------------------------------------
 // Functions
 //-------------------------------------------------------------------------------
 
-function tests(stop_on_first_error=false, stop_at=null)
-{
-    console.log("\n========================================================================");
+function tests(stop_on_first_error = false, stop_at = null) {
+    console.log(
+        "\n========================================================================"
+    );
     console.log("Starting tests");
-    console.log("========================================================================");
+    console.log(
+        "========================================================================"
+    );
     let test_suite = [
         // Comments, HR and BR
         ["!rem This is a comment", ""],
         ["§§ This is another comment", ""],
-        ["!var EXPORT_COMMENT=true\n!rem This is a comment", "<!-- This is a comment -->\n"],
+        [
+            "!var EXPORT_COMMENT=true\n!rem This is a comment",
+            "<!-- This is a comment -->\n",
+        ],
         ["---", "<hr>\n"],
         ["a \\\\ b", "<p>a<br>b</p>\n"],
         // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
         // Paragraph
-        ["a", '<p>a</p>\n'],
-        ["a\n\n\n", '<p>a</p>\n'],
-        ["a\nb\n\n", '<p>a<br>\nb</p>\n'],
+        ["a", "<p>a</p>\n"],
+        ["a\n\n\n", "<p>a</p>\n"],
+        ["a\nb\n\n", "<p>a<br>\nb</p>\n"],
         // Text modifications
         ["**bonjour**", "<p><b>bonjour</b></p>\n"],
         ["''italic''", "<p><i>italic</i></p>\n"],
@@ -2108,79 +2203,139 @@ function tests(stop_on_first_error=false, stop_at=null)
         ["//ceci est emphase//", "<p><em>ceci est emphase</em></p>\n"],
         // Escaping
         ["\\**bonjour\\**", "<p>**bonjour**</p>\n"],
-        ["@@code \\@@variable = '\\n' end@@", "<p><code>code @@variable = '\\n' end</code></p>\n"],
+        [
+            "@@code \\@@variable = '\\n' end@@",
+            "<p><code>code @@variable = '\\n' end</code></p>\n",
+        ],
         // Div, p and span
         ["{{#myid .myclass}}", '<div id="myid" class="myclass">\n'],
         ["{{#myid}}", '<div id="myid">\n'],
         ["{{.myclass}}", '<div class="myclass">\n'],
-        ["{{begin}}", '<div>\n'],
-        ["{{end}}", '</div>\n'],
-        ["{{#myid .myclass}}content", '<p id="myid" class="myclass">content</p>\n'],
+        ["{{begin}}", "<div>\n"],
+        ["{{end}}", "</div>\n"],
+        [
+            "{{#myid .myclass}}content",
+            '<p id="myid" class="myclass">content</p>\n',
+        ],
         ["{{#myid}}content", '<p id="myid">content</p>\n'],
         ["{{.myclass}}content", '<p class="myclass">content</p>\n'],
-        ["je suis {{#myid .myclass rouge}} et oui !", '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n'],
-        ["je suis {{#myid rouge}} et oui !", '<p>je suis <span id="myid">rouge</span> et oui !</p>\n'],
-        ["je suis {{.myclass rouge}} et oui !", '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n'],
+        [
+            "je suis {{#myid .myclass rouge}} et oui !",
+            '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n',
+        ],
+        [
+            "je suis {{#myid rouge}} et oui !",
+            '<p>je suis <span id="myid">rouge</span> et oui !</p>\n',
+        ],
+        [
+            "je suis {{.myclass rouge}} et oui !",
+            '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n',
+        ],
         // Details
-        ["{{small => petit}}", "<details><summary>small</summary>petit</details>\n"],
-        ["{{big =>}}\n* This is very big!\n* Indeed\n{{end}}", "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n"],
+        [
+            "{{small => petit}}",
+            "<details><summary>small</summary>petit</details>\n",
+        ],
+        [
+            "{{big =>}}\n* This is very big!\n* Indeed\n{{end}}",
+            "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n",
+        ],
         // Code
-        ["Voici du code : @@if a == 5 then puts('hello 5') end@@", "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n"],
-        ["Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@", `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`],
+        [
+            "Voici du code : @@if a == 5 then puts('hello 5') end@@",
+            "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n",
+        ],
+        [
+            "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
+            `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`,
+        ],
         // Quotes
 
         // Lists
-        ["* Bloc1\n  * A\n  * B\n* Bloc2\n  * C", "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n"],
+        [
+            "* Bloc1\n  * A\n  * B\n* Bloc2\n  * C",
+            "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n",
+        ],
         ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
         // Definition lists
         // Tables
         // Links
-        ["[[Ceci est un mauvais lien->", "", "Unclosed link in [[Ceci est un mauvais lien->"],
+        [
+            "[[Ceci est un mauvais lien->",
+            "",
+            "Unclosed link in [[Ceci est un mauvais lien->",
+        ],
         // Images
 
         // Constants
         ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
         ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
-        ["!const ALPHACONST = abcd\n!const ALPHACONST = efgh", "", "Can't set the value of the already defined constant: ALPHACONST of type string"],
+        [
+            "!const ALPHACONST = abcd\n!const ALPHACONST = efgh",
+            "",
+            "Can't set the value of the already defined constant: ALPHACONST of type string",
+        ],
         // Variables
         ["!var NUMBER=5\n$$NUMBER$$", "<p>5</p>\n"],
-        ["!var ALPHA=je suis un poulpe\n$$ALPHA$$", "<p>je suis un poulpe</p>\n"],
+        [
+            "!var ALPHA=je suis un poulpe\n$$ALPHA$$",
+            "<p>je suis un poulpe</p>\n",
+        ],
         ["!var BOOLEAN=true\n$$BOOLEAN$$", "<p>true</p>\n"],
-        ["!var NUM=1\n$$NUM$$\n!var NUM=25\n$$NUM$$\n", "<p>1</p>\n<p>25</p>\n"],
+        [
+            "!var NUM=1\n$$NUM$$\n!var NUM=25\n$$NUM$$\n",
+            "<p>1</p>\n<p>25</p>\n",
+        ],
         ["\\!var I AM NOT A VAR", "<p>!var I AM NOT A VAR</p>\n"],
         ["$$UNKNOWNVAR$$", "", "Unknown variable: UNKNOWNVAR"],
-        ["!var TITLE=ERROR", "", "You cannot use TITLE for a variable because it is a predefined constant."],
+        [
+            "!var TITLE=ERROR",
+            "",
+            "You cannot use TITLE for a variable because it is a predefined constant.",
+        ],
         // Inclusion of HTML files
         ["!include include_test.html", "<h1>Hello World!</h1>\n"],
-        ["\\!include I AM NOT AN INCLUDE", "<p>!include I AM NOT AN INCLUDE</p>\n"],
+        [
+            "\\!include I AM NOT AN INCLUDE",
+            "<p>!include I AM NOT AN INCLUDE</p>\n",
+        ],
         // Links to CSS and JavaScript files
         ["!require pipo.css", ""],
-        ["\\!require I AM NOT A REQUIRE", "<p>!require I AM NOT A REQUIRE</p>\n"],
+        [
+            "\\!require I AM NOT A REQUIRE",
+            "<p>!require I AM NOT A REQUIRE</p>\n",
+        ],
         // Raw HTML and CSS
         ["!html <div>Hello</div>", "<div>Hello</div>\n"],
-        ["\\!html <div>Hello</div>", "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n"], // Error, the \ should be removed!
-        ["!css p { color: pink;}", ""]
+        [
+            "\\!html <div>Hello</div>",
+            "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n",
+        ], // Error, the \ should be removed!
+        ["!css p { color: pink;}", ""],
     ];
     let nb_ok = 0;
-    for (let [index, t] of test_suite.entries())
-    {
-        if (t === undefined || t === null || !Array.isArray(t) || (t.length !== 2 && t.length !== 3))
-        {
+    for (let [index, t] of test_suite.entries()) {
+        if (
+            t === undefined ||
+            t === null ||
+            !Array.isArray(t) ||
+            (t.length !== 2 && t.length !== 3)
+        ) {
             throw new Error("Test not well defined:", t);
         }
-        console.log("\n-------------------------------------------------------------------------");
-        console.log(`Test ${index+1}`);
-        console.log("-------------------------------------------------------------------------\n");
-        if (test(t[0], t[1], t.length === 3 ? t[2] : null))
-        {
+        console.log(
+            "\n-------------------------------------------------------------------------"
+        );
+        console.log(`Test ${index + 1}`);
+        console.log(
+            "-------------------------------------------------------------------------\n"
+        );
+        if (test(t[0], t[1], t.length === 3 ? t[2] : null)) {
             nb_ok += 1;
-        }
-        else if (stop_on_first_error)
-        {
+        } else if (stop_on_first_error) {
             throw new Error("Stopping on first error");
         }
-        if (stop_at !== null && stop_at === index + 1)
-        {
+        if (stop_at !== null && stop_at === index + 1) {
             console.log(`Stopped at ${stop_at}`);
             break;
         }
@@ -2193,30 +2348,21 @@ function tests(stop_on_first_error=false, stop_at=null)
     //let doc = Hamill.process_string("Bonjour $$VERSION$$");
 }
 
-function test(text, result, error=null)
-{
-    try
-    {
+function test(text, result, error = null) {
+    try {
         let doc = Hamill.process(text);
         let output = doc.to_html();
         console.log("RESULT:");
-        if (output === "")
-        {
+        if (output === "") {
             console.log("EMPTY");
-        }
-        else
-        {
+        } else {
             console.log(output);
         }
-        if (output === result)
-        {
+        if (output === result) {
             console.log("Test Validated");
             return true;
-        }
-        else
-        {
-            if (result === "")
-            {
+        } else {
+            if (result === "") {
                 result = "EMPTY";
             }
             console.log(`Error, expected:\n${result}`);
@@ -2224,20 +2370,15 @@ function test(text, result, error=null)
         }
     } catch (e) {
         console.log("RESULT:");
-        if (error !== null && e.message === error)
-        {
+        if (error !== null && e.message === error) {
             console.log("Error expected:", e.message);
             console.log("Test Validated");
             return true;
-        }
-        else if (error !== null)
-        {
+        } else if (error !== null) {
             console.log(e.message);
             console.log(`Error, expected:\n${error}`);
             return false;
-        }
-        else
-        {
+        } else {
             console.log("Unexpected error:", e.message, e.stack);
             console.log(`No error expected, expected:\n${result}`);
             return false;
@@ -2250,27 +2391,29 @@ function test(text, result, error=null)
 //-------------------------------------------------------------------------------
 
 const DEBUG = false;
-if (fs !== null)
-{
+if (fs !== null) {
     const do_test = false;
-    if (do_test)
-    {
+    if (do_test) {
         tests(true); //, 5);
-    }
-    else
-    {
-        console.log("------------------------------------------------------------------------");
+    } else {
+        console.log(
+            "------------------------------------------------------------------------"
+        );
         console.log("Test de process_file (hamill)");
-        console.log("------------------------------------------------------------------------\n");
+        console.log(
+            "------------------------------------------------------------------------\n"
+        );
         // Root
-        Hamill.process('../../dgx/static/input/blog.hml').to_html_file('../../dgx/');
-        Hamill.process('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
-        Hamill.process('../../dgx/static/input/plan.hml').to_html_file('../../dgx/');
-        Hamill.process('../../dgx/static/input/liens.hml').to_html_file('../../dgx/');
-        Hamill.process('../../dgx/static/input/tests.hml').to_html_file('../../dgx/');
+        //Hamill.process('../../dgx/static/input/blog.hml').to_html_file('../../dgx/');
+        //Hamill.process('../../dgx/static/input/index.hml').to_html_file('../../dgx/');
+        //Hamill.process('../../dgx/static/input/plan.hml').to_html_file('../../dgx/');
+        Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
+            "../../dgx/"
+        );
+        //Hamill.process('../../dgx/static/input/tests.hml').to_html_file('../../dgx/');
         // Passetemps
-        Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
+        //Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
     }
 }
 
-export {Hamill, Document};
+export { Hamill, Document };
