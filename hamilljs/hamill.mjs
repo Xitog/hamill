@@ -1042,6 +1042,11 @@ class Document {
                     out += this.to_s(level + 1, n);
                 }
             }
+            if (node instanceof Row) {
+                for (const n of node.node_list_list) {
+                    out += this.to_s(level + 1, n);
+                }
+            }
         }
         return out;
     }
@@ -1186,6 +1191,8 @@ class Hamill {
             "7",
             "8",
             "9",
+            "½",
+            "¾",
             "$",
             "€",
             "£",
@@ -2412,7 +2419,9 @@ if (fs !== null) {
         );
         //Hamill.process('../../dgx/static/input/tests.hml').to_html_file('../../dgx/');
         // Passetemps
-        //Hamill.process('../../dgx/static/input/passetemps/pres_jeuxvideo.hml').to_html_file('../../dgx/passetemps/');
+        Hamill.process(
+            "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
+        ).to_html_file("../../dgx/passetemps/");
     }
 }
 
