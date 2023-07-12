@@ -46,7 +46,7 @@ A comment must be an entire line, you can't put a comment at the end of a line o
 
 Comment can be exported in the resulting document by setting the variable ``EXPORT_COMMENT`` to true.
 
-You can put a new line (br) with `` \\ `` surrounded by one space on each side.
+You can put a new line (br) with `` ## `` surrounded by one space on each side but not at the start of the line (or it will handled as a title declaration).
 
 You can put a line (hr) with a line with only three or more ``-`` on it :``---``.
 
