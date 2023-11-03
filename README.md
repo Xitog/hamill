@@ -8,7 +8,7 @@ The Python 3 version handles only Hamill 1.0. The Javascript version handles onl
 
 First version released in 2020. Version 2 released in 2022.
 
-You can try it live [here](https://xitog.github.io/dgx/informatique/hamilljs/hamill_live.html).
+You can try it live [here](https://xitog.github.io/dgx/hamill/index.html).
 
 <p align="right">
 Damien Gouteux 2020-2022
