@@ -697,7 +697,7 @@ class Document {
     }
 
     make_anchor(text) {
-        let step1 = text.replace(/ /g, "-"); // toLocaleLowerCase()
+        let step1 = text.replace(/ /g, "-").toLocaleLowerCase();
         let result = "";
         let in_html = false;
         for (let c of step1) {
@@ -938,12 +938,10 @@ class Document {
                     } else {
                         content += this.safe(node.content.substring(2)) + "<br>\n";
                     }
+                } else if (node.content.startsWith(">>")) {
+                    content += this.safe(node.content.substring(2)) + "<br>\n";
                 } else {
-                    if (node.content.startsWith(">>")) {
-                        content += this.safe(node.content.substring(2)) + "<br>\n";
-                    } else {
                         content += this.safe(node.content) + "<br>\n";
-                    }
                 }
             } else if (node instanceof Code) {
                 if (!in_code_block) {
@@ -954,12 +952,10 @@ class Document {
                     } else {
                         content += node.content.substring(2) + "\n";
                     }
-                } else {
-                    if (node.content.startsWith("@@")) {
+                } else if (node.content.startsWith("@@")) {
                         content += node.content.substring(2) + "\n";
-                    } else {
+                } else {
                         content += node.content + "\n";
-                    }
                 }
             } else if (node instanceof Row) {
                 if (!in_table) {
@@ -985,16 +981,14 @@ class Document {
                     content += `</${delim}>`;
                 }
                 content += "</tr>\n";
-            } else {
-                if (skip_error) {
-                    not_processed += 1;
-                    if (!(types_not_processed.includes(node.constructor.name))) {
-                        types_not_processed[node.constructor.name] = 0;
-                    }
-                    types_not_processed[node.constructor.name] += 1;
-                } else {
-                    throw new Error(`Unknown node: ${node.constructor.name}`);
+            } else if (skip_error) {
+                not_processed += 1;
+                if (!(types_not_processed.includes(node.constructor.name))) {
+                    types_not_processed[node.constructor.name] = 0;
                 }
+                types_not_processed[node.constructor.name] += 1;
+            } else {
+                throw new Error(`Unknown node: ${node.constructor.name}`);
             }
         }
         if (in_paragraph) {
@@ -1255,6 +1249,8 @@ class Hamill {
             "»",
             "’",
             "‘",
+            "“",
+            "”",
             "…", // Common ponctuations
             "\n",
             "\t", // Common whitespaces \r is NOT AUTHORIZED
@@ -1457,13 +1453,11 @@ class Hamill {
             else if (trimmed.substring(0, 2) === "$ ") {
                 lines.push(new Line(trimmed.substring(2), "definition-header"));
                 next_is_def = true;
+            } else if (!next_is_def) {
+                lines.push(new Line(trimmed, "text"));
             } else {
-                if (!next_is_def) {
-                    lines.push(new Line(trimmed, "text"));
-                } else {
-                    lines.push(new Line(trimmed, "definition-content"));
-                    next_is_def = false;
-                }
+                lines.push(new Line(trimmed, "definition-content"));
+                next_is_def = false;
             }
         }
         return lines;
@@ -1483,9 +1477,9 @@ class Hamill {
         // Main loop
         for (const line of lines) {
             count += 1;
-            let text = undefined;
-            let id = undefined;
-            let value = undefined;
+            let text = null;
+            let id = null;
+            let value = null;
             // List
             if (
                 actual_list !== null &&
@@ -2017,8 +2011,8 @@ class Hamill {
                         }
                         let content = str.substring(index + 2, end);
                         let parts = content.split("->");
-                        let display = undefined;
-                        let url = undefined;
+                        let display = null;
+                        let url = null;
                         if (parts.length === 1) {
                             url = parts[0].trim();
                         } else if (parts.length === 2) {
@@ -2066,48 +2060,6 @@ class Hamill {
                         index = end + 1;
                     } else if (match === "code") {
                         let is_code_ok = Hamill.find(str, index + 2, "@@");
-                        //let code_str = "";
-                        /*
-                        for (
-                            let subindex = index + 2;
-                            subindex < str.length;
-                            subindex++
-                        ) {
-                            let subchar = str[subindex];
-                            let subnext =
-                                subindex + 1 < str.length
-                                    ? str[subindex + 1]
-                                    : null;
-                            let subprev =
-                                subindex - 1 > 0 ? str[subindex - 1] : null;
-                            // Ignore all formatting in a inline code bloc
-                            if (
-                                subchar === "@" &&
-                                subnext === "@" &&
-                                subprev !== "\\"
-                            ) {
-                                nodes.push(new Code(doc, code_str, true));
-                                is_code_ok = subindex + 1;
-                                break;
-                            }
-                            // We can only escape @@ and \
-                            else if (
-                                subchar === "@" &&
-                                subnext === "@" &&
-                                subprev === "\\"
-                            ) {
-                                code_str = code_str.slice(0, -1); // remove the \
-                                code_str += subchar; // add the first @, the second will be added through the else
-                            } else if (
-                                subchar === "\\" &&
-                                subnext === "\\"
-                            ) {
-                                subindex += 1;
-                            } else {
-                                code_str += subchar;
-                            }
-                        }
-                        */
                         if (is_code_ok === -1) {
                             throw new Error(
                                 "Unfinished inline code sequence: " + str
@@ -2228,9 +2180,9 @@ class Hamill {
                 text += c;
             }
         }
-        let has_text = text !== null ? true : false;
+        let has_text = text !== null;
         let has_only_text =
-            has_text && cls === null && ids === null ? true : false;
+            has_text && cls === null && ids === null;
         return {
             has_text: has_text,
             has_only_text: has_only_text,
@@ -2487,7 +2439,6 @@ if (fs !== null) {
         Hamill.process("../../dgx/static/input/index.hml").to_html_file(
             "../../dgx/"
         );
-        /*
         Hamill.process("../../dgx/static/input/blog.hml").to_html_file(
             "../../dgx/"
         );
@@ -2497,13 +2448,15 @@ if (fs !== null) {
         Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
             "../../dgx/"
         );
+        /*
         Hamill.process("../../dgx/static/input/tests.hml").to_html_file(
             "../../dgx/"
-        );
+        ); */
         // Passetemps
         Hamill.process(
             "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
         ).to_html_file("../../dgx/passetemps/");
+        /*
         //- RTS ---------------------------------------------------------------
         Hamill.process(
             "../../dgx/static/input/rts/index.hml"
