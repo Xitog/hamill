@@ -1890,7 +1890,7 @@ class Hamill {
                 char === "#" &&
                 next === "#" &&
                 next_next === " " &&
-                prev !== "  "
+                prev !== "\\"
             ) {
                 if (word.length > 0) {
                     nodes.push(
@@ -2448,15 +2448,14 @@ if (fs !== null) {
         Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
             "../../dgx/"
         );
-        /*
         Hamill.process("../../dgx/static/input/tests.hml").to_html_file(
             "../../dgx/"
-        ); */
+        );
         // Passetemps
         Hamill.process(
             "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
         ).to_html_file("../../dgx/passetemps/");
-        /*
+        /* This is not code
         //- RTS ---------------------------------------------------------------
         Hamill.process(
             "../../dgx/static/input/rts/index.hml"
