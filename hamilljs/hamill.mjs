@@ -34,22 +34,12 @@ let fs = null;
 if (
     typeof process !== "undefined" &&
     process !== null &&
-    typeof process.version !== "undefined" &&
-    process.version !== null &&
-    typeof process.version === "string"
+    typeof process?.version !== "undefined" &&
+    typeof process?.version === "string"
 ) {
     // Node code only
     //import fs from 'fs';
     fs = await import("fs");
-}
-
-//-----------------------------------------------------------------------------
-// Functions
-//-----------------------------------------------------------------------------
-
-function pp(o) {
-    o.document = "redacted";
-    return o;
 }
 
 //-----------------------------------------------------------------------------
@@ -169,7 +159,7 @@ class Picture extends Node {
         if (this.text !== null) {
             return `<figure><img ${cls} ${ids} src="${this.content}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
         } else {
-            return `<img ${cls} ${ids} src="${this.content}"/>`;
+            return `<img${cls}${ids} src="${this.content}"/>`;
         }
     }
 }
@@ -227,7 +217,7 @@ class ParagraphIndicator extends EmptyNode {
     }
 }
 
-class Comment extends Node {}
+class Comment extends Node { }
 
 class Row extends EmptyNode {
     constructor(document, node_list_list) {
@@ -243,7 +233,7 @@ class RawHTML extends Node {
     }
 }
 
-class Include extends Node {}
+class Include extends Node { }
 
 class Title extends Node {
     constructor(document, content, level) {
@@ -480,13 +470,23 @@ class Link extends EmptyNode {
         return `<a href="${url}">${display}</a>`;
     }
 }
+
 class Definition extends Node {
     constructor(document, header, content) {
         super(document, content);
         this.header = header;
     }
 }
-class Quote extends Node {}
+
+class Quote extends Node {
+    toString() {
+        return `Quote { content: ${this.content.replace(/\n/g, "\\n")}}`;
+    }
+    to_html() {
+        return "<blockquote>\n" + this.document.safe(this.content).replace(/\n/g, "<br>\n") + "</blockquote>\n";
+    }
+}
+
 class Code extends Node {
     constructor(document, content, inline = false) {
         super(document, content);
@@ -531,7 +531,7 @@ class SetVar extends EmptyNode {
         this.constant = constant;
     }
 }
-class Markup extends Node {}
+class Markup extends Node { }
 
 // Variable & document
 
@@ -756,7 +756,7 @@ class Document {
             } else {
                 throw new Error(
                     "Impossible to handle this type of node: " +
-                        node.constructor.name
+                    node.constructor.name
                 );
             }
         }
@@ -778,9 +778,9 @@ class Document {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${this.get_variable("TITLE", "Undefined title")}</title>
   <link rel="icon" href="${this.get_variable(
-        "ICON",
-        "Undefined icon"
-  )}" type="image/x-icon" />
+                "ICON",
+                "Undefined icon"
+            )}" type="image/x-icon" />
   <link rel="shortcut icon" href="https://xitog.github.io/dgx/img/favicon.ico" type="image/x-icon" />\n`;
             // For CSS
             if (this.required.length > 0) {
@@ -842,10 +842,6 @@ class Document {
                 content += "</table>\n";
                 in_table = false;
             }
-            if (!(node instanceof Quote) && in_quote_block) {
-                content += "</blockquote>\n";
-                in_quote_block = false;
-            }
             if (!(node instanceof Code) && in_code_block) {
                 content += "</pre>\n";
                 in_code_block = false;
@@ -887,7 +883,8 @@ class Document {
                 node instanceof EndDetail ||
                 node instanceof Detail ||
                 node instanceof RawHTML ||
-                node instanceof List
+                node instanceof List ||
+                node instanceof Quote
             ) {
                 content += node.to_html();
             } else if (node instanceof TextLine) {
@@ -927,22 +924,8 @@ class Document {
                     content += "<p>";
                 content = this.string_to_html(content, node.content);
                 if (this.get_variable("PARAGRAPH_DEFINITION") === true)
-                    content += "</p>";
+                    content += "</p>\n";
                 content += "</dd>\n";
-            } else if (node instanceof Quote) {
-                if (!in_quote_block) {
-                    in_quote_block = true;
-                    content += "<blockquote>\n";
-                    if (node.content.startsWith(">>>")) {
-                        content += this.safe(node.content.substring(3)) + "<br>\n";
-                    } else {
-                        content += this.safe(node.content.substring(2)) + "<br>\n";
-                    }
-                } else if (node.content.startsWith(">>")) {
-                    content += this.safe(node.content.substring(2)) + "<br>\n";
-                } else {
-                        content += this.safe(node.content) + "<br>\n";
-                }
             } else if (node instanceof Code) {
                 if (!in_code_block) {
                     in_code_block = true;
@@ -953,9 +936,9 @@ class Document {
                         content += node.content.substring(2) + "\n";
                     }
                 } else if (node.content.startsWith("@@")) {
-                        content += node.content.substring(2) + "\n";
+                    content += node.content.substring(2) + "\n";
                 } else {
-                        content += node.content + "\n";
+                    content += node.content + "\n";
                 }
             } else if (node instanceof Row) {
                 if (!in_table) {
@@ -1323,16 +1306,19 @@ class Hamill {
         let next_is_def = false;
         let in_code_block = false; // only the first and the last line start with @@@
         let in_code_block_prefixed = false; // each line must start with @@
-        let in_quote_block = false;
+        let in_quote_block = false; // only the first and the last line start with >>>
         for (const value of raw) {
             let trimmed = value.trim();
             // Check states
             // End of prefixed block
             if (in_code_block_prefixed && !trimmed.startsWith('@@') && !trimmed.startsWith('@@@')) {
                 in_code_block_prefixed = false;
-            // Final line @@@ of a not prefixed block
+                // Final line @@@ of a not prefixed block
             } else if (in_code_block && trimmed === '@@@') {
                 in_code_block = false;
+                continue;
+            } else if (in_quote_block && trimmed === '>>>') {
+                in_quote_block = false;
                 continue;
             }
 
@@ -1343,7 +1329,7 @@ class Hamill {
                 lines.push(new Line(value, "quote"));
             } else if (trimmed.length === 0) {
                 lines.push(new Line("", "empty"));
-            // Titles :
+                // Titles :
             } else if (trimmed[0] === "#") {
                 lines.push(new Line(trimmed, "title"));
             }
@@ -1409,12 +1395,11 @@ class Hamill {
                 !trimmed.substring(2).includes("@@")
             ) {
                 in_code_block_prefixed = true;
-                // :TODO: Escaping @@ in code for Ruby. @@code@@ should be a <p> not a <pre>!
                 lines.push(new Line(value, "code"));
             }
             // Block of quote
             else if (trimmed.substring(0, 3) === ">>>") {
-                in_quote_block = !in_quote_block;
+                in_quote_block = true; // will be desactivate in Check states
                 lines.push(new Line(value, "quote"));
             } else if (trimmed.substring(0, 2) === ">>") {
                 lines.push(new Line(value, "quote"));
@@ -1431,14 +1416,14 @@ class Hamill {
             ) {
                 // span au début et à la fin = erreur
                 lines.push(new Line(trimmed, "div"));
-            // Detail
+                // Detail
             } else if (
                 trimmed.substring(0, 2) === "<<" &&
                 trimmed.substring(trimmed.length - 2) === ">>" &&
                 trimmed.lastIndexOf("<<") == 0
             ) {
                 lines.push(new Line(trimmed, "detail"))
-            // Tables
+                // Tables
             } else if (
                 trimmed[0] === "|" &&
                 trimmed[trimmed.length - 1] === "|"
@@ -1461,7 +1446,7 @@ class Hamill {
 
     // Take a list of tagged lines return a valid Hamill document
     static parse_tagged_lines(lines) {
-        if (DEBUG) console.log(`Processing ${lines.length} lines`);
+        if (DEBUG) console.log(`\nProcessing ${lines.length} lines`);
         let doc = new Document();
         let definition = null;
         // Lists
@@ -1469,10 +1454,10 @@ class Hamill {
         let actual_level = 0;
         let starting_level = 0;
         // On pourrait avoir un root aussi
-        let count = 0;
         // Main loop
-        for (const line of lines) {
-            count += 1;
+        let count = 0;
+        while (count < lines.length) {
+            let line = lines[count];
             let text = null;
             let id = null;
             let value = null;
@@ -1487,12 +1472,32 @@ class Hamill {
                 actual_list = null;
                 actual_level = 0;
             }
+            // Titles
+            let lvl = 0;
+            // Quotes
+            let nodeContent = "";
+            let free = false;
+            // Lists
+            let delimiters = {
+                unordered_list: "* ",
+                ordered_list: "+ ",
+                reverse_list: "- ",
+            };
+            let delimiter = "";
+            let list_level = 0;
             let elem_is_unordered = false;
             let elem_is_ordered = false;
             let elem_is_reverse = false;
+            let item_text = "";
+            let item_nodes = [];
+            // Includes
+            let include = "";
+            // Rows
+            let content = "";
+            // Divs
+            let res = null;
             switch (line.type) {
                 case "title":
-                    let lvl = 0;
                     for (const char of line.value) {
                         if (char === "#") {
                             lvl += 1;
@@ -1560,13 +1565,8 @@ class Hamill {
                     }
                     // common code
                     // compute item level
-                    let delimiters = {
-                        unordered_list: "* ",
-                        ordered_list: "+ ",
-                        reverse_list: "- ",
-                    };
-                    let delimiter = delimiters[line.type];
-                    let list_level = line.param; //Math.floor(line.value.indexOf(delimiter) / 2) + 1;
+                    delimiter = delimiters[line.type];
+                    list_level = line.param; //Math.floor(line.value.indexOf(delimiter) / 2) + 1;
                     // check coherency with the starting level
                     if (list_level < starting_level) {
                         throw new Error(
@@ -1616,10 +1616,10 @@ class Hamill {
                         }
                     }
                     // creation
-                    let item_text = line.value
+                    item_text = line.value
                         .substring(line.value.indexOf(delimiter) + 2)
                         .trim();
-                    let item_nodes = Hamill.parse_inner_string(doc, item_text);
+                    item_nodes = Hamill.parse_inner_string(doc, item_text);
                     actual_list.add_child(new TextLine(doc, item_nodes));
                     break;
                 case "html":
@@ -1635,7 +1635,7 @@ class Hamill {
                     doc.add_css(text);
                     break;
                 case "include":
-                    let include = line.value.replace("!include ", "").trim();
+                    include = line.value.replace("!include ", "").trim();
                     doc.add_node(new Include(doc, include));
                     break;
                 case "require":
@@ -1656,18 +1656,12 @@ class Hamill {
                     if (value === "TRUE") value = true;
                     if (value === "false") value = false;
                     if (value === "FALSE") value = false;
-                    let type = "string";
-                    if (typeof value === "boolean") {
-                        type = "boolean";
-                    }
-                    doc.add_node(new SetVar(doc, id, value, type, false));
+                    doc.add_node(new SetVar(doc, id, value, typeof value === "boolean" ? "boolean" : "string", false));
                     break;
                 case "label":
                     value = line.value.replace(/::/, "").trim();
                     text = value.split("::");
-                    let label = text[0].trim();
-                    let url = text[1].trim();
-                    doc.add_label(label, url);
+                    doc.add_label(text[0].trim(), text[1].trim()); // label, url
                     break;
                 case "detail":
                     value = line.value
@@ -1707,7 +1701,7 @@ class Hamill {
                     value = line.value
                         .substring(2, line.value.length - 2)
                         .trim();
-                    let res = Hamill.parse_inner_markup(value);
+                    res = Hamill.parse_inner_markup(value);
                     if (res["text"] === "end") {
                         doc.add_node(new EndDiv(doc)); // We can put {{end .myclass #myid}} but it has no meaning except to code reading
                     } else if (
@@ -1736,7 +1730,7 @@ class Hamill {
                     }
                     break;
                 case "row":
-                    let content = line.value.substring(
+                    content = line.value.substring(
                         1,
                         line.value.length - 1
                     );
@@ -1764,7 +1758,7 @@ class Hamill {
                     if (
                         doc.nodes.length === 0 ||
                         doc.nodes[doc.nodes.length - 1].constructor.name !==
-                            "EmptyNode"
+                        "EmptyNode"
                     ) {
                         doc.add_node(new EmptyNode(doc));
                     }
@@ -1788,7 +1782,30 @@ class Hamill {
                     definition = null;
                     break;
                 case "quote":
-                    doc.add_node(new Quote(doc, line.value));
+                    if (line.value === ">>>") {
+                        free = true;
+                    } else if (line.value.startsWith(">>>")) {
+                        free = true;
+                        nodeContent += line.value.substring(3) + "\n";
+                        count += 1;
+                    }
+                    while (count < lines.length && lines[count].type === "quote") {
+                        line = lines[count];
+                        if (!free && !line.value.startsWith(">>")) {
+                            break;
+                        } else if (free && line.value === ">>>") {
+                            break;
+                        } else if (!free) {
+                            nodeContent += line.value.substring(2) + "\n";
+                        } else {
+                            nodeContent += line.value + "\n";
+                        }
+                        count += 1;
+                    }
+                    doc.add_node(new Quote(doc, nodeContent));
+                    if (count < lines.length && lines[count].type !== "quote") {
+                        count -= 1;
+                    }
                     break;
                 case "code":
                     doc.add_node(new Code(doc, line.value));
@@ -1796,6 +1813,7 @@ class Hamill {
                 default:
                     throw new Error(`Unknown ${line.type}`);
             }
+            count += 1;
         }
         // List
         if (actual_list !== null) {
@@ -1814,10 +1832,10 @@ class Hamill {
             if (str.slice(i, i + pattern.length) === pattern) {
                 if (
                     (i - 1 < start)
-                    || (i - 1 >= start && str[i-1] !== "\\")
+                    || (i - 1 >= start && str[i - 1] !== "\\")
                     || (i - 2 < start)
-                    || (i - 2 >= start && str[i-1] === "\\" && str[i-2] === "\\")) {
-                        return i;
+                    || (i - 2 >= start && str[i - 1] === "\\" && str[i - 2] === "\\")) {
+                    return i;
                 }
             }
         }
@@ -1828,8 +1846,8 @@ class Hamill {
         let res = "";
         for (let i = 0; i < str.length; i++) {
             const char = str[i];
-            const next = i + 1 < str.length ? str[i+1] : "";
-            const next_next = i + 2 < str.length ? str[i+2] : "";
+            const next = i + 1 < str.length ? str[i + 1] : "";
+            const next_next = i + 2 < str.length ? str[i + 2] : "";
             if (char === "\\" && next === '@' && next_next === '@') {
                 // do nothing because we don't add the '\' char but we will add @@ after
             } else {
@@ -1945,14 +1963,14 @@ class Hamill {
             } else if (char === "<" && next === "=" && prev !== "\\") {
                 word += "&LessSlantEqual;"; // <=
                 index += 1;
-            // Glyphs sur un caractère
+                // Glyphs sur un caractère
             } else if (char === "&") {
                 word += "&amp;";
             } else if (char === "<") {
                 word += "&lt;";
             } else if (char === ">") {
                 word += "&gt;";
-            // Escaping
+                // Escaping
             } else if (char === "\\" && specials.includes(next)) {
                 // Do nothing, this is an escaping slash
                 if (next === "\\") {
@@ -2058,7 +2076,7 @@ class Hamill {
                         }
                         let code_str = str.slice(index + 2, is_code_ok);
                         nodes.push(new Code(doc, Hamill.unescape_code(code_str), true)); // unescape only @@ !
-                        index = is_code_ok  + 1; // will inc by 1 at the end of the loop
+                        index = is_code_ok + 1; // will inc by 1 at the end of the loop
                     } else {
                         if (!modes[match]) {
                             modes[match] = true;
@@ -2204,6 +2222,10 @@ function tests(stop_on_first_error = false, stop_at = null) {
             "!var EXPORT_COMMENT=true\n!rem This is a comment",
             "<!-- This is a comment -->\n",
         ],
+        [
+            "!var EXPORT_COMMENT=true\n§§ This is a comment",
+            "<!-- This is a comment -->\n",
+        ],
         ["---", "<hr>\n"],
         ["a ## b", "<p>a<br>b</p>\n"],
         // Titles
@@ -2259,20 +2281,27 @@ function tests(stop_on_first_error = false, stop_at = null) {
             "<details><summary>small</summary>petit</details>\n",
         ],
         [
-            "{{big =>}}\n* This is very big!\n* Indeed\n{{end}}",
+            "<<big>>\n* This is very big!\n* Indeed\n<<end>>",
             "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n",
         ],
         // Code
         [
             "Voici du code : @@if a == 5 then puts('hello 5') end@@",
-            "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\\n",
+            "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n",
         ],
         [
             "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
             `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`,
         ],
         // Quotes
-
+        [
+            ">>ceci est une quote\n>>qui s'étend sur une autre ligne\nText normal",
+            "<blockquote>\nceci est une quote<br>\nqui s'étend sur une autre ligne<br>\n</blockquote>\n<p>Text normal</p>\n"
+        ],
+        [
+            ">>>ceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+            "<blockquote>\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n"
+        ],
         // Lists
         [
             "* Bloc1\n  * A\n  * B\n* Bloc2\n  * C",
@@ -2288,7 +2317,10 @@ function tests(stop_on_first_error = false, stop_at = null) {
             "Unclosed link in [[Ceci est un mauvais lien->",
         ],
         // Images
-
+        [
+            "((https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg))",
+            `<p><img src="https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg"/></p>\n`
+        ],
         // Constants
         ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
         ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
