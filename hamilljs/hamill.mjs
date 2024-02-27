@@ -1227,7 +1227,7 @@ class Hamill {
             "~", // Common comparison operators
             "&",
             "|",
-            "#",
+            "#", // Hamill images & titles, comment
             '"',
             "'",
             "°",
@@ -1267,7 +1267,6 @@ class Hamill {
             "-",
             "|", // Hamill lists
             "{",
-            "#",
             ".", // Hamill structure tags (div, p and span)
             "\\", // Hamill escape
             ">", // Hamill blocks
@@ -1279,16 +1278,13 @@ class Hamill {
             "-",
             ">",
             "]",
-            "#",
             ":", // Hamill links and labels
             "(",
             "-",
             ">",
             ")",
             ".",
-            "#", // Hamill images
             "=", // Hamill define vars/consts
-            "#", // Hamill titles
             "§", // Hamill comments
             "•", // Hamill list
         ];
@@ -1828,19 +1824,14 @@ class Hamill {
         return -1;
     }
 
-    static unescape(str) {
+    static unescape_code(str) {
         let res = "";
-        let skip_next = false;
         for (let i = 0; i < str.length; i++) {
-            if (skip_next) {
-                skip_next = false;
-                continue;
-            }
             const char = str[i];
             const next = i + 1 < str.length ? str[i+1] : "";
-            if (char === "\\") {
-                res += next;
-                skip_next = true;
+            const next_next = i + 2 < str.length ? str[i+2] : "";
+            if (char === "\\" && next === '@' && next_next === '@') {
+                // do nothing because we don't add the '\' char but we will add @@ after
             } else {
                 res += char;
             }
@@ -2066,7 +2057,7 @@ class Hamill {
                             );
                         }
                         let code_str = str.slice(index + 2, is_code_ok);
-                        nodes.push(new Code(doc, Hamill.unescape(code_str), true));
+                        nodes.push(new Code(doc, Hamill.unescape_code(code_str), true)); // unescape only @@ !
                         index = is_code_ok  + 1; // will inc by 1 at the end of the loop
                     } else {
                         if (!modes[match]) {
@@ -2214,7 +2205,7 @@ function tests(stop_on_first_error = false, stop_at = null) {
             "<!-- This is a comment -->\n",
         ],
         ["---", "<hr>\n"],
-        ["a \\\\ b", "<p>a<br>b</p>\n"],
+        ["a ## b", "<p>a<br>b</p>\n"],
         // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
@@ -2274,7 +2265,7 @@ function tests(stop_on_first_error = false, stop_at = null) {
         // Code
         [
             "Voici du code : @@if a == 5 then puts('hello 5') end@@",
-            "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n",
+            "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\\n",
         ],
         [
             "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
@@ -2421,9 +2412,9 @@ function test(text, result, error = null) {
 // Main
 //-------------------------------------------------------------------------------
 
-const DEBUG = false;
+const DEBUG = true;
 if (fs !== null) {
-    const do_test = false;
+    const do_test = true;
     if (do_test) {
         tests(true); //, 5);
     } else {
