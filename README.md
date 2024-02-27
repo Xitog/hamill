@@ -105,9 +105,9 @@ You can define custom div, span and paragraph with:
 
 ## <a name="details"> Details
 
-* Write ``{{xxx => yyy}}`` to open a quick detail note. You can add an id and class before xxx with #id .class.
-* Write ``{{xxx =>}}`` to open a long detail note. You can add an id and class before xxx with #id .class.
-* Write ``{{end}}`` to close a long detail note. You can recall the class and id before ``end`` but it has no meaning for the Hamill parser.
+* Write ``<<xxx => yyy>>`` to open a quick detail note. You can add an id and class before xxx with #id .class.
+* Write ``<<xxx =>>>`` to open a long detail note. You can add an id and class before xxx with #id .class.
+* Write ``<<end>>`` to close a long detail note. You can recall the class and id before ``end`` but it has no meaning for the Hamill parser.
  
 <p align="center">
  <a href="#summary">Back to summary</a>
