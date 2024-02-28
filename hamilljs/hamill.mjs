@@ -67,11 +67,13 @@ class Line {
 // Document nodes
 
 class EmptyNode {
-    constructor(document) {
+    constructor(document, ids = null, cls = null) {
         this.document = document;
         if (this.document === undefined || this.document === null) {
             throw new Error("Undefined or null document");
         }
+        this.ids = ids;
+        this.cls = cls;
     }
     toString() {
         return this.constructor.name;
@@ -79,8 +81,8 @@ class EmptyNode {
 }
 
 class Node extends EmptyNode {
-    constructor(document, content = null) {
-        super(document);
+    constructor(document, content = null, ids = null, cls = null) {
+        super(document, ids, cls);
         this.content = content;
     }
 
@@ -141,23 +143,15 @@ class Stop extends Node {
 
 class Picture extends Node {
     constructor(document, url, text = null, cls = null, ids = null) {
-        super(document, url);
+        super(document, url, ids, cls);
         this.text = text;
-        this.cls = cls;
-        this.ids = ids;
     }
 
     to_html() {
-        let cls = "";
-        if (this.cls !== null) {
-            cls = ` class="${this.cls}"`;
-        }
-        let ids = "";
-        if (this.ids !== null) {
-            ids = ` id="${this.ids}"`;
-        }
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
         if (this.text !== null) {
-            return `<figure><img ${cls} ${ids} src="${this.content}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
+            return `<figure><img${cls}${ids} src="${this.content}" alt="${this.text}"></img$><figcaption>${this.text}</figcaption></figure>`;
         } else {
             return `<img${cls}${ids} src="${this.content}"/>`;
         }
@@ -176,44 +170,20 @@ class BR extends EmptyNode {
     }
 }
 
-class Span extends EmptyNode {
-    constructor(document, ids, cls, text) {
-        super(document);
-        this.ids = ids;
-        this.cls = cls;
-        this.text = text;
-    }
-
+class Span extends Node {
     to_html() {
-        let r = "<span";
-        if (this.ids !== null) {
-            r += ` id="${this.ids}"`;
-        }
-        if (this.cls !== null) {
-            r += ` class="${this.cls}"`;
-        }
-        r += `>${this.text}</span>`;
-        return r;
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return `<span${ids}${cls}>${this.content}</span>`;
     }
 }
 
 class ParagraphIndicator extends EmptyNode {
-    constructor(document, ids, cls) {
-        super(document);
-        this.ids = ids;
-        this.cls = cls;
-    }
 
     to_html() {
-        let r = "<p";
-        if (this.ids !== null) {
-            r += ` id="${this.ids}"`;
-        }
-        if (this.cls !== null) {
-            r += ` class="${this.cls}"`;
-        }
-        r += ">";
-        return r;
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return `<p${ids}${cls}>`;
     }
 }
 
@@ -242,46 +212,25 @@ class Title extends Node {
     }
 }
 
-class StartDetail extends EmptyNode {
-    constructor(document, target, id = null, cls = null) {
-        super(document);
-        this.target = target;
-        this.id = id;
-        this.cls = cls;
-    }
+class StartDetail extends Node {
 
     to_html() {
-        if (this.id !== null && this.cls !== null) {
-            return `<details id="${this.id}" class="${this.cls}"><summary>${this.target}</summary>\n`;
-        } else if (this.id !== null) {
-            return `<details id="${this.id}"><summary>${this.target}</summary>\n`;
-        } else if (this.cls !== null) {
-            return `<details class="${this.cls}"><summary>${this.target}</summary>\n`;
-        } else {
-            return `<details><summary>${this.target}</summary>\n`;
-        }
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return `<details${ids}${cls}><summary>${this.content}</summary>\n`;
     }
 }
 
-class Detail extends EmptyNode {
-    constructor(document, target, content, id = null, cls = null) {
-        super(document);
-        this.target = target;
-        this.content = content;
-        this.id = id;
-        this.cls = cls;
+class Detail extends Node {
+    constructor(document, content, data, ids = null, cls = null) {
+        super(document, content, ids, cls);
+        this.data = data;
     }
 
     to_html() {
-        if (this.id !== null && this.cls !== null) {
-            return `<details id="${this.id}" class="${this.cls}"><summary>${this.target}</summary>${this.content}</details>\n`;
-        } else if (this.id !== null) {
-            return `<details id="${this.id}"><summary>${this.target}</summary>${this.content}</details>\n`;
-        } else if (this.cls !== null) {
-            return `<details class="${this.cls}"><summary>${this.target}</summary>${this.content}</details>\n`;
-        } else {
-            return `<details><summary>${this.target}</summary>${this.content}</details>\n`;
-        }
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return `<details${ids}${cls}><summary>${this.content}</summary>${this.data}</details>\n`;
     }
 }
 
@@ -292,22 +241,14 @@ class EndDetail extends EmptyNode {
 }
 
 class StartDiv extends EmptyNode {
-    constructor(document, id = null, cls = null) {
-        super(document);
-        this.id = id;
-        this.cls = cls;
+    constructor(document, ids = null, cls = null) {
+        super(document, ids, cls);
     }
 
     to_html() {
-        if (this.id !== null && this.cls !== null) {
-            return `<div id="${this.id}" class="${this.cls}">\n`;
-        } else if (this.id !== null) {
-            return `<div id="${this.id}">\n`;
-        } else if (this.cls !== null) {
-            return `<div class="${this.cls}">\n`;
-        } else {
-            return "<div>\n";
-        }
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return `<div${ids}${cls}>\n`;
     }
 }
 
@@ -479,28 +420,39 @@ class Definition extends Node {
 }
 
 class Quote extends Node {
+    constructor(document, content, cls = null, ids = null) {
+        super(document, content);
+        this.cls = cls;
+        this.ids = ids;
+    }
     toString() {
         return `Quote { content: ${this.content.replace(/\n/g, "\\n")}}`;
     }
     to_html() {
-        return "<blockquote>\n" + this.document.safe(this.content).replace(/\n/g, "<br>\n") + "</blockquote>\n";
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return `<blockquote${ids}${cls}>\n` + this.document.safe(this.content).replace(/\n/g, "<br>\n") + "</blockquote>\n";
     }
 }
 
 class Code extends Node {
-    constructor(document, content, inline = false) {
-        super(document, content);
+    constructor(document, content, ids = null, cls = null, lang = null, inline = false) {
+        super(document, content, ids, cls);
         this.inline = inline;
+        this.lang = lang;
     }
+
+    toString() {
+        let lang = (this.lang === null) ? "" : `:${this.lang}`;
+        let inline = (this.inline) ? " inline" : "";
+        return `Code${lang} { content: ${this.content}}${inline}`;
+    }
+
     to_html() {
-        // appelé uniquement par string_to_html pour le code inline
-        //return '<code><span class="game-normal">' + this.content + '</span></code>';
         if (this.inline) {
-            let language = this.content.split(" ")[0];
             let output = "";
-            if (language in LANGUAGES) {
-                this.content = this.content.substring(language.length + 1);
-                output = LEXERS[language].to_html(this.content, null, [
+            if (this.lang !== null && this.lang in LANGUAGES) {
+                output = LEXERS[this.lang].to_html(this.content, null, [
                     "blank",
                 ]);
             } else {
@@ -508,7 +460,7 @@ class Code extends Node {
             }
             return "<code>" + output + "</code>";
         } else {
-            throw new Error("It's done elsewhere.");
+            return "<pre>\n" + this.document.safe(this.content) + "</pre>\n";
         }
     }
 }
@@ -742,17 +694,15 @@ class Document {
                 node instanceof Span ||
                 node instanceof Picture ||
                 node instanceof BR ||
-                node instanceof Text
+                node instanceof Text ||
+                node instanceof Code ||
+                node instanceof ParagraphIndicator
             ) {
                 content += node.to_html();
             } else if (node instanceof Link) {
                 content += node.to_html(this);
             } else if (node instanceof GetVar) {
                 content += this.get_variable(node.content);
-            } else if (node instanceof ParagraphIndicator) {
-                content += node.to_html();
-            } else if (node instanceof Code) {
-                content += node.to_html();
             } else {
                 throw new Error(
                     "Impossible to handle this type of node: " +
@@ -842,10 +792,7 @@ class Document {
                 content += "</table>\n";
                 in_table = false;
             }
-            if (!(node instanceof Code) && in_code_block) {
-                content += "</pre>\n";
-                in_code_block = false;
-            }
+
             // Handling of nodes
             if (node.constructor.name === "EmptyNode") {
                 // Nothing, it is just too close the paragraph, done above.
@@ -884,7 +831,8 @@ class Document {
                 node instanceof Detail ||
                 node instanceof RawHTML ||
                 node instanceof List ||
-                node instanceof Quote
+                node instanceof Quote ||
+                node instanceof Code
             ) {
                 content += node.to_html();
             } else if (node instanceof TextLine) {
@@ -926,20 +874,6 @@ class Document {
                 if (this.get_variable("PARAGRAPH_DEFINITION") === true)
                     content += "</p>\n";
                 content += "</dd>\n";
-            } else if (node instanceof Code) {
-                if (!in_code_block) {
-                    in_code_block = true;
-                    content += "<pre>\n";
-                    if (node.content.startsWith("@@@")) {
-                        content += node.content.substring(3) + "\n";
-                    } else {
-                        content += node.content.substring(2) + "\n";
-                    }
-                } else if (node.content.startsWith("@@")) {
-                    content += node.content.substring(2) + "\n";
-                } else {
-                    content += node.content + "\n";
-                }
             } else if (node instanceof Row) {
                 if (!in_table) {
                     in_table = true;
@@ -1670,7 +1604,7 @@ class Hamill {
                     if (value === "end") {
                         doc.add_node(new EndDetail(doc));
                     } else {
-                        let parts = value.split("=>");
+                        let parts = value.split("->");
                         let res = Hamill.parse_inner_markup(parts[0]);
                         if (
                             parts.length === 1 ||
@@ -1679,16 +1613,17 @@ class Hamill {
                             doc.add_node(
                                 new StartDetail(
                                     doc,
-                                    parts[0].trim(),
+                                    res["text"].trim(),
                                     res["id"],
                                     res["class"]
                                 )
                             );
                         } else {
+                            // Detail simple <<summary -> content>>
                             doc.add_node(
                                 new Detail(
                                     doc,
-                                    parts[0].trim(),
+                                    res["text"].trim(),
                                     parts[1].trim(),
                                     res["id"],
                                     res["class"]
@@ -1782,11 +1717,18 @@ class Hamill {
                     definition = null;
                     break;
                 case "quote":
+                    res = {};
+                    res['class'] = null;
+                    res['id'] = null;
                     if (line.value === ">>>") {
                         free = true;
+                        count += 1;
                     } else if (line.value.startsWith(">>>")) {
                         free = true;
-                        nodeContent += line.value.substring(3) + "\n";
+                        res = this.parse_inner_markup(line.value.substring(3));
+                        if (res["has_text"]) {
+                            throw new Error("A line starting a blockquote should only have a class or id indication not text");
+                        }
                         count += 1;
                     }
                     while (count < lines.length && lines[count].type === "quote") {
@@ -1802,13 +1744,46 @@ class Hamill {
                         }
                         count += 1;
                     }
-                    doc.add_node(new Quote(doc, nodeContent));
+                    doc.add_node(new Quote(doc, nodeContent, res['class'], res['id']));
                     if (count < lines.length && lines[count].type !== "quote") {
                         count -= 1;
                     }
                     break;
                 case "code":
-                    doc.add_node(new Code(doc, line.value));
+                    res = {};
+                    res['class'] = null;
+                    res['id'] = null;
+                    if (line.value === "@@@") {
+                        free = true;
+                        count += 1;
+                        res['text'] = null;
+                    } else if (line.value.startsWith("@@@")) {
+                        free = true;
+                        res = this.parse_inner_markup(line.value.substring(3));
+                        count += 1;
+                    } else if (line.value.startsWith("@@")) {
+                        res = this.parse_inner_markup(line.value.substring(2));
+                        if (res['text'] in LANGUAGES) {
+                            count += 1; // skip
+                        }
+                    }
+                    while (count < lines.length && lines[count].type === "code") {
+                        line = lines[count];
+                        if (!free && !line.value.startsWith("@@")) {
+                            break;
+                        } else if (free && line.value === "@@@") {
+                            break;
+                        } else if (!free) {
+                            nodeContent += line.value.substring(2) + "\n";
+                        } else {
+                            nodeContent += line.value + "\n";
+                        }
+                        count += 1;
+                    }
+                    doc.add_node(new Code(doc, nodeContent, res['class'], res['id'], res['text'], false)); // text is the language
+                    if (count < lines.length && lines[count].type !== "code") {
+                        count -= 1;
+                    }
                     break;
                 default:
                     throw new Error(`Unknown ${line.type}`);
@@ -2044,9 +2019,9 @@ class Hamill {
                             nodes.push(
                                 new Span(
                                     doc,
+                                    res["text"],
                                     res["id"],
-                                    res["class"],
-                                    res["text"]
+                                    res["class"]
                                 )
                             );
                         } else {
@@ -2075,7 +2050,13 @@ class Hamill {
                             );
                         }
                         let code_str = str.slice(index + 2, is_code_ok);
-                        nodes.push(new Code(doc, Hamill.unescape_code(code_str), true)); // unescape only @@ !
+                        let lang = null;
+                        let language = code_str.split(" ")[0];
+                        if (language in LANGUAGES) {
+                            lang = language;
+                            code_str = code_str.substring(language.length+1); // remove the language and one space
+                        }
+                        nodes.push(new Code(doc, Hamill.unescape_code(code_str), null, null, lang, true)); // unescape only @@ !
                         index = is_code_ok + 1; // will inc by 1 at the end of the loop
                     } else {
                         if (!modes[match]) {
@@ -2261,8 +2242,12 @@ function tests(stop_on_first_error = false, stop_at = null) {
             "{{#myid .myclass}}content",
             '<p id="myid" class="myclass">content</p>\n',
         ],
-        ["{{#myid}}content", '<p id="myid">content</p>\n'],
-        ["{{.myclass}}content", '<p class="myclass">content</p>\n'],
+        [
+            "{{#myid}}content",
+            '<p id="myid">content</p>\n'],
+        [
+            "{{.myclass}}content",
+            '<p class="myclass">content</p>\n'],
         [
             "je suis {{#myid .myclass rouge}} et oui !",
             '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n',
@@ -2277,12 +2262,36 @@ function tests(stop_on_first_error = false, stop_at = null) {
         ],
         // Details
         [
-            "<<small => petit>>",
+            "<<small -> petit>>",
             "<details><summary>small</summary>petit</details>\n",
+        ],
+        [
+            "<<.reddetail small -> petit>>",
+            `<details class="reddetail"><summary>small</summary>petit</details>\n`,
+        ],
+        [
+            "<<#mydetail small -> petit>>",
+            `<details id="mydetail"><summary>small</summary>petit</details>\n`,
+        ],
+        [
+            "<<.reddetail #mydetail small -> petit>>",
+            `<details id="mydetail" class="reddetail"><summary>small</summary>petit</details>\n`,
         ],
         [
             "<<big>>\n* This is very big!\n* Indeed\n<<end>>",
             "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n",
+        ],
+        [
+            "<<.mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+            `<details class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
+        ],
+        [
+            "<<#reddetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+            `<details id="reddetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
+        ],
+        [
+            "<<#reddetail .mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+            `<details id="reddetail" class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
         ],
         // Code
         [
@@ -2293,14 +2302,39 @@ function tests(stop_on_first_error = false, stop_at = null) {
             "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
             `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`,
         ],
+        [
+            "@@ruby\n@@if a == 5 then\n@@    puts('hello 5')\n@@end\n",
+            "<pre>\nif a == 5 then\n    puts('hello 5')\nend\n</pre>\n"
+        ],
+        [
+            "@@@ruby\nif a == 5 then\n    puts('hello 5')\nend\n@@@\n",
+            "<pre>\nif a == 5 then\n    puts('hello 5')\nend\n</pre>\n"
+        ],
         // Quotes
         [
             ">>ceci est une quote\n>>qui s'étend sur une autre ligne\nText normal",
             "<blockquote>\nceci est une quote<br>\nqui s'étend sur une autre ligne<br>\n</blockquote>\n<p>Text normal</p>\n"
         ],
         [
-            ">>>ceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+            ">>>\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
             "<blockquote>\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n"
+        ],
+        [
+            ">>>.redquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+            `<blockquote class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
+        ],
+        [
+            ">>>#myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+            `<blockquote id="myquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
+        ],
+        [
+            ">>>.redquote #myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+            `<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
+        ],
+        [
+            ">>>.redquote #myquote OH NON DU TEXTE !\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+            `<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`,
+            "A line starting a blockquote should only have a class or id indication not text"
         ],
         // Lists
         [
@@ -2449,6 +2483,9 @@ if (fs !== null) {
     const do_test = true;
     if (do_test) {
         tests(true); //, 5);
+        Hamill.process("../../dgx/static/input/tests.hml").to_html_file(
+            "../../dgx/"
+        );
     } else {
         console.log(
             "------------------------------------------------------------------------"
