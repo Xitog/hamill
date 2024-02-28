@@ -19,11 +19,11 @@ Damien Gouteux 2020-2022
 * [Comments, HR and BR](#comments)
 * [Titles](#titles)
 * [Text modifications](#text)
-* [Div, p and span](#div) 
+* [Div, p and span](#div)
 * [Details](#details)
 * [Code](#code)
 * [Quotes](#quotes)
-* [Lists](#lists) 
+* [Lists](#lists)
 * [Definition lists](#definitions)
 * [Tables](#tables)
 * [Links](#links)
@@ -31,15 +31,21 @@ Damien Gouteux 2020-2022
 * [Constants](#constants)
 * [Variables](#variables)
 * [Inclusion of HTML files]("#include")
-* [Links to CSS and JavaScript files](#require) 
+* [Links to CSS and JavaScript files](#require)
 * [Raw HTML and CSS](#direct)
+
+## Global overview
+
+Hamill uses only doubled or tripled markup in order to be simpler to parse.
+
+The only exception is line starting markup like title (#), list (*) or definition ($).
 
 ## <a name="comments"> Comments, HR and BR
 
 A comment line must starts with ``§§`` or ``!rem``.
 
 A comment must be an entire line, you can't put a comment at the end of a line of code.
- 
+
 ``§§ This is a comment``
 
 ``!rem This another comment``
@@ -53,14 +59,14 @@ You can put a line (hr) with a line with only three or more ``-`` on it :``---``
 <p align="center">
  <a href="#summary">Back to summary</a>
 </p>
- 
+
 ## <a name="titles"> Titles
 
 Start your title lines with the number of ``#`` equivalent to the title level:
- 
+
  ``### This is a level 3 title``
 
-Any spaces between the suite of ``#`` and the first non empty character will be discarded. 
+Any spaces between the suite of ``#`` and the first non empty character will be discarded.
 
   ``##Title`` is equivalent to ``## Title``
 
@@ -80,7 +86,7 @@ The style of the text can be modified by the following markups:
 * Surround your text with ``%%`` for subscript Ex<sub>abc</sub>
 * Surround your text with ``!!`` for strong **abc**
 * Surround your text with ``//`` for emphasis _abc_
-* Surround your text with ``@@`` for code (see below) ``abc``.  
+* Surround your text with ``@@`` for code (see below) ``abc``.
   No markup is interpreted inside code, no need to escape it except ``@@``.
 * Use ``\`` to prevent the interpretation of a markup
 
@@ -95,7 +101,7 @@ You can define custom div, span and paragraph with:
 * Write ``{{#id .class}}`` alone on a line to define a div  with the given id and/or class. You can put begin after but it is not mandatory.
 * Write ``{{begin}}`` to open a div without a class or an id.
 * Write ``{{end}}`` to close a div. You can recall the class and id before ``end`` but it has no meaning for the Hamill parser.
-* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.  
+* Write ``{{#id .class}} content`` on a line with text to define a paragraph with the given id and/or class until the next empty line.
   This markup must **start** the line.
 * Write ``{{#id .class content}}`` in a text to define a span with the given id and/or class.
 
@@ -105,10 +111,10 @@ You can define custom div, span and paragraph with:
 
 ## <a name="details"> Details
 
-* Write ``<<xxx => yyy>>`` to open a quick detail note. You can add an id and class before xxx with #id .class.
-* Write ``<<xxx =>>>`` to open a long detail note. You can add an id and class before xxx with #id .class.
+* Write ``<<xxx -> yyy>>`` to open a quick detail note. You can add an id and class before xxx with #id .class.
+* Write ``<<xxx>>`` to open a long detail note. You can add an id and class before xxx with #id .class.
 * Write ``<<end>>`` to close a long detail note. You can recall the class and id before ``end`` but it has no meaning for the Hamill parser.
- 
+
 <p align="center">
  <a href="#summary">Back to summary</a>
 </p>
@@ -120,6 +126,7 @@ You can define custom div, span and paragraph with:
 * For a code block, you can either do :
   * a opening line with only ``@@language`` then each line of code must start by ``@@``
   * a opening line with only ``@@@language`` then each line can start freely but you must close the block by a line with only ``@@@`` on it
+* ``language`` must be one of the languages recognized by Weyland.
 
 The blocks
 
@@ -149,7 +156,7 @@ def hello(n):
 ## <a name="quotes"> Quotes
 
 * With ``>>`` at the start of the line and all the following lines of the quote
-* With ``>>>`` at the start of the first line, then each line can start freely but you must close the block by a line with only ``>>>`` on it
+* With ``>>>`` on a line, with optionaly a class (.class) or an id (#id), then each line can start freely but you must close the block by a line with only ``>>>`` on it
 
 The blocks
 
@@ -162,7 +169,8 @@ The blocks
 or
 
 ```
->>> I have spread my dreams under your feet;
+>>>
+I have spread my dreams under your feet;
 Tread softly because you tread on my dreams.
 He wishes for the Cloths of Heaven by WB Yeats
 >>>
@@ -170,9 +178,9 @@ He wishes for the Cloths of Heaven by WB Yeats
 
 produce:
 
-> I have spread my dreams under your feet;  
-> Tread softly because you tread on my dreams.  
-> He wishes for the Cloths of Heaven by WB Yeats  
+> I have spread my dreams under your feet;
+> Tread softly because you tread on my dreams.
+> He wishes for the Cloths of Heaven by WB Yeats
 
 <p align="center">
  <a href="#summary">Back to summary</a>
@@ -202,7 +210,7 @@ produce:
 ## <a name="tables"> Tables
 
 * Use ``|`` to limit your table and its columns
-* For creating a header line, put after the title line a ``|-------|`` line 
+* For creating a header line, put after the title line a ``|-------|`` line
 * The header line can have any number of ``|`` inside
 * Text modifiers, images and links can be put inside a table
 * If the character right after the starting ``|`` of a cell is ``=`` its content will be centered
