@@ -449,18 +449,18 @@ class Code extends Node {
     }
 
     to_html() {
-        if (this.inline) {
-            let output = "";
-            if (this.lang !== null && this.lang in LANGUAGES) {
-                output = LEXERS[this.lang].to_html(this.content, null, [
-                    "blank",
-                ]);
-            } else {
-                output = this.content;
-            }
-            return "<code>" + output + "</code>";
+        let output = "";
+        if (this.lang !== null && this.lang in LANGUAGES) {
+            output = LEXERS[this.lang].to_html(this.content, null, [
+                "blank",
+            ]);
         } else {
-            return "<pre>\n" + this.document.safe(this.content) + "</pre>\n";
+            output = this.content;
+        }
+        if (this.inline) {
+            return "<code>" + this.document.safe(output) + "</code>";
+        } else {
+            return "<pre>\n" + output + "</pre>\n";
         }
     }
 }
