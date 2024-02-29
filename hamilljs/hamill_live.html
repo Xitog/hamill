@@ -57,10 +57,11 @@
 
             document.querySelectorAll('[class$="_reset"]').forEach(e => e.addEventListener('click', reset));
             document.querySelectorAll('[class$="_analyse"]').forEach(e => e.addEventListener('click', analyse));
+            document.getElementById('title').innerHTML = 'Live Hamill v' + Hamill.version;
         </script>
     </head>
     <body width="100%">
-        <h1>Live Hamill</h1>
+        <h1 id="title">Live Hamill</h1>
         <p>Entrer du code <a href="https://xitog.github.io/dgx/hamill/hamill.html">Hamill</a> à gauche pour produire de l'HTML à droite en cliquant sur <em>Parse</em>.</p>
         <div class="grid-container">
             <div class="grid-child">

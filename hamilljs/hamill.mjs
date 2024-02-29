@@ -43,6 +43,12 @@ if (
 }
 
 //-----------------------------------------------------------------------------
+// Constants
+//-----------------------------------------------------------------------------
+
+const VERSION = '2.1';
+
+//-----------------------------------------------------------------------------
 // Classes
 //-----------------------------------------------------------------------------
 
@@ -97,7 +103,7 @@ class Node extends EmptyNode {
 
 class Text extends Node {
     to_html() {
-        return this.content;
+        return this.document.safe(this.content);
     }
 }
 
@@ -458,7 +464,7 @@ class Code extends Node {
             output = this.content;
         }
         if (this.inline) {
-            return "<code>" + this.document.safe(output) + "</code>";
+            return "<code>" + output + "</code>";
         } else {
             return "<pre>\n" + output + "</pre>\n";
         }
@@ -721,7 +727,7 @@ class Document {
         let start_time = new Date();
         let content = "";
         if (header) {
-            content = `<html lang="${this.get_variable("LANG", "en")}">
+            content = `<!DOCTYPE HTML>\n<html lang="${this.get_variable("LANG", "en")}">
 <head>
   <meta charset="${this.get_variable("ENCODING", "utf-8")}">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -890,8 +896,17 @@ class Document {
                         node_list[0].content[0] === "="
                     ) {
                         node_list[0].content =
-                            node_list[0].content.substring(1);
-                        center = ' class="text-center"';
+                        node_list[0].content.substring(1);
+                        center = ' style="text-align: center"';
+                    } else if (
+                        node_list.length > 0 &&
+                        node_list[0] instanceof Node && // for content
+                        node_list[0].content.length > 0 &&
+                        node_list[0].content[0] === ">"
+                    ) {
+                        node_list[0].content =
+                        node_list[0].content.substring(1);
+                        center = ' style="text-align: right"';
                     }
                     content += `<${delim}${center}>`;
                     content = this.string_to_html(content, node_list);
@@ -985,6 +1000,10 @@ class Document {
 }
 
 class Hamill {
+    static get version() {
+        return VERSION;
+    }
+
     static process(string_or_filename) {
         // Try to read as a file name, if it fails, take it as a string
         let data = null;
@@ -1711,7 +1730,7 @@ class Hamill {
                         new Definition(
                             doc,
                             definition,
-                            Hamill.process_inner_string(doc, line.value)
+                            Hamill.parse_inner_string(doc, line.value)
                         )
                     );
                     definition = null;
@@ -1819,15 +1838,20 @@ class Hamill {
 
     static unescape_code(str) {
         let res = "";
-        for (let i = 0; i < str.length; i++) {
+        let i = 0;
+        while (i < str.length) {
             const char = str[i];
             const next = i + 1 < str.length ? str[i + 1] : "";
-            const next_next = i + 2 < str.length ? str[i + 2] : "";
-            if (char === "\\" && next === '@' && next_next === '@') {
-                // do nothing because we don't add the '\' char but we will add @@ after
+            if (char === "\\" && next === '@') {
+                res += "@";
+                i += 1;
+            } else if (char === "\\" && next === "\\") {
+                res += "\\";
+                i += 1;
             } else {
                 res += char;
             }
+            i += 1;
         }
         return res;
     }
@@ -1938,13 +1962,6 @@ class Hamill {
             } else if (char === "<" && next === "=" && prev !== "\\") {
                 word += "&LessSlantEqual;"; // <=
                 index += 1;
-                // Glyphs sur un caractère
-            } else if (char === "&") {
-                word += "&amp;";
-            } else if (char === "<") {
-                word += "&lt;";
-            } else if (char === ">") {
-                word += "&gt;";
                 // Escaping
             } else if (char === "\\" && specials.includes(next)) {
                 // Do nothing, this is an escaping slash
@@ -2304,11 +2321,19 @@ function tests(stop_on_first_error = false, stop_at = null) {
         ],
         [
             "@@ruby\n@@if a == 5 then\n@@    puts('hello 5')\n@@end\n",
-            "<pre>\nif a == 5 then\n    puts('hello 5')\nend\n</pre>\n"
+            `<pre>
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">'hello 5'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">
+</span></pre>\n`
         ],
         [
             "@@@ruby\nif a == 5 then\n    puts('hello 5')\nend\n@@@\n",
-            "<pre>\nif a == 5 then\n    puts('hello 5')\nend\n</pre>\n"
+            `<pre>
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">'hello 5'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">
+</span></pre>\n`
         ],
         // Quotes
         [
@@ -2344,6 +2369,18 @@ function tests(stop_on_first_error = false, stop_at = null) {
         ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
         // Definition lists
         // Tables
+        [
+            "|abc|def|",
+            "<table>\n<tr><td>abc</td><td>def</td></tr>\n</table>\n"
+        ],
+        [
+            "|abc|=def|",
+            `<table>\n<tr><td>abc</td><td style="text-align: center">def</td></tr>\n</table>\n`
+        ],
+        [
+            "|abc|>def|",
+            `<table>\n<tr><td>abc</td><td style="text-align: right">def</td></tr>\n</table>\n`
+        ],
         // Links
         [
             "[[Ceci est un mauvais lien->",
@@ -2479,13 +2516,19 @@ function test(text, result, error = null) {
 //-------------------------------------------------------------------------------
 
 const DEBUG = true;
+if (DEBUG) {
+    console.log(`Running Hamill v${Hamill.version}`);
+}
 if (fs !== null) {
     const do_test = true;
     if (do_test) {
         tests(true); //, 5);
         Hamill.process("../../dgx/static/input/tests.hml").to_html_file(
-            "../../dgx/"
+            "../../dgx/hamill/"
         );
+        Hamill.process(
+            "../../dgx/static/input/hamill/hamill.hml"
+        ).to_html_file("../../dgx/hamill/");
     } else {
         console.log(
             "------------------------------------------------------------------------"
