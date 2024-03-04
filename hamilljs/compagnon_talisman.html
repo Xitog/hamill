@@ -1,0 +1,369 @@
+<!DOCTYPE HTML>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Le Compagnon du Talisman</title>
+  <link rel="icon" href="https://xitog.github.io/dgx/img/favicon.ico" type="image/x-icon" />
+  <link rel="shortcut icon" href="https://xitog.github.io/dgx/img/favicon.ico" type="image/x-icon" />
+  <link href="https://xitog.github.io/dgx/css/simplex.bootstrap.css" rel="stylesheet">
+  <link href="https://xitog.github.io/dgx/css/palatino.css" rel="stylesheet">
+  <style type="text/css">
+    h2 { border-bottom: 1px solid #CEC498; margin-top: 60px; }
+    span.p { color: green; background-color: #99cc99; border: 1px solid green; padding-right: 4px; padding-left: 4px; }
+    span.c { color: orange; background-color: #ffedcc; border: 1px solid orange; padding-right: 4px; padding-left: 4px; }
+    span.a { color: #551A8B; background-color: #ccbadc; border: 1px solid #551A8B; padding-right: 4px; padding-left: 4px; }
+    span.l { color: grey; background-color: #d8d8d8; border: 1px solid grey; padding-right: 4px; padding-left: 4px; }
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div id="main" class="container">
+      <nav class="navbar navbar-default" role="navigation">
+        <div class="container-fluid">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+             <a class="navbar-brand" href="#">Menu</a>
+          </div>
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+              <li id="Accueil"><a href="https://xitog.github.io/dgx/index.html">Accueil</a></li>
+              <li id="Blog"><a href="https://xitog.github.io/dgx/blog.html">Blog</a></li>
+              <li class="dropdown">
+                <a id="Langues" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Langues <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                <li class="dropdown-header">Français</li>
+                  <li><a href="https://xitog.github.io/dgx/francais/fiche_api_fr.html">Fiche sur les phonèmes du français</a></li>
+                  <li><a href="https://xitog.github.io/dgx/francais/outil_stats_fr.html">Outil d'analyse textuelle</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Italien</li>
+                  <li><a href="https://xitog.github.io/dgx/italien/beatrice.html">Beatrice : grammaire</a></li>
+                  <li><a href="https://xitog.github.io/dgx/italien/jeu_conjugaison.html">Jeu sur la conjugaison</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Anglais</li>
+                  <li><a href="https://xitog.github.io/dgx/anglais/jeu_vocabulaire.html">Jeu sur le vocabulaire</a></li>
+                  <li><a href="https://xitog.github.io/dgx/anglais/verbes.html">Verbes fréquents</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Interlingua</li>
+                  <li><a href="https://xitog.github.io/dgx/interlingua/conjugueur.html">Conjugueur</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Linguistique</li>
+                  <li><a href="https://xitog.github.io/dgx/linguistique/informations.html">Informations générales</a></li>
+                </ul>
+              </li>
+              <li class="dropdown">
+                <a id="Informatique" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Informatique <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class="dropdown-header">Projets</li>
+                  <li><a href="https://xitog.github.io/dgx/ash/index.html">Ash</a></li>
+                  <li><a href="https://xitog.github.io/dgx/hamill/index.html">Hamill</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Programmation</li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/syntaxes.html">Syntaxes comparées</a></li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/python.html">Aide-mémoire Python</a></li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/ruby.html">Aide-mémoire Ruby</a></li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/lua.html">Aide-mémoire Lua</a></li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/ruby_guide.html">Guide Ruby</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Modélisation</li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/bnf.html">Aide-mémoire BNF et EBNF</a></li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/json.html">Aide-mémoire JSON</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Autres</li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/version_control.html">Gestion de versions</a></li>
+                  <li><a href="https://xitog.github.io/dgx/informatique/tools_langs.html">Logiciels utiles et autres langages</a></li>
+                </ul>
+              </li>
+              <li class="dropdown">
+                <a id="Histoire" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Histoire <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class="dropdown-header">Méthode</li>
+                  <li><a href="https://xitog.github.io/dgx/histoire/methode.html">Généralités</a></li>
+                  <li><a href="https://xitog.github.io/dgx/histoire/bibliographie.html">Bibliographie</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Aide-mémoires</li>
+                  <li><a href="https://xitog.github.io/dgx/histoire/france19eme.html">France au XIX<sup>e</sup></a></li>
+                </ul>
+              </li>
+              <li class="dropdown">
+                <a id="Jeux" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Passe-temps <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class="dropdown-header">Projets</li>
+                  <li><a href="https://xitog.github.io/dgx/teddy/index.html">Éditeur de carte</a></li>
+                  <li><a href="https://xitog.github.io/dgx/rts/index.html">Jouer à mon RTS</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/project_fps.html">Jouer à mon FPS</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Présentations générales</li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/pres_jeux.html">Les jeux</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/pres_jeuxvideo.html">Les jeux vidéo</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/pres_favoris.html">Favoris artistiques</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Jeux de rôles</li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/systemes_rpg.html">Systèmes des RPG</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Livres-jeux</li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/compagnon_talisman.html">Le Compagnon du Talisman</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/compagnon_sorcier.html">Le Compagnon du Sorcier</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Histoire des jeux vidéo</li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/history_rts.html">Les enfants de Dune : les RTS</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/history_fps.html">Les enfants de Doom : les FPS</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Techniques des jeux vidéo</li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/tech_raycasting_fr.html">Le raycasting : la 2.5D</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/tech_transitions.html">Cartes et transitions</a></li>
+                  <li><a href="https://xitog.github.io/dgx/passetemps/tech_dialogues.html">Dialogues</a></li>
+                </ul>
+              </li>
+              <li class="dropdown">
+                <a id="Autres" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Autres <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li class="dropdown-header">Applications</li>
+                  <li><a href="https://xitog.github.io/dgx/concerts_classiques/index.html">Concerts classiques</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Collections</li>
+                  <li><a href="https://xitog.github.io/dgx/data/outil_collections.html#prenoms">Prénoms</a></li>
+                  <li class="divider"></li>
+                  <li class="dropdown-header">Liens</li>
+                  <li><a href="https://xitog.github.io/dgx/plan.html">Plan du site</a></li>
+                  <li><a href="https://xitog.github.io/dgx/liens.html">Liste de liens</a></li>
+                </ul>
+              </li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div><!--/.container-fluid -->
+      </nav>
+
+<div id="content-div">
+<h1 id="le-compagnon-du-talisman">Le Compagnon du Talisman</h1>
+<p><em>Damien Gouteux</em>, 2015 pour la première édition, 2024 pour la seconde édition.</p>
+<h2 id="sommaire">Sommaire</h2>
+<ul>
+  <li><a href="#mentions-légales">Mentions légales</a></li>
+  <li><a href="#i.-le-livre">I. Le livre</a>
+    <ul>
+      <li><a href="#i.a.-description">I.A. Description</a></li>
+      <li><a href="#i.b.-dessins">I.B. Dessins</a>
+        <ul>
+          <li><a href="#i.b.1.-dessins-pleine-page">I.B.1. Dessins pleine page</a></li>
+          <li><a href="#i.b.2.-dessins-intermédiaires">I.B.2. Dessins intermédiaires</a></li>
+        </ul>
+  </li>
+    </ul>
+  </li>
+  <li><a href="#ii.-le-jeu">II. Le jeu</a>
+    <ul>
+      <li><a href="#ii.a.-description-des-personnages">II.A. Description des personnages</a>
+        <ul>
+          <li><a href="#ii.a.1.-équipement-de-base">II.A.1. Équipement de base</a></li>
+          <li><a href="#ii.a.2.-classes">II.A.2. Classes</a></li>
+          <li>II.A.3. Races</li>
+        </ul>
+  </li>
+      <li>II.B. Résolution des combats</li>
+      <li>II.C. Tous les combats</li>
+    </ul>
+  </li>
+  <li>III. Le monde d’Orbus
+    <ul>
+      <li>III.A. Créatures</li>
+      <li>III.B. Lieux
+        <ul>
+          <li>Jardin des Dieux</li>
+          <li>Griseguilde
+            <ul>
+              <li>Auberge du Dragon Rouge</li>
+              <li>Temple de Kyrinla la Cruelle</li>
+              <li>Temple de La Mère de Toutes Choses</li>
+            </ul>
+  </li>
+          <li>Les Abysses</li>
+          <li>La Lande
+            <ul>
+              <li>Le Bocage Sacré</li>
+            </ul>
+  </li>
+          <li>Mont de l’Étoile</li>
+          <li>Cité des Runes de la Malédiction</li>
+          <li>Serakub</li>
+          <li>Les Tours de l’Augure</li>
+        </ul>
+  </li>
+      <li>III.C. Personnages
+        <ul>
+          <li>Alambic</li>
+          <li>Apothécus</li>
+          <li>Les Croisés</li>
+          <li>Essedéhaif</li>
+          <li>Fauconna</li>
+          <li>Lillantha</li>
+          <li>Les Maîtres de la Tradition de Serakub</li>
+          <li>Mortophile</li>
+          <li>Le Roi Sans Chair</li>
+          <li>Somnus</li>
+          <li>Tyutchev et Cassandra, Thaum</li>
+          <li>Wodeman, Crinière de Neige</li>
+        </ul>
+  </li>
+      <li>III.D. Artefacts
+        <ul>
+          <li>Amulette de Corne de Licorne</li>
+          <li>Anneau +1 HAB</li>
+          <li>Anneau de Régénération</li>
+          <li>Cotte de mailles magiques</li>
+          <li>Écailles de Dragon</li>
+          <li>Élixir de vie</li>
+          <li>Fétiche maudit d’impolitesse majeure</li>
+          <li>Gomme d’Ambre</li>
+          <li>Lance Fléau des Dragons</li>
+          <li>Livre de Griseguilde Revisitée</li>
+          <li>Livre de l’infortune</li>
+          <li>Onguent de Peau d’écorce</li>
+          <li>Parchemin de la douleur</li>
+          <li>Pierre de Fortune/Chance</li>
+          <li>Plume de Rock</li>
+          <li>Pomme d’or</li>
+          <li>Rose de jade</li>
+          <li>Sainte Épée</li>
+          <li>Sève de Saule</li>
+          <li>Vapeurs de vélocité</li>
+        </ul>
+  </li>
+    </ul>
+  </li>
+  <li>Annexes
+    <ol>
+      <li>Historique</li>
+    </ol>
+  </li>
+</ul>
+<h2 id="mentions-légales">Mentions légales</h2>
+<p><strong>Tous les droits de l’édition française du <em>Talisman de la Mort</em> sont détenus par les Éditions Gallimard</strong>. Ce compagnon n’est en aucun cas un remplacement de l’œuvre originale mais se propose d’aider les joueurs dans leur quête et de prolonger le plaisir de se plonger dans ce <em>Livre dont vous êtes le héros</em>.</p>
+<p><strong>Le Compagnon du  Talisman</strong> est protégé par le droit d’auteur. La reproduction de tout ou partie en est interdite sur tout support. Ce droit s’applique également à la carte des chapitres qui l’accompagne.</p>
+<p>Pour toute suggestion, remarque ou erreur repérée, vous pouvez me contacter à damien POINT gouteux AROBASE gmail POINT com.</p>
+<h2 id="i.-le-livre">I. Le livre</h2>
+<h3 id="i.a.-description">I.A. Description</h3>
+<p><em>Le Talisman de la Mort</em> (ou <em>Talisman of Death</em> en anglais) fait parti des <a href="https://www.gallimard.fr/Catalogue/GALLIMARD-JEUNESSE/Un-Livre-dont-vous-etes-le-Heros"><em>Livres dont vous êtes le héros</em></a>, où le lecteur/joueur navigue de chapitre en chapitre numérotés suivant ses choix.</p>
+<p>Il a été écrit par Jamie Thomson et Mark Smith, illustré par Bob Harvey avec une couverture de Peter Jones et édité en pour la première fois en anglais en 1984. Il comporte 400 chapitres numérotés. Le <em>Compagnon du Talisman</em> a été réalisé à partir d’une édition française imprimée le 16 janvier 1986.</p>
+<p>La première version de ce guide a été faite avec <a href="https://textile-lang.com/">Textile</a> pour le texte et <a href="http://vue.tufts.edu/">VUE</a> pour la carte. La seconde version de ce guide a été faite <a href="https://github.com/Xitog/hamill">Hamill</a> pour la partie texte.</p>
+<p>Le <u>plan complet et exhaustif</u> du livre se trouve ici : <a href="https://xitog.github.io/dgx/passetemps/graphics/Talisman_big.png">La Carte du Compagnon du Talisman</a>.</p>
+<p>Lorsqu’il est fait référence à un numéro de chapitre, on le note ainsi <sup>400</sup> pour le chapitre 400.</p>
+<p>Dans <em>Le Talisman de la Mort</em>, vous êtes un humain <em>"normal"</em> projeté dans le monde d'Orbus. Là, vous êtes reconnu comme le Champion du Destin, et on vous demande de faire en sorte que le Talisman de la Mort ne tombe pas entre les mains de ses serviteurs, car Elle anéantirait alors toute vie en ce monde.</p>
+<p>Webographie de ce livre :</p>
+<ul>
+  <li><a href="http://www.bibliotheque-des-aventuriers.com/serie/defis_fantastiques/11_talisman_mort.htm">Dans <em>La bibliothèque des aventuriers</em></a></li>
+  <li><a href="http://planete-ldvelh.com/page/defi11.html">Sur <em>Planète LDVELH</em></a></li>
+  <li><a href="http://www.la-taverne-des-aventuriers.com/t2602-11-le-talisman-de-la-mort">Dans <em>La Taverne des aventuriers</em></a></li>
+  <li><a href="http://www.gallimard-jeunesse.fr/Catalogue/GALLIMARD-JEUNESSE/Un-Livre-dont-vous-etes-le-Heros/Defis-Fantastiques-nouvelle-presentation/Le-Talisman-de-la-Mort">Dans le catalogue de l’éditeur, <em>Gallimard</em></a></li>
+  <li><a href="https://en.wikipedia.org/wiki/Talisman_of_Death">Sur Wikipedia en anglais</a></li>
+</ul>
+<h3 id="i.b.-dessins">I.B. Dessins</h3>
+<p>Les dessins cités ci-dessous sont de <a href="http://fr.wikipedia.org/wiki/Bob_Harvey_%28illustrateur%29">Bob Harvey</a><sup>wikipedia fr</sup>, tandis que la couverture est de <a href="http://en.wikipedia.org/wiki/Peter_Andrew_Jones">Peter Jones</a><sup>wikipedia en</sup>.</p>
+<h4 id="i.b.1.-dessins-pleine-page">I.B.1. Dessins pleine page</h4>
+<p>Il y a 18 illustrations qui occupent une pleine page dans l'édition utilisée, réalisés par Bob Harvey.</p>
+<table>
+<tr><th> Chapitre </th><th> Description                                                                                   </th></tr>
+<tr><td>  39      </td><td> Elfe noir pointant du doigt                                                                   </td></tr>
+<tr><td>  52      </td><td> Druide <span class="p">Wodeman</span>, Gardien du Bocage Sacré et la louve <span class="p">Crinière de Neige</span>           </td></tr>
+<tr><td>  78      </td><td> Grande Prêtresse de Kyrinla la Cruelle, Commandante du Guet, <span class="p">Fauconna</span>, riant           </td></tr>
+<tr><td>  91      </td><td> <span class="c">Chevalier de la Mort</span>                                                                   </td></tr>
+<tr><td> 104      </td><td> Figure encapuchonnée, <span class="c">Laquais de la Mort</span>                                               </td></tr>
+<tr><td> 117      </td><td> Prêtresse de La Mère de Toutes Choses, <span class="p">Lillantha</span>                                       </td></tr>
+<tr><td> 130      </td><td> Squelette avec corbillard, <span class="c">Émissaire de la Mort</span>                                        </td></tr>
+<tr><td> 169      </td><td> Voleuse <span class="p">Cassandra</span> assise                                                               </td></tr>
+<tr><td> 195      </td><td> <span class="c">Démon de glace</span>                                                                         </td></tr>
+<tr><td> 222      </td><td> Grande Prêtresse de Kyrinla la Cruelle, Commandante du Guet, <span class="p">Fauconna</span>, levant le poing </td></tr>
+<tr><td> 261      </td><td> <span class="c">Moine de la Mante Écarlate</span> et carriole                                                 </td></tr>
+<tr><td> 274      </td><td> <span class="c">Goule</span> du cimetière                                                                     </td></tr>
+<tr><td> 300      </td><td> Esprit de <span class="p">Fauconna</span>,  drapé au bord d’une falaise                                       </td></tr>
+<tr><td> 313      </td><td> <span class="c">Griffon</span>                                                                                </td></tr>
+<tr><td> 339      </td><td> Maléfique <span class="c">Idole-Avatar de Damolh</span>, fils du Dieu Néant, Bouche du Vide                   </td></tr>
+<tr><td> 352      </td><td> <span class="c">Momie</span> dans son sarcophage                                                              </td></tr>
+<tr><td> 365      </td><td> Chef des <span class="c">Hommes Pourceaux</span>                                                              </td></tr>
+<tr><td> 378      </td><td> <span class="">Dragon rouge</span> dormant sur son trésor                                                     </td></tr>
+</table>
+<h4 id="i.b.2.-dessins-intermédiaires">I.B.2. Dessins intermédiaires</h4>
+<table>
+<tr><th> Chapitre </th><th> Description                                </th></tr>
+<tr><td>   2      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td>  10      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td>  21      </td><td> Épée et fléau                              </td></tr>
+<tr><td>  28      </td><td> Tête de squelette et hache, verticales (!) </td></tr>
+<tr><td>  32      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td>  44      </td><td> Trois sales type                           </td></tr>
+<tr><td>  59      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td>  63      </td><td> Main griffue tenant un talisman            </td></tr>
+<tr><td>  64      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td>  68      </td><td> Épée et fléau                              </td></tr>
+<tr><td>  77      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td>  90      </td><td> Tête de squelette et hache, verticales (!) </td></tr>
+<tr><td> 107      </td><td> Trois sales types                          </td></tr>
+<tr><td> 114      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 137      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 141      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 146      </td><td> Main griffue tenant un talisman            </td></tr>
+<tr><td> 147      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 150      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 158      </td><td> Main griffue tenant un talisman            </td></tr>
+<tr><td> 166      </td><td> Tête de squelette et hache, verticales (!) </td></tr>
+<tr><td> 213      </td><td> Main griffue tenant un talisman            </td></tr>
+<tr><td> 216      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 218      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 220      </td><td> Trois sales types                          </td></tr>
+<tr><td> 238      </td><td> Épée et fléau                              </td></tr>
+<tr><td> 247      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 254      </td><td> Épée et fléau                              </td></tr>
+<tr><td> 264      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 265      </td><td> Trois sales types                          </td></tr>
+<tr><td> 267      </td><td> Épée et fléau                              </td></tr>
+<tr><td> 269      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 276      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 300      </td><td> Trois sales types (grand)                  </td></tr>
+<tr><td> 302      </td><td> Main griffue tenant un talisman            </td></tr>
+<tr><td> 311      </td><td> Épée et fléau                              </td></tr>
+<tr><td> 327      </td><td> Tête de squelette et hache, verticales (!) </td></tr>
+<tr><td> 331      </td><td> Épée et fléau (avec rotation)              </td></tr>
+<tr><td> 335      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 345      </td><td> Corbeau tenant un os                       </td></tr>
+<tr><td> 348      </td><td> Main griffue tenant un talisman            </td></tr>
+<tr><td> 354      </td><td> Tête de squelette et hache, verticales (!) </td></tr>
+<tr><td> 373      </td><td> Épée et fléau (nouvelle rotation)          </td></tr>
+<tr><td> 375      </td><td> Corbeau tenant un Orbus                    </td></tr>
+<tr><td> 376      </td><td> Trois sales types                          </td></tr>
+<tr><td> 392      </td><td> Main griffue tenant un talisman (grand)    </td></tr>
+<tr><td> 393      </td><td> Corbeau tenant un os                       </td></tr>
+</table>
+<h2 id="ii.-le-jeu">II. Le jeu</h2>
+<h3 id="ii.a.-description-des-personnages">II.A. Description des personnages</h3>
+<table>
+<tr><th> Caractéristique </th><th> Score initial/max </th><th> Abbréviation  </th><th> Description                       </th></tr>
+<tr><td> Habilité        </td><td>  D6 +  6          </td><td> HAB           </td><td> Adresse au combat                 </td></tr>
+<tr><td> Endurance       </td><td> 2D6 + 12          </td><td> END           </td><td> Force, résistance et point de vie </td></tr>
+<tr><td> Chance          </td><td>  D6 +  6          </td><td> CHA           </td><td> Chance                            </td></tr>
+</table>
+<h4 id="ii.a.1.-équipement-de-base">II.A.1. Équipement de base</h4>
+<ul>
+  <li>Provisions pour 10 repas. Repas possible seulement si proposé par le livre. 1 repas = +4 END.</li>
+  <li>Épée, armure de cuir, sac à dos.</li>
+  <li>Une bouteille à choisir parmi (buvable à tout moment, 2 mesures par bouteille) :
+    <ul>
+      <li>Potion d'adresse (rétablit HAB)</li>
+      <li>Potion de vigueur (rétablit END)</li>
+      <li>Potion de bonne fortune (rétablit CHA et +1 : c'est un des rares cas où l'on peut dépasser le score initial)</li>
+    </ul>
+  </li>
+  <li>Silex, mèche d'amadou, 5 torches</li>
+</ul>
+<h4 id="ii.a.2.-classes">II.A.2. Classes</h4>
+</div>
+</div>
+
+  </body>
+</html>

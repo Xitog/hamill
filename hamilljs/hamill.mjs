@@ -31,6 +31,7 @@
 import { LANGUAGES, LEXERS } from "./weyland.mjs";
 
 let fs = null;
+let path = null;
 if (
     typeof process !== "undefined" &&
     process !== null &&
@@ -40,6 +41,7 @@ if (
     // Node code only
     //import fs from 'fs';
     fs = await import("fs");
+    path = await import("path");
 }
 
 //-----------------------------------------------------------------------------
@@ -583,14 +585,17 @@ class Document {
         this.name = name;
     }
 
-    to_html_file(output_directory) {
+    to_html_file(output_directory = "") {
         let parts = this.name.split("/");
         let outfilename = parts[parts.length - 1];
         outfilename =
             outfilename.substring(0, outfilename.lastIndexOf(".hml")) + ".html";
-        let sep =
-            output_directory[output_directory.length - 1] === "/" ? "" : "/";
-        let target = output_directory + sep + outfilename;
+        let target = "";
+        if (fs.existsSync(output_directory) && fs.lstatSync(output_directory)?.isDirectory()) {
+            target = output_directory + path.sep + outfilename;
+        } else {
+            target = outfilename;
+        }
         fs.writeFileSync(target, this.to_html(true)); // with header
         console.log("Outputting in:", target);
     }
@@ -649,7 +654,7 @@ class Document {
             for (const label in this.labels) {
                 console.log(label);
             }
-            throw new Error("Label not found : " + target);
+            throw new Error("Label not found : |" + target + "|");
         }
         return this.labels[target];
     }
@@ -2529,6 +2534,9 @@ if (fs !== null) {
         Hamill.process(
             "../../dgx/static/input/hamill/hamill.hml"
         ).to_html_file("../../dgx/hamill/");
+        Hamill.process(
+            "../../dgx/static/input/passetemps/compagnon_talisman.hml"
+        ).to_html_file();
     } else {
         console.log(
             "------------------------------------------------------------------------"
