@@ -384,6 +384,8 @@ class List extends Composite {
 // [[https://...]] display = url
 // [[display->label]] (you must define somewhere ::label:: https://)
 // [[display->https://...]]
+// [[display->#id]]
+// [[display->#]] forge un id à partir du display
 // http[s] can be omitted, but in this case the url should start by www.
 class Link extends EmptyNode {
     constructor(document, url, display = null) {
@@ -409,6 +411,8 @@ class Link extends EmptyNode {
                 url = this.document.get_label(
                     this.document.make_anchor(display)
                 );
+            } else if (url.startsWith("#")) {
+                // nothing to do
             } else {
                 url = this.document.get_label(url);
             }
@@ -854,7 +858,7 @@ class Document {
                         nc > 0
                     ) {
                         throw new Error(
-                            "A paragraph indicator must always be at the start of a text line/"
+                            "A paragraph indicator must always be at the start of a text line"
                         );
                     }
                 }
@@ -868,7 +872,7 @@ class Document {
                         content += "<p>";
                     }
                 } else {
-                    content += "<br>\n";
+                    content += "<br>\n"; // Chaque ligne donnera une ligne avec un retour à la ligne
                 }
                 content += node.to_html();
             } else if (node instanceof Definition) {
@@ -1024,6 +1028,8 @@ class Hamill {
         }
         if (data === null) {
             data = string_or_filename;
+            console.log('Raw string:');
+            console.log(data.replace(/\n/g, '\\n') + "\n");
             console.log(`Data read from string:`);
         }
         // Check authorized characters
@@ -1902,17 +1908,21 @@ class Hamill {
             if (
                 char === "#" &&
                 next === "#" &&
-                next_next === " " &&
                 prev !== "\\"
             ) {
                 if (word.length > 0) {
                     nodes.push(
-                        new Text(doc, word.substring(0, word.length - 1))
-                    ); // remove the last space
+                        new Text(doc, word.substring(0, word.length).trim())
+                    );
                     word = "";
                 }
                 nodes.push(new BR(doc));
-                index += 2;
+                index += 1; // set on the second #
+                // in case of a ## b, the first space is removed by trim() above
+                // and the second space by this :
+                if (index + 1 < str.length && str[index + 1] === ' ') {
+                    index +=1 ;
+                }
             } else if (char === "\\" && next === "\\" && next_next === "\\") {
                 // escape it
                 word += "\\\\";
@@ -2231,6 +2241,9 @@ function tests(stop_on_first_error = false, stop_at = null) {
         ],
         ["---", "<hr>\n"],
         ["a ## b", "<p>a<br>b</p>\n"],
+        ["a ##", "<p>a<br></p>\n"],
+        ["a ##b ##", "<p>a<br>b<br></p>\n"],
+        ["livre : ##\nchanceux ##", "<p>livre :<br><br>\nchanceux<br></p>\n"],
         // Titles
         ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
         ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
@@ -2388,9 +2401,29 @@ function tests(stop_on_first_error = false, stop_at = null) {
         ],
         // Links
         [
+            "[[https://www.spotify.com/]]",
+            `<p><a href="https://www.spotify.com/">https://www.spotify.com/</a></p>\n`
+        ],
+        [
+            "[[Spotify->https://www.spotify.com/]]",
+            `<p><a href="https://www.spotify.com/">Spotify</a></p>\n`
+        ],
+        [
+            "[[Spotify->grotify]]\n::grotify:: https://www.spotify.com/",
+            `<p><a href="https://www.spotify.com/">Spotify</a></p>\n`
+        ],
+        [
+            "## Youhou\n[[Go to title->youhou]]",
+            `<h2 id="youhou">Youhou</h2>\n<p><a href="#youhou">Go to title</a></p>\n`
+        ],
+        [
             "[[Ceci est un mauvais lien->",
             "",
             "Unclosed link in [[Ceci est un mauvais lien->",
+        ],
+        [
+            "{{#idp}} blablah\n\n[[#idp]]",
+            `<p id="idp"> blablah</p>\n<p><a href="#idp">#idp</a></p>\n`
         ],
         // Images
         [
@@ -2536,7 +2569,7 @@ if (fs !== null) {
         ).to_html_file("../../dgx/hamill/");
         Hamill.process(
             "../../dgx/static/input/passetemps/compagnon_talisman.hml"
-        ).to_html_file();
+        ).to_html_file("../../dgx/passetemps/");
     } else {
         console.log(
             "------------------------------------------------------------------------"
