@@ -222,12 +222,14 @@ produce:
 
 ## <a name="links"> Links
 
-* Use surrounding ``[[ url ]]`` for a simple URL link
-* Use ``[[ display -> link ]]`` for a link with a display string different of the link itself
-* If link is equal to ``#``, Hamill will search if it can find a corresponding inner links and put it here
-* Anchors for inner links are created by the syntax ``[[#...]] ``and automatically for title (space are replaced by ``-`` and text is put in lowercase)
-* If link is not an URL, nor ``#``, Hamill will search if it can find in the library of links
-* An item of the library of links is defined by putting at the start of line ``::label:: URL``
+* Use surrounding ``[[ link ]]`` for a simple link.
+* The link can be an url refering an outer website (starting with ``http`` or ``www``) or an inner reference to the id of an element (starting with ``#``)
+* Use ``[[ display -> link ]]`` for displaying a string different from the link itself
+* If link is equal to only ``#``, Hamill will search if it can find a corresponding inner reference and put it here
+* Anchors for inner links are created by the syntax ``{{#id ...}} `` (see the parts *Div, p and span*)
+* Anchors are created automatically for title (space are replaced by ``-`` and text is put in lowercase)
+* If a link is not an URL, starting with ``http`` or ``www``, nor starting with ``#``, nor ``#``, Hamill will search if it can find in the library of labelled links
+* An item of the library of links is defined by putting at the start of line ``::label:: link``
 
 <p align="center">
  <a href="#summary">Back to summary</a>

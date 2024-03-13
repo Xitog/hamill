@@ -729,7 +729,84 @@ class Document {
     }
 
     safe(str) {
-        return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        let index = 0;
+        let word = '';
+        let specials = ["@", "(", "[", "{", "$", "*", "!", "'", "/", "_", "^", "%", "-", "#", "\\", "•"];
+        while (index < str.length) {
+            let char = str[index];
+            let next = index + 1 < str.length ? str[index + 1] : null;
+            let next_next = index + 2 < str.length ? str[index + 2] : null;
+            let prev = index - 1 >= 0 ? str[index - 1] : null;
+            // Glyphs - Trio
+            if (
+                char === "." &&
+                next === "." &&
+                next_next === "." &&
+                prev !== "\\"
+            ) {
+                word += "…";
+                index += 2;
+            } else if (
+                char === "=" &&
+                next === "=" &&
+                next_next === ">" &&
+                prev !== "\\"
+            ) {
+                word += "&DoubleRightArrow;"; // ==>
+                index += 2;
+            } else if (
+                char === "<" &&
+                next === "=" &&
+                next_next === "=" &&
+                prev !== "\\"
+            ) {
+                word += "&DoubleLeftArrow;"; // <==
+                index += 2;
+                // Glyphs - Duo
+            } else if (char === "-" && next === ">" && prev !== "\\") {
+                word += "&ShortRightArrow;"; // ->
+                index += 1;
+            } else if (char === "<" && next === "-" && prev !== "\\") {
+                word += "&ShortLeftArrow;"; // <-
+                index += 1;
+            } else if (char === "o" && next === "e" && prev !== "\\") {
+                word += "&oelig;"; // oe
+                index += 1;
+            } else if (char === "O" && next === "E" && prev !== "\\") {
+                word += "&OElig;"; // OE
+                index += 1;
+            } else if (char === "=" && next === "=" && prev !== "\\") {
+                word += "&Equal;"; // ==
+                index += 1;
+            } else if (char === "!" && next === "=" && prev !== "\\") {
+                word += "&NotEqual;"; // !=
+                index += 1;
+            } else if (char === ">" && next === "=" && prev !== "\\") {
+                word += "&GreaterSlantEqual;"; // >=
+                index += 1;
+            } else if (char === "<" && next === "=" && prev !== "\\") {
+                word += "&LessSlantEqual;"; // <=
+                index += 1;
+                // Glyph - solo
+            } else if (char === '&') {
+                word += '&amp;';
+            } else if (char === '<') {
+                word += '&lt;';
+            } else if (char === '>') {
+                word += '&gt;';
+            // Escaping
+            } else if (char === "\\" && specials.includes(next)) {
+                // Do nothing, this is an escaping slash
+                if (next === "\\") {
+                    word += "\\";
+                    index += 1;
+                }
+            } else {
+                word += char;
+            }
+            index += 1;
+        }
+        return word;
     }
 
     to_html(header = false, skip_error = false) {
@@ -898,6 +975,7 @@ class Document {
                 let delim = node.is_header ? "th" : "td";
                 for (let node_list of node.node_list_list) {
                     let center = "";
+                    let span = "";
                     if (
                         node_list.length > 0 &&
                         node_list[0] instanceof Node && // for content
@@ -917,7 +995,35 @@ class Document {
                         node_list[0].content.substring(1);
                         center = ' style="text-align: right"';
                     }
-                    content += `<${delim}${center}>`;
+                    if (node_list.length > 0 &&
+                        node_list[0] instanceof Node &&
+                        node_list[0].content.length > 2 &&
+                        node_list[0].content[0] === "#"
+                    ) {
+                        if (node_list[0].content[1] === 'c') {
+                            span = ' colspan="';
+                        } else if (node_list[0].content[1] === 'r') {
+                            span = ' rowspan="';
+                        }
+                        if (span !== '') {
+                            let i = 2;
+                            let found  = false;
+                            while (i < node_list[0].content.length) {
+                                if (node_list[0].content[i] === '#') {
+                                    found = true;
+                                    break;
+                                }
+                                i += 1;
+                            }
+                            if (!found) {
+                                span = '';
+                            } else {
+                                span += node_list[0].content.substring(2, i) + '"';
+                                node_list[0].content = node_list[0].content.substring(i+1);
+                            }
+                        }
+                    }
+                    content += `<${delim}${center}${span}>`;
                     content = this.string_to_html(content, node_list);
                     content += `</${delim}>`;
                 }
@@ -1103,6 +1209,7 @@ class Hamill {
             "ò",
             "ô",
             "ö",
+            "ō", // bonus
             "ú",
             "ù",
             "û",
@@ -1234,6 +1341,9 @@ class Hamill {
             "=", // Hamill define vars/consts
             "§", // Hamill comments
             "•", // Hamill list
+            "—", // Quadratin
+            String.fromCharCode(160), // No breaking space,
+            "乱", // Ran
         ];
         data = data.replace(/\r\n/g, "\n");
         data = data.replace(/\r/g, "\n");
@@ -1242,7 +1352,7 @@ class Hamill {
             if (authorized.includes(char)) {
                 filtered += char;
             } else {
-                throw new Error(`Unauthorized char: ${char}`);
+                throw new Error(`Unauthorized char: |${char}| (${char.charCodeAt(0)})`);
             }
         }
         // Display raw lines
@@ -1786,14 +1896,14 @@ class Hamill {
                     if (line.value === "@@@") {
                         free = true;
                         count += 1;
-                        res['text'] = null;
+                        res = null;
                     } else if (line.value.startsWith("@@@")) {
                         free = true;
-                        res = this.parse_inner_markup(line.value.substring(3));
+                        res = line.value.substring(3); // this.parse_inner_markup(
                         count += 1;
                     } else if (line.value.startsWith("@@")) {
-                        res = this.parse_inner_markup(line.value.substring(2));
-                        if (res['text'] in LANGUAGES) {
+                        res = line.value.substring(2);
+                        if (res in LANGUAGES) {
                             count += 1; // skip
                         }
                     }
@@ -1810,7 +1920,7 @@ class Hamill {
                         }
                         count += 1;
                     }
-                    doc.add_node(new Code(doc, nodeContent, res['class'], res['id'], res['text'], false)); // text is the language
+                    doc.add_node(new Code(doc, nodeContent, null, null, res, false)); // res is the language
                     if (count < lines.length && lines[count].type !== "code") {
                         count -= 1;
                     }
@@ -1886,7 +1996,6 @@ class Hamill {
             ["%", "%", "sub"],
             ["-", "-", "stroke"],
         ];
-        let specials = ["@", "(", "[", "{", "$", "*", "!", "'", "/", "_", "^", "%", "-", "#", "\\", "•"];
         let modes = {
             bold: false,
             strong: false,
@@ -1927,63 +2036,6 @@ class Hamill {
                 // escape it
                 word += "\\\\";
                 index += 4;
-                // Glyphs - Trio
-            } else if (
-                char === "." &&
-                next === "." &&
-                next_next === "." &&
-                prev !== "\\"
-            ) {
-                word += "…";
-                index += 2;
-            } else if (
-                char === "=" &&
-                next === "=" &&
-                next_next === ">" &&
-                prev !== "\\"
-            ) {
-                word += "&DoubleRightArrow;"; // ==>
-                index += 2;
-            } else if (
-                char === "<" &&
-                next === "=" &&
-                next_next === "=" &&
-                prev !== "\\"
-            ) {
-                word += "&DoubleLeftArrow;"; // <==
-                index += 2;
-                // Glyphs - Duo
-            } else if (char === "-" && next === ">" && prev !== "\\") {
-                word += "&ShortRightArrow;"; // ->
-                index += 1;
-            } else if (char === "<" && next === "-" && prev !== "\\") {
-                word += "&ShortLeftArrow;"; // <-
-                index += 1;
-            } else if (char === "o" && next === "e" && prev !== "\\") {
-                word += "&oelig;"; // oe
-                index += 1;
-            } else if (char === "O" && next === "E" && prev !== "\\") {
-                word += "&OElig;"; // OE
-                index += 1;
-            } else if (char === "=" && next === "=" && prev !== "\\") {
-                word += "&Equal;"; // ==
-                index += 1;
-            } else if (char === "!" && next === "=" && prev !== "\\") {
-                word += "&NotEqual;"; // !=
-                index += 1;
-            } else if (char === ">" && next === "=" && prev !== "\\") {
-                word += "&GreaterSlantEqual;"; // >=
-                index += 1;
-            } else if (char === "<" && next === "=" && prev !== "\\") {
-                word += "&LessSlantEqual;"; // <=
-                index += 1;
-                // Escaping
-            } else if (char === "\\" && specials.includes(next)) {
-                // Do nothing, this is an escaping slash
-                if (next === "\\") {
-                    word += "\\";
-                    index += 1;
-                }
             }
             // Text Styles
             else {
@@ -2561,15 +2613,6 @@ if (fs !== null) {
     const do_test = true;
     if (do_test) {
         tests(true); //, 5);
-        Hamill.process("../../dgx/static/input/tests.hml").to_html_file(
-            "../../dgx/hamill/"
-        );
-        Hamill.process(
-            "../../dgx/static/input/hamill/hamill.hml"
-        ).to_html_file("../../dgx/hamill/");
-        Hamill.process(
-            "../../dgx/static/input/passetemps/compagnon_talisman.hml"
-        ).to_html_file("../../dgx/passetemps/");
     } else {
         console.log(
             "------------------------------------------------------------------------"
@@ -2578,45 +2621,54 @@ if (fs !== null) {
         console.log(
             "------------------------------------------------------------------------\n"
         );
-
-        // Pages racines
-        Hamill.process("../../dgx/static/input/index.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/blog.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/plan.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/tests.hml").to_html_file(
-            "../../dgx/"
-        );
-        // Passetemps
-        Hamill.process(
-            "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
-        ).to_html_file("../../dgx/passetemps/");
-        /* This is not code
-        //- RTS ---------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/rts/index.hml"
-        ).to_html_file("../../dgx/rts/");
-        //- Ash ---------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/ash/ash_guide.hml"
-        ).to_html_file("../../dgx/ash/");
-        //- Hamill ------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/hamill/index.hml"
-        ).to_html_file("../../dgx/hamill/");
-        */
-        Hamill.process(
-            "../../dgx/static/input/hamill/hamill.hml"
-        ).to_html_file("../../dgx/hamill/");
     }
+    //- Pages racines ---------------------------------------------------------
+    Hamill.process("../../dgx/static/input/index.hml").to_html_file(
+        "../../dgx/"
+    );
+    Hamill.process("../../dgx/static/input/blog.hml").to_html_file(
+        "../../dgx/"
+    );
+    Hamill.process("../../dgx/static/input/plan.hml").to_html_file(
+        "../../dgx/"
+    );
+    Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
+        "../../dgx/"
+    );
+    //- Ash -------------------------------------------------------------------
+    Hamill.process(
+        "../../dgx/static/input/ash/ash_guide.hml"
+    ).to_html_file("../../dgx/ash/");
+    //- Hamill ----------------------------------------------------------------
+    Hamill.process(
+        "../../dgx/static/input/hamill/index.hml"
+    ).to_html_file("../../dgx/hamill/");
+    Hamill.process(
+        "../../dgx/static/input/hamill/hamill.hml"
+    ).to_html_file("../../dgx/hamill/");
+    Hamill.process(
+        "../../dgx/static/input/hamill/tests.hml"
+    ).to_html_file("../../dgx/hamill/");
+    //- RTS -------------------------------------------------------------------
+    Hamill.process(
+        "../../dgx/static/input/rts/index.hml"
+    ).to_html_file("../../dgx/rts/");
+    //- Passetemps-------------------------------------------------------------
+    Hamill.process(
+        "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
+    ).to_html_file("../../dgx/passetemps/");
+    Hamill.process(
+        "../../dgx/static/input/passetemps/systemes_rpg.hml"
+    ).to_html_file("../../dgx/passetemps/");
+    Hamill.process(
+        "../../dgx/static/input/passetemps/compagnon_talisman.hml"
+    ).to_html_file("../../dgx/passetemps/");
+    Hamill.process(
+        "../../dgx/static/input/passetemps/compagnon_sorcier.hml"
+    ).to_html_file("../../dgx/passetemps/");
+    Hamill.process(
+        "../../dgx/static/input/passetemps/pres_favoris.hml"
+    ).to_html_file("../../dgx/passetemps/");
 }
 
 //-------------------------------------------------------------------------------
