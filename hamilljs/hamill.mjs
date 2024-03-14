@@ -2669,6 +2669,9 @@ if (fs !== null) {
     Hamill.process(
         "../../dgx/static/input/passetemps/pres_favoris.hml"
     ).to_html_file("../../dgx/passetemps/");
+    Hamill.process(
+        "../../dgx/static/input/passetemps/tech_dialogues.hml"
+    ).to_html_file("../../dgx/passetemps/");
 }
 
 //-------------------------------------------------------------------------------
