@@ -1,0 +1,24 @@
+{
+  "name": "hamill",
+  "version": "2.0.2",
+  "description": "A simple lightweight markup language outputting HTML. Hamill, the right mark.",
+  "main": "hamill.mjs",
+  "scripts": {
+    "test": "hamill.mjs --tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xitog/hamill.git"
+  },
+  "keywords": [
+    "lightweight",
+    "markup",
+    "HTML"
+  ],
+  "author": "Damien Gouteux",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Xitog/hamill/issues"
+  },
+  "homepage": "https://github.com/Xitog/hamill#readme"
+}

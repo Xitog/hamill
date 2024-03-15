@@ -32,6 +32,7 @@ import { LANGUAGES, LEXERS } from "./weyland.mjs";
 
 let fs = null;
 let path = null;
+let argv = null;
 if (
     typeof process !== "undefined" &&
     process !== null &&
@@ -42,13 +43,14 @@ if (
     //import fs from 'fs';
     fs = await import("fs");
     path = await import("path");
+    argv = process.argv;
 }
 
 //-----------------------------------------------------------------------------
 // Constants
 //-----------------------------------------------------------------------------
 
-const VERSION = '2.1';
+const VERSION = '2.0.2';
 
 //-----------------------------------------------------------------------------
 // Classes
@@ -560,7 +562,7 @@ class Document {
                 "VERSION",
                 "string",
                 "true",
-                "Hamill 2.00"
+                `Hamill ${VERSION}`
             ),
             NOW: new Variable(this, "NOW", "string", "true", ""),
             PARAGRAPH_DEFINITION: new Variable(
@@ -1138,230 +1140,15 @@ class Hamill {
             console.log(data.replace(/\n/g, '\\n') + "\n");
             console.log(`Data read from string:`);
         }
-        // Check authorized characters
-        let filtered = "";
-        const authorized = [
-            "a",
-            "b",
-            "c",
-            "d",
-            "e",
-            "f",
-            "g",
-            "h",
-            "i",
-            "j",
-            "k",
-            "l",
-            "m",
-            "n",
-            "o",
-            "p",
-            "q",
-            "r",
-            "s",
-            "t",
-            "u",
-            "v",
-            "w",
-            "x",
-            "y",
-            "z",
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F",
-            "G",
-            "H",
-            "I",
-            "J",
-            "K",
-            "L",
-            "M",
-            "N",
-            "O",
-            "P",
-            "Q",
-            "R",
-            "S",
-            "T",
-            "U",
-            "V",
-            "W",
-            "X",
-            "Y",
-            "Z",
-            "á",
-            "à",
-            "â",
-            "ä",
-            "é",
-            "è",
-            "ê",
-            "ë",
-            "í",
-            "ì",
-            "î",
-            "ï",
-            "ó",
-            "ò",
-            "ô",
-            "ö",
-            "ō", // bonus
-            "ú",
-            "ù",
-            "û",
-            "ü",
-            "ý",
-            "ÿ",
-            "Á",
-            "À",
-            "Â",
-            "Ä",
-            "É",
-            "È",
-            "Ê",
-            "Ë",
-            "Í",
-            "Ì",
-            "Î",
-            "Ï",
-            "Ó",
-            "Ò",
-            "Ô",
-            "Ö",
-            "Ú",
-            "Ù",
-            "Û",
-            "Ü",
-            "Ý",
-            "ã",
-            "Ã",
-            "õ",
-            "Õ",
-            "œ",
-            "Œ",
-            "ß",
-            "ẞ",
-            "ñ",
-            "Ñ",
-            "ç",
-            "Ç",
-            " ",
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "½",
-            "¾",
-            "$",
-            "€",
-            "£",
-            "¥",
-            "₹",
-            "₽", // Common currency : dollar, euro, pound, yen, rupee, ruble
-            "+",
-            "-",
-            "*",
-            "/",
-            "%",
-            "^", // Common mathematical operators
-            ">",
-            "<",
-            "=",
-            "!",
-            "~", // Common comparison operators
-            "&",
-            "|",
-            "#", // Hamill images & titles, comment
-            '"',
-            "'",
-            "°",
-            "@",
-            "–", // Common various
-            "{",
-            "}",
-            "(",
-            ")",
-            "[",
-            "]", // Common opening/closing
-            ".",
-            ",",
-            ";",
-            ":",
-            "?",
-            "!",
-            "«",
-            "»",
-            "’",
-            "‘",
-            "“",
-            "”",
-            "…", // Common ponctuations
-            "\n",
-            "\t", // Common whitespaces \r is NOT AUTHORIZED
-            "❤", // Some love
-            "'",
-            "-",
-            "_",
-            "^",
-            "%",
-            "@",
-            "!",
-            "/", // Hamill text modifiers
-            "+",
-            "-",
-            "|", // Hamill lists
-            "{",
-            ".", // Hamill structure tags (div, p and span)
-            "\\", // Hamill escape
-            ">", // Hamill blocks
-            "$", // Hamill definition lists and display vars/consts
-            "/", // Hamill comments
-            "|",
-            "-", // Hamill tables
-            "[",
-            "-",
-            ">",
-            "]",
-            ":", // Hamill links and labels
-            "(",
-            "-",
-            ">",
-            ")",
-            ".",
-            "=", // Hamill define vars/consts
-            "§", // Hamill comments
-            "•", // Hamill list
-            "—", // Quadratin
-            String.fromCharCode(160), // No breaking space,
-            "乱", // Ran
-        ];
         data = data.replace(/\r\n/g, "\n");
         data = data.replace(/\r/g, "\n");
-        for (let char of data) {
-            // And removes multiple new lines
-            if (authorized.includes(char)) {
-                filtered += char;
-            } else {
-                throw new Error(`Unauthorized char: |${char}| (${char.charCodeAt(0)})`);
-            }
-        }
         // Display raw lines
-        let lines = filtered.split("\n");
+        let lines = data.split("\n");
         for (let [index, line] of lines.entries()) {
             console.log(`    ${index + 1}. ${line.replace("\n", "<NL>")}`);
         }
         // Tag lines
-        let tagged = Hamill.tag_lines(filtered.split("\n"));
+        let tagged = Hamill.tag_lines(data.split("\n"));
         console.log("\nTagged Lines:");
         for (const [index, line] of tagged.entries()) {
             console.log(`    ${index + 1}. ${line}`);
@@ -1516,6 +1303,33 @@ class Hamill {
             }
         }
         return lines;
+    }
+
+    static escaped_split(sep, str) {
+        let parts = [];
+        let part = "";
+        let index = 0;
+        while (index < str.length) {
+            let char = str[index];
+            let try_sep = str.substring(index, index + sep.length);
+            let next = (index + 1) < str.length ? str.substring(index + 1, index + 1 + sep.length) : "";
+            if (try_sep === sep) {
+                parts.push(part);
+                part = "";
+                index += sep.length - 1;
+
+            } else if (char === "\\" && next === sep) {
+                part += sep;
+                index += sep.length;
+            } else {
+                part += char;
+            }
+            index += 1;
+        }
+        if (part.length > 0) {
+            parts.push(part);
+        }
+        return parts;
     }
 
     // Take a list of tagged lines return a valid Hamill document
@@ -1819,7 +1633,7 @@ class Hamill {
                             i -= 1;
                         }
                     } else {
-                        let parts = content.split("|"); // Handle escape
+                        let parts = this.escaped_split("|", content); // Handle escape
                         let all_nodes = [];
                         for (let p of parts) {
                             let nodes = Hamill.parse_inner_string(doc, p);
@@ -2078,7 +1892,7 @@ class Hamill {
                             throw new Error(`Unclosed link in ${str}`);
                         }
                         let content = str.substring(index + 2, end);
-                        let parts = content.split("->");
+                        let parts = Hamill.escaped_split("->", content);
                         let display = null;
                         let url = null;
                         if (parts.length === 1) {
@@ -2089,6 +1903,8 @@ class Hamill {
                                 parts[0].trim()
                             );
                             url = parts[1].trim();
+                        } else if (parts.length > 2) {
+                            throw new Error(`Malformed link: ${content}`);
                         }
                         nodes.push(new Link(doc, url, display));
                         index = end + 1;
@@ -2271,7 +2087,277 @@ class Hamill {
 // Functions
 //-------------------------------------------------------------------------------
 
-function tests(stop_on_first_error = false, stop_at = null) {
+let tests = [
+    // Comments, HR and BR
+    ["!rem This is a comment", ""],
+    ["§§ This is another comment", ""],
+    [
+        "!var EXPORT_COMMENT=true\n!rem This is a comment",
+        "<!-- This is a comment -->\n",
+    ],
+    [
+        "!var EXPORT_COMMENT=true\n§§ This is a comment",
+        "<!-- This is a comment -->\n",
+    ],
+    ["---", "<hr>\n"],
+    ["a ## b", "<p>a<br>b</p>\n"],
+    ["a ##", "<p>a<br></p>\n"],
+    ["a ##b ##", "<p>a<br>b<br></p>\n"],
+    ["livre : ##\nchanceux ##", "<p>livre :<br><br>\nchanceux<br></p>\n"],
+    // Titles
+    ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
+    ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
+    // Paragraph
+    ["a", "<p>a</p>\n"],
+    ["a\n\n\n", "<p>a</p>\n"],
+    ["a\nb\n\n", "<p>a<br>\nb</p>\n"],
+    // Text modifications
+    ["**bonjour**", "<p><b>bonjour</b></p>\n"],
+    ["''italic''", "<p><i>italic</i></p>\n"],
+    ["--strikethrough--", "<p><s>strikethrough</s></p>\n"],
+    ["__underline__", "<p><u>underline</u></p>\n"],
+    ["^^superscript^^", "<p><sup>superscript</sup></p>\n"],
+    ["%%subscript%%", "<p><sub>subscript</sub></p>\n"],
+    ["@@code@@", "<p><code>code</code></p>\n"],
+    ["!!ceci est strong!!", "<p><strong>ceci est strong</strong></p>\n"],
+    ["//ceci est emphase//", "<p><em>ceci est emphase</em></p>\n"],
+    // Escaping
+    ["\\**bonjour\\**", "<p>**bonjour**</p>\n"],
+    [
+        "@@code \\@@variable = '\\n' end@@",
+        "<p><code>code @@variable = '\\n' end</code></p>\n",
+    ],
+    // Div, p and span
+    ["{{#myid .myclass}}", '<div id="myid" class="myclass">\n'],
+    ["{{#myid}}", '<div id="myid">\n'],
+    ["{{.myclass}}", '<div class="myclass">\n'],
+    ["{{begin}}", "<div>\n"],
+    ["{{end}}", "</div>\n"],
+    [
+        "{{#myid .myclass}}content",
+        '<p id="myid" class="myclass">content</p>\n',
+    ],
+    [
+        "{{#myid}}content",
+        '<p id="myid">content</p>\n'],
+    [
+        "{{.myclass}}content",
+        '<p class="myclass">content</p>\n'],
+    [
+        "je suis {{#myid .myclass rouge}} et oui !",
+        '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n',
+    ],
+    [
+        "je suis {{#myid rouge}} et oui !",
+        '<p>je suis <span id="myid">rouge</span> et oui !</p>\n',
+    ],
+    [
+        "je suis {{.myclass rouge}} et oui !",
+        '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n',
+    ],
+    // Details
+    [
+        "<<small -> petit>>",
+        "<details><summary>small</summary>petit</details>\n",
+    ],
+    [
+        "<<.reddetail small -> petit>>",
+        `<details class="reddetail"><summary>small</summary>petit</details>\n`,
+    ],
+    [
+        "<<#mydetail small -> petit>>",
+        `<details id="mydetail"><summary>small</summary>petit</details>\n`,
+    ],
+    [
+        "<<.reddetail #mydetail small -> petit>>",
+        `<details id="mydetail" class="reddetail"><summary>small</summary>petit</details>\n`,
+    ],
+    [
+        "<<big>>\n* This is very big!\n* Indeed\n<<end>>",
+        "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n",
+    ],
+    [
+        "<<.mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+        `<details class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
+    ],
+    [
+        "<<#reddetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+        `<details id="reddetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
+    ],
+    [
+        "<<#reddetail .mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+        `<details id="reddetail" class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
+    ],
+    // Code
+    [
+        "@@code@@",
+        "<p><code>code</code></p>\n"
+    ],
+    [
+        "Été @@2006@@ Mac, Intel, Mac OS X",
+        "<p>Été <code>2006</code> Mac, Intel, Mac OS X</p>\n"
+    ],
+    [
+        "Voici du code : @@if a == 5 then puts('hello 5') end@@",
+        "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n",
+    ],
+    [
+        "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
+        `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`,
+    ],
+    [
+        "@@ruby\n@@if a == 5 then\n@@    puts('hello 5')\n@@end\n",
+        `<pre>
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">'hello 5'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">
+</span></pre>\n`
+    ],
+    [
+        "@@@ruby\nif a == 5 then\n    puts('hello 5')\nend\n@@@\n",
+        `<pre>
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">'hello 5'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">
+</span></pre>\n`
+    ],
+    // Quotes
+    [
+        ">>ceci est une quote\n>>qui s'étend sur une autre ligne\nText normal",
+        "<blockquote>\nceci est une quote<br>\nqui s'étend sur une autre ligne<br>\n</blockquote>\n<p>Text normal</p>\n"
+    ],
+    [
+        ">>>\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        "<blockquote>\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n"
+    ],
+    [
+        ">>>.redquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        `<blockquote class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
+    ],
+    [
+        ">>>#myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        `<blockquote id="myquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
+    ],
+    [
+        ">>>.redquote #myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        `<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
+    ],
+    [
+        ">>>.redquote #myquote OH NON DU TEXTE !\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        `<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`,
+        "A line starting a blockquote should only have a class or id indication not text"
+    ],
+    // Lists
+    [
+        "* Bloc1\n  * A\n  * B\n* Bloc2\n  * C",
+        "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n",
+    ],
+    ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
+    // Definition lists
+    // Tables
+    [
+        "|abc|def|",
+        "<table>\n<tr><td>abc</td><td>def</td></tr>\n</table>\n"
+    ],
+    [
+        "|abc|=def|",
+        `<table>\n<tr><td>abc</td><td style="text-align: center">def</td></tr>\n</table>\n`
+    ],
+    [
+        "|abc|>def|",
+        `<table>\n<tr><td>abc</td><td style="text-align: right">def</td></tr>\n</table>\n`
+    ],
+    [
+        "|abc|def\\|ghk|",
+        "<table>\n<tr><td>abc</td><td>def|ghk</td></tr>\n</table>\n"
+    ],
+    // Links
+    [
+        "[[https://www.spotify.com/]]",
+        `<p><a href="https://www.spotify.com/">https://www.spotify.com/</a></p>\n`
+    ],
+    [
+        "[[Spotify->https://www.spotify.com/]]",
+        `<p><a href="https://www.spotify.com/">Spotify</a></p>\n`
+    ],
+    [
+        "[[Spotify->grotify]]\n::grotify:: https://www.spotify.com/",
+        `<p><a href="https://www.spotify.com/">Spotify</a></p>\n`
+    ],
+    [
+        "## Youhou\n[[Go to title->youhou]]",
+        `<h2 id="youhou">Youhou</h2>\n<p><a href="#youhou">Go to title</a></p>\n`
+    ],
+    [
+        "[[Ceci est un mauvais lien->",
+        "",
+        "Unclosed link in [[Ceci est un mauvais lien->",
+    ],
+    [
+        "{{#idp}} blablah\n\n[[#idp]]",
+        `<p id="idp"> blablah</p>\n<p><a href="#idp">#idp</a></p>\n`
+    ],
+    [
+        "[[Escaped \\-> link->https://www.spotify.com/]]",
+        `<p><a href="https://www.spotify.com/">Escaped &ShortRightArrow; link</a></p>\n`
+    ],
+    // Images
+    [
+        "((https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg))",
+        `<p><img src="https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg"/></p>\n`
+    ],
+    // Constants
+    ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
+    ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
+    [
+        "!const ALPHACONST = abcd\n!const ALPHACONST = efgh",
+        "",
+        "Can't set the value of the already defined constant: ALPHACONST of type string",
+    ],
+    [
+        "$$VERSION$$",
+        `<p>Hamill ${VERSION}</p>\n`
+    ],
+    // Variables
+    ["!var NUMBER=5\n$$NUMBER$$", "<p>5</p>\n"],
+    [
+        "!var ALPHA=je suis un poulpe\n$$ALPHA$$",
+        "<p>je suis un poulpe</p>\n",
+    ],
+    ["!var BOOLEAN=true\n$$BOOLEAN$$", "<p>true</p>\n"],
+    [
+        "!var NUM=1\n$$NUM$$\n!var NUM=25\n$$NUM$$\n",
+        "<p>1</p>\n<p>25</p>\n",
+    ],
+    ["\\!var I AM NOT A VAR", "<p>!var I AM NOT A VAR</p>\n"],
+    ["$$UNKNOWNVAR$$", "", "Unknown variable: UNKNOWNVAR"],
+    [
+        "!var TITLE=ERROR",
+        "",
+        "You cannot use TITLE for a variable because it is a predefined constant.",
+    ],
+    // Inclusion of HTML files
+    ["!include include_test.html", "<h1>Hello World!</h1>\n"],
+    [
+        "\\!include I AM NOT AN INCLUDE",
+        "<p>!include I AM NOT AN INCLUDE</p>\n",
+    ],
+    // Links to CSS and JavaScript files
+    ["!require pipo.css", ""],
+    [
+        "\\!require I AM NOT A REQUIRE",
+        "<p>!require I AM NOT A REQUIRE</p>\n",
+    ],
+    // Raw HTML and CSS
+    ["!html <div>Hello</div>", "<div>Hello</div>\n"],
+    [
+        "\\!html <div>Hello</div>",
+        "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n",
+    ], // Error, the \ should be removed!
+    ["!css p { color: pink;}", ""],
+];
+
+function runAllTests(stop_on_first_error = false, stop_at = null) {
     console.log(
         "\n========================================================================"
     );
@@ -2279,257 +2365,8 @@ function tests(stop_on_first_error = false, stop_at = null) {
     console.log(
         "========================================================================"
     );
-    let test_suite = [
-        // Comments, HR and BR
-        ["!rem This is a comment", ""],
-        ["§§ This is another comment", ""],
-        [
-            "!var EXPORT_COMMENT=true\n!rem This is a comment",
-            "<!-- This is a comment -->\n",
-        ],
-        [
-            "!var EXPORT_COMMENT=true\n§§ This is a comment",
-            "<!-- This is a comment -->\n",
-        ],
-        ["---", "<hr>\n"],
-        ["a ## b", "<p>a<br>b</p>\n"],
-        ["a ##", "<p>a<br></p>\n"],
-        ["a ##b ##", "<p>a<br>b<br></p>\n"],
-        ["livre : ##\nchanceux ##", "<p>livre :<br><br>\nchanceux<br></p>\n"],
-        // Titles
-        ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
-        ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
-        // Paragraph
-        ["a", "<p>a</p>\n"],
-        ["a\n\n\n", "<p>a</p>\n"],
-        ["a\nb\n\n", "<p>a<br>\nb</p>\n"],
-        // Text modifications
-        ["**bonjour**", "<p><b>bonjour</b></p>\n"],
-        ["''italic''", "<p><i>italic</i></p>\n"],
-        ["--strikethrough--", "<p><s>strikethrough</s></p>\n"],
-        ["__underline__", "<p><u>underline</u></p>\n"],
-        ["^^superscript^^", "<p><sup>superscript</sup></p>\n"],
-        ["%%subscript%%", "<p><sub>subscript</sub></p>\n"],
-        ["@@code@@", "<p><code>code</code></p>\n"],
-        ["!!ceci est strong!!", "<p><strong>ceci est strong</strong></p>\n"],
-        ["//ceci est emphase//", "<p><em>ceci est emphase</em></p>\n"],
-        // Escaping
-        ["\\**bonjour\\**", "<p>**bonjour**</p>\n"],
-        [
-            "@@code \\@@variable = '\\n' end@@",
-            "<p><code>code @@variable = '\\n' end</code></p>\n",
-        ],
-        // Div, p and span
-        ["{{#myid .myclass}}", '<div id="myid" class="myclass">\n'],
-        ["{{#myid}}", '<div id="myid">\n'],
-        ["{{.myclass}}", '<div class="myclass">\n'],
-        ["{{begin}}", "<div>\n"],
-        ["{{end}}", "</div>\n"],
-        [
-            "{{#myid .myclass}}content",
-            '<p id="myid" class="myclass">content</p>\n',
-        ],
-        [
-            "{{#myid}}content",
-            '<p id="myid">content</p>\n'],
-        [
-            "{{.myclass}}content",
-            '<p class="myclass">content</p>\n'],
-        [
-            "je suis {{#myid .myclass rouge}} et oui !",
-            '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n',
-        ],
-        [
-            "je suis {{#myid rouge}} et oui !",
-            '<p>je suis <span id="myid">rouge</span> et oui !</p>\n',
-        ],
-        [
-            "je suis {{.myclass rouge}} et oui !",
-            '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n',
-        ],
-        // Details
-        [
-            "<<small -> petit>>",
-            "<details><summary>small</summary>petit</details>\n",
-        ],
-        [
-            "<<.reddetail small -> petit>>",
-            `<details class="reddetail"><summary>small</summary>petit</details>\n`,
-        ],
-        [
-            "<<#mydetail small -> petit>>",
-            `<details id="mydetail"><summary>small</summary>petit</details>\n`,
-        ],
-        [
-            "<<.reddetail #mydetail small -> petit>>",
-            `<details id="mydetail" class="reddetail"><summary>small</summary>petit</details>\n`,
-        ],
-        [
-            "<<big>>\n* This is very big!\n* Indeed\n<<end>>",
-            "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n",
-        ],
-        [
-            "<<.mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
-            `<details class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
-        ],
-        [
-            "<<#reddetail big>>\n* This is very big!\n* Indeed\n<<end>>",
-            `<details id="reddetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
-        ],
-        [
-            "<<#reddetail .mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
-            `<details id="reddetail" class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n`,
-        ],
-        // Code
-        [
-            "Voici du code : @@if a == 5 then puts('hello 5') end@@",
-            "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n",
-        ],
-        [
-            "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
-            `<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">'hello 5'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n`,
-        ],
-        [
-            "@@ruby\n@@if a == 5 then\n@@    puts('hello 5')\n@@end\n",
-            `<pre>
-<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">
-</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">'hello 5'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">
-</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">
-</span></pre>\n`
-        ],
-        [
-            "@@@ruby\nif a == 5 then\n    puts('hello 5')\nend\n@@@\n",
-            `<pre>
-<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">
-</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">'hello 5'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">
-</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">
-</span></pre>\n`
-        ],
-        // Quotes
-        [
-            ">>ceci est une quote\n>>qui s'étend sur une autre ligne\nText normal",
-            "<blockquote>\nceci est une quote<br>\nqui s'étend sur une autre ligne<br>\n</blockquote>\n<p>Text normal</p>\n"
-        ],
-        [
-            ">>>\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
-            "<blockquote>\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n"
-        ],
-        [
-            ">>>.redquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
-            `<blockquote class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
-        ],
-        [
-            ">>>#myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
-            `<blockquote id="myquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
-        ],
-        [
-            ">>>.redquote #myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
-            `<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`
-        ],
-        [
-            ">>>.redquote #myquote OH NON DU TEXTE !\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
-            `<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n`,
-            "A line starting a blockquote should only have a class or id indication not text"
-        ],
-        // Lists
-        [
-            "* Bloc1\n  * A\n  * B\n* Bloc2\n  * C",
-            "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n",
-        ],
-        ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
-        // Definition lists
-        // Tables
-        [
-            "|abc|def|",
-            "<table>\n<tr><td>abc</td><td>def</td></tr>\n</table>\n"
-        ],
-        [
-            "|abc|=def|",
-            `<table>\n<tr><td>abc</td><td style="text-align: center">def</td></tr>\n</table>\n`
-        ],
-        [
-            "|abc|>def|",
-            `<table>\n<tr><td>abc</td><td style="text-align: right">def</td></tr>\n</table>\n`
-        ],
-        // Links
-        [
-            "[[https://www.spotify.com/]]",
-            `<p><a href="https://www.spotify.com/">https://www.spotify.com/</a></p>\n`
-        ],
-        [
-            "[[Spotify->https://www.spotify.com/]]",
-            `<p><a href="https://www.spotify.com/">Spotify</a></p>\n`
-        ],
-        [
-            "[[Spotify->grotify]]\n::grotify:: https://www.spotify.com/",
-            `<p><a href="https://www.spotify.com/">Spotify</a></p>\n`
-        ],
-        [
-            "## Youhou\n[[Go to title->youhou]]",
-            `<h2 id="youhou">Youhou</h2>\n<p><a href="#youhou">Go to title</a></p>\n`
-        ],
-        [
-            "[[Ceci est un mauvais lien->",
-            "",
-            "Unclosed link in [[Ceci est un mauvais lien->",
-        ],
-        [
-            "{{#idp}} blablah\n\n[[#idp]]",
-            `<p id="idp"> blablah</p>\n<p><a href="#idp">#idp</a></p>\n`
-        ],
-        // Images
-        [
-            "((https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg))",
-            `<p><img src="https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg"/></p>\n`
-        ],
-        // Constants
-        ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
-        ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
-        [
-            "!const ALPHACONST = abcd\n!const ALPHACONST = efgh",
-            "",
-            "Can't set the value of the already defined constant: ALPHACONST of type string",
-        ],
-        // Variables
-        ["!var NUMBER=5\n$$NUMBER$$", "<p>5</p>\n"],
-        [
-            "!var ALPHA=je suis un poulpe\n$$ALPHA$$",
-            "<p>je suis un poulpe</p>\n",
-        ],
-        ["!var BOOLEAN=true\n$$BOOLEAN$$", "<p>true</p>\n"],
-        [
-            "!var NUM=1\n$$NUM$$\n!var NUM=25\n$$NUM$$\n",
-            "<p>1</p>\n<p>25</p>\n",
-        ],
-        ["\\!var I AM NOT A VAR", "<p>!var I AM NOT A VAR</p>\n"],
-        ["$$UNKNOWNVAR$$", "", "Unknown variable: UNKNOWNVAR"],
-        [
-            "!var TITLE=ERROR",
-            "",
-            "You cannot use TITLE for a variable because it is a predefined constant.",
-        ],
-        // Inclusion of HTML files
-        ["!include include_test.html", "<h1>Hello World!</h1>\n"],
-        [
-            "\\!include I AM NOT AN INCLUDE",
-            "<p>!include I AM NOT AN INCLUDE</p>\n",
-        ],
-        // Links to CSS and JavaScript files
-        ["!require pipo.css", ""],
-        [
-            "\\!require I AM NOT A REQUIRE",
-            "<p>!require I AM NOT A REQUIRE</p>\n",
-        ],
-        // Raw HTML and CSS
-        ["!html <div>Hello</div>", "<div>Hello</div>\n"],
-        [
-            "\\!html <div>Hello</div>",
-            "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n",
-        ], // Error, the \ should be removed!
-        ["!css p { color: pink;}", ""],
-    ];
     let nb_ok = 0;
-    for (let [index, t] of test_suite.entries()) {
+    for (let [index, t] of tests.entries()) {
         if (
             t === undefined ||
             t === null ||
@@ -2545,7 +2382,7 @@ function tests(stop_on_first_error = false, stop_at = null) {
         console.log(
             "-------------------------------------------------------------------------\n"
         );
-        if (test(t[0], t[1], t.length === 3 ? t[2] : null)) {
+        if (runTest(t[0], t[1], t.length === 3 ? t[2] : null)) {
             nb_ok += 1;
         } else if (stop_on_first_error) {
             throw new Error("Stopping on first error");
@@ -2555,15 +2392,10 @@ function tests(stop_on_first_error = false, stop_at = null) {
             break;
         }
     }
-    console.log(`\nTests ok : ${nb_ok} / ${test_suite.length}\n`);
-
-    //let doc = Hamill.process_string("* A\n* B [[http://www.gogol.com]]\n  + D\n  + E");
-    //let doc = Hamill.process_string("+ Été @@2006@@ Mac, Intel, Mac OS X");
-    //let doc = Hamill.process_string("@@Code@@");
-    //let doc = Hamill.process_string("Bonjour $$VERSION$$");
+    console.log(`\nTests ok : ${nb_ok} / ${tests.length}\n`);
 }
 
-function test(text, result, error = null) {
+function runTest(text, result, error = null) {
     try {
         let doc = Hamill.process(text);
         let output = doc.to_html();
@@ -2605,73 +2437,83 @@ function test(text, result, error = null) {
 // Main
 //-------------------------------------------------------------------------------
 
+let do_test = false;
+const do_files = false;
 const DEBUG = true;
+
 if (DEBUG) {
     console.log(`Running Hamill v${Hamill.version}`);
 }
-if (fs !== null) {
-    const do_test = true;
-    if (do_test) {
-        tests(true); //, 5);
+if (argv !== null) {
+    if (argv.length === 3) {
+        if (argv[2] === '--tests') {
+            do_test = true;
+        }
+        // TODO: un fichier de config
+    } else if (argv.length === 4) {
+        // TODO: two files
     } else {
-        console.log(
-            "------------------------------------------------------------------------"
-        );
-        console.log("Test de process_file (hamill)");
-        console.log(
-            "------------------------------------------------------------------------\n"
-        );
+        console.log('---');
+        console.log("> Use hamill.mjs <input filepath> <output dir> to convert the HML file to HTML");
+        console.log(`> Use hamill.mjs --tests to launch all the tests (${tests.length}).`);
     }
-    //- Pages racines ---------------------------------------------------------
-    Hamill.process("../../dgx/static/input/index.hml").to_html_file(
-        "../../dgx/"
-    );
-    Hamill.process("../../dgx/static/input/blog.hml").to_html_file(
-        "../../dgx/"
-    );
-    Hamill.process("../../dgx/static/input/plan.hml").to_html_file(
-        "../../dgx/"
-    );
-    Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
-        "../../dgx/"
-    );
-    //- Ash -------------------------------------------------------------------
-    Hamill.process(
-        "../../dgx/static/input/ash/ash_guide.hml"
-    ).to_html_file("../../dgx/ash/");
-    //- Hamill ----------------------------------------------------------------
-    Hamill.process(
-        "../../dgx/static/input/hamill/index.hml"
-    ).to_html_file("../../dgx/hamill/");
-    Hamill.process(
-        "../../dgx/static/input/hamill/hamill.hml"
-    ).to_html_file("../../dgx/hamill/");
-    Hamill.process(
-        "../../dgx/static/input/hamill/tests.hml"
-    ).to_html_file("../../dgx/hamill/");
-    //- RTS -------------------------------------------------------------------
-    Hamill.process(
-        "../../dgx/static/input/rts/index.hml"
-    ).to_html_file("../../dgx/rts/");
-    //- Passetemps-------------------------------------------------------------
-    Hamill.process(
-        "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
-    ).to_html_file("../../dgx/passetemps/");
-    Hamill.process(
-        "../../dgx/static/input/passetemps/systemes_rpg.hml"
-    ).to_html_file("../../dgx/passetemps/");
-    Hamill.process(
-        "../../dgx/static/input/passetemps/compagnon_talisman.hml"
-    ).to_html_file("../../dgx/passetemps/");
-    Hamill.process(
-        "../../dgx/static/input/passetemps/compagnon_sorcier.hml"
-    ).to_html_file("../../dgx/passetemps/");
-    Hamill.process(
-        "../../dgx/static/input/passetemps/pres_favoris.hml"
-    ).to_html_file("../../dgx/passetemps/");
-    Hamill.process(
-        "../../dgx/static/input/passetemps/tech_dialogues.hml"
-    ).to_html_file("../../dgx/passetemps/");
+}
+if (fs !== null) {
+    if (do_test) {
+        runAllTests(true); //, 5);
+    }
+    if (do_files) {
+        //- Pages racines ---------------------------------------------------------
+        Hamill.process("../../dgx/static/input/index.hml").to_html_file(
+            "../../dgx/"
+        );
+        Hamill.process("../../dgx/static/input/blog.hml").to_html_file(
+            "../../dgx/"
+        );
+        Hamill.process("../../dgx/static/input/plan.hml").to_html_file(
+            "../../dgx/"
+        );
+        Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
+            "../../dgx/"
+        );
+        //- Ash -------------------------------------------------------------------
+        Hamill.process(
+            "../../dgx/static/input/ash/ash_guide.hml"
+        ).to_html_file("../../dgx/ash/");
+        //- Hamill ----------------------------------------------------------------
+        Hamill.process(
+            "../../dgx/static/input/hamill/index.hml"
+        ).to_html_file("../../dgx/hamill/");
+        Hamill.process(
+            "../../dgx/static/input/hamill/hamill.hml"
+        ).to_html_file("../../dgx/hamill/");
+        Hamill.process(
+            "../../dgx/static/input/hamill/tests.hml"
+        ).to_html_file("../../dgx/hamill/");
+        //- RTS -------------------------------------------------------------------
+        Hamill.process(
+            "../../dgx/static/input/rts/index.hml"
+        ).to_html_file("../../dgx/rts/");
+        //- Passetemps-------------------------------------------------------------
+        Hamill.process(
+            "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
+        ).to_html_file("../../dgx/passetemps/");
+        Hamill.process(
+            "../../dgx/static/input/passetemps/systemes_rpg.hml"
+        ).to_html_file("../../dgx/passetemps/");
+        Hamill.process(
+            "../../dgx/static/input/passetemps/compagnon_talisman.hml"
+        ).to_html_file("../../dgx/passetemps/");
+        Hamill.process(
+            "../../dgx/static/input/passetemps/compagnon_sorcier.hml"
+        ).to_html_file("../../dgx/passetemps/");
+        Hamill.process(
+            "../../dgx/static/input/passetemps/pres_favoris.hml"
+        ).to_html_file("../../dgx/passetemps/");
+        Hamill.process(
+            "../../dgx/static/input/passetemps/tech_dialogues.hml"
+        ).to_html_file("../../dgx/passetemps/");
+    }
 }
 
 //-------------------------------------------------------------------------------
