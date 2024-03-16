@@ -1,6 +1,6 @@
 {
   "name": "hamill",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "A simple lightweight markup language outputting HTML. Hamill, the right mark.",
   "main": "hamill.mjs",
   "scripts": {
@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/Xitog/hamill/issues"
   },
-  "homepage": "https://github.com/Xitog/hamill#readme"
+  "homepage": "https://github.com/Xitog/hamill#readme",
+  "dependencies": {
+    "readline-sync": "^1.4.10"
+  }
 }

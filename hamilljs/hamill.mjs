@@ -30,27 +30,22 @@
 
 import { LANGUAGES, LEXERS } from "./weyland.mjs";
 
-let fs = null;
-let path = null;
-let argv = null;
-if (
+const node =
     typeof process !== "undefined" &&
     process !== null &&
     typeof process?.version !== "undefined" &&
-    typeof process?.version === "string"
-) {
-    // Node code only
-    //import fs from 'fs';
-    fs = await import("fs");
-    path = await import("path");
-    argv = process.argv;
-}
+    typeof process?.version === "string";
+
+const fs = node ? await import("fs") : null;
+const path = node ? await import("path") : null;
+const reader = node ? await import("readline-sync") : null;
+const argv = process.argv;
 
 //-----------------------------------------------------------------------------
 // Constants
 //-----------------------------------------------------------------------------
 
-const VERSION = '2.0.2';
+const VERSION = '2.0.3';
 
 //-----------------------------------------------------------------------------
 // Classes
@@ -1238,9 +1233,9 @@ class Hamill {
             } else if (trimmed.startsWith("!require ")) {
                 lines.push(new Line(trimmed, "require"));
             } else if (trimmed.startsWith("!css ")) {
-                lines.push(new Line(trimmed, "css"));
+                lines.push(new Line(value, "css"));
             } else if (trimmed.startsWith("!html")) {
-                lines.push(new Line(trimmed, "html"));
+                lines.push(new Line(value, "html"));
             } else if (
                 trimmed.startsWith("!rem") ||
                 trimmed.substring(0, 2) === "§§"
@@ -1514,12 +1509,12 @@ class Hamill {
                     doc.add_node(
                         new RawHTML(
                             doc,
-                            line.value.replace("!html ", "").trim()
+                            line.value.replace("!html ", "").trimEnd()
                         )
                     );
                     break;
                 case "css":
-                    text = line.value.replace("!css ", "").trim();
+                    text = line.value.replace("!css ", "").trimEnd();
                     doc.add_css(text);
                     break;
                 case "include":
@@ -2445,17 +2440,62 @@ if (DEBUG) {
     console.log(`Running Hamill v${Hamill.version}`);
 }
 if (argv !== null) {
+    let message = "---\n";
+    message += "> Use hamill.mjs --process (or -p) <input config filepath> to convert the HML file to HTML\n";
+    message += "  The file must be a dict {} with a key named targets with an array value of pairs :\n";
+    message += '            ["inputFile", "outputDir"]\n';
+    message += `> Use hamill.mjs --tests (or -t) to launch all the tests (${tests.length}).\n`;
+    message += `> Use hamill.mjs --eval (or -e) to run a read-eval-print-loop from hml to html\n`;
+    message += "> Use hamill.mjs --help (or -h) to display this message";
     if (argv.length === 3) {
-        if (argv[2] === '--tests') {
+        if (argv[2] === '--tests' || argv[2] === '-t') {
             do_test = true;
+        } else if (argv[2] === "--eval" || argv[2] === '-e') {
+            console.log('---');
+            console.log('Type exit to quit');
+            let cmd = null;
+            while (cmd !== "exit") {
+                cmd = reader.question('> ');
+                if (cmd !== "exit") {
+                    let doc = Hamill.process(cmd);
+                    console.log(doc.to_html(false))
+                }
+            }
+        } else if (argv[2] === "--help" || argv[2] === "-h") {
+            console.log(message);
+        } else {
+            console.log(`Unrecognized option(s). Type --help for help.`);
         }
-        // TODO: un fichier de config
     } else if (argv.length === 4) {
-        // TODO: two files
+        if (argv[2] === '--process' || argv[2] === '-p') {
+            let filepath = argv[3];
+            if (!fs.existsSync(filepath)) {
+                throw new Error(`Impossible to find a valid hamill config file at ${filepath}`);
+            }
+            let workingDir = path.dirname(filepath);
+            process.chdir(workingDir);
+            console.log(`Set current working directory: ${process.cwd()}`);
+            let raw = fs.readFileSync(filepath, "utf-8");
+            let config = JSON.parse(raw);
+            for (const target of config["targets"]) {
+                if (target[0] !== "comment") {
+                    let inputFile = target[0];
+                    let targetOK = fs.existsSync(inputFile);
+                    if (!targetOK) {
+                        console.log(`${inputFile} is an invalid target. Aborting.`);
+                        process.exit();
+                    }
+                    let outputDir = target[1];
+                    Hamill.process(
+                        inputFile
+                    ).to_html_file(outputDir);
+                }
+            }
+        } else {
+            console.log(`Unrecognized options. Type --help for help.`);
+        }
     } else {
-        console.log('---');
-        console.log("> Use hamill.mjs <input filepath> <output dir> to convert the HML file to HTML");
-        console.log(`> Use hamill.mjs --tests to launch all the tests (${tests.length}).`);
+        console.log(message);
     }
 }
 if (fs !== null) {
@@ -2463,56 +2503,8 @@ if (fs !== null) {
         runAllTests(true); //, 5);
     }
     if (do_files) {
-        //- Pages racines ---------------------------------------------------------
-        Hamill.process("../../dgx/static/input/index.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/blog.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/plan.hml").to_html_file(
-            "../../dgx/"
-        );
-        Hamill.process("../../dgx/static/input/liens.hml").to_html_file(
-            "../../dgx/"
-        );
-        //- Ash -------------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/ash/ash_guide.hml"
-        ).to_html_file("../../dgx/ash/");
-        //- Hamill ----------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/hamill/index.hml"
-        ).to_html_file("../../dgx/hamill/");
-        Hamill.process(
-            "../../dgx/static/input/hamill/hamill.hml"
-        ).to_html_file("../../dgx/hamill/");
-        Hamill.process(
-            "../../dgx/static/input/hamill/tests.hml"
-        ).to_html_file("../../dgx/hamill/");
         //- RTS -------------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/rts/index.hml"
-        ).to_html_file("../../dgx/rts/");
-        //- Passetemps-------------------------------------------------------------
-        Hamill.process(
-            "../../dgx/static/input/passetemps/pres_jeuxvideo.hml"
-        ).to_html_file("../../dgx/passetemps/");
-        Hamill.process(
-            "../../dgx/static/input/passetemps/systemes_rpg.hml"
-        ).to_html_file("../../dgx/passetemps/");
-        Hamill.process(
-            "../../dgx/static/input/passetemps/compagnon_talisman.hml"
-        ).to_html_file("../../dgx/passetemps/");
-        Hamill.process(
-            "../../dgx/static/input/passetemps/compagnon_sorcier.hml"
-        ).to_html_file("../../dgx/passetemps/");
-        Hamill.process(
-            "../../dgx/static/input/passetemps/pres_favoris.hml"
-        ).to_html_file("../../dgx/passetemps/");
-        Hamill.process(
-            "../../dgx/static/input/passetemps/tech_dialogues.hml"
-        ).to_html_file("../../dgx/passetemps/");
+
     }
 }
 
