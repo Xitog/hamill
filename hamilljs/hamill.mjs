@@ -1815,6 +1815,7 @@ class Hamill {
             sub: false,
             stroke: false,
         };
+        let stack = [];
 
         while (index < str.length) {
             let char = str[index];
@@ -1954,11 +1955,17 @@ class Hamill {
                         nodes.push(new Code(doc, Hamill.unescape_code(code_str), null, null, lang, true)); // unescape only @@ !
                         index = is_code_ok + 1; // will inc by 1 at the end of the loop
                     } else {
+                        // match with text modes
                         if (!modes[match]) {
                             modes[match] = true;
+                            stack.push(match);
                             nodes.push(new Start(doc, match));
                         } else {
                             modes[match] = false;
+                            let last_mode = stack.pop();
+                            if (last_mode != match) {
+                                throw new Error(`Incoherent stacking of the modifier: finishing ${match} but ${last_mode} should be closed first!`);
+                            }
                             nodes.push(new Stop(doc, match));
                         }
                         index += 1;
@@ -1972,6 +1979,9 @@ class Hamill {
         }
         if (word.length > 0) {
             nodes.push(new Text(doc, word));
+        }
+        if (stack.length > 0) {
+            throw new Error(`Unclosed ${stack.pop()} text mode.`);
         }
         return nodes;
     }
@@ -2350,6 +2360,17 @@ let tests = [
         "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n",
     ], // Error, the \ should be removed!
     ["!css p { color: pink;}", ""],
+    // New feature
+    [
+        "**started but not finished",
+        "",
+        "Unclosed bold text mode."
+    ],
+    [
+        "**started __first** closed wrong__",
+        "",
+        "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
+    ]
 ];
 
 function runAllTests(stop_on_first_error = false, stop_at = null) {
