@@ -2,17 +2,17 @@
 # MIT Licence (Expat License Wording)
 # -----------------------------------------------------------
 # Copyright © 2020, Damien Gouteux
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,1182 +21,1939 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-# For more information about the Hamill lightweight markup language see:
-# https://xitog.github.io/dgx/informatique/hamill.html (in French)
+# For more information about my projects see:
+# https://xitog.github.io/dgx (in French)
 
-"""Hamill: a simple lightweight markup language"""
-
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Imports
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
-import os # for walk
-import os.path # test if it is a directory or a file
-import shutil
-import locale
-import datetime
+from datetime import datetime
+import os.path
+import json
+import math
+import sys
+import os
+import re
 
-from logging import info, warning, error
-from weyland import Lexer, RECOGNIZED_LANGUAGES, LANGUAGES, __version__
-print('Using Weyland version:', __version__)
+#------------------------------------------------------------------------------
+# Constants
+#------------------------------------------------------------------------------
 
-#-------------------------------------------------------------------------------
-# Constants and globals
-#-------------------------------------------------------------------------------
+VERSION = '2.0.3'
+END_PARAGRAPH = "</p>\n"
 
-LIST_STARTERS = {'* ': 'ul', '• ': 'ul', '% ': 'ol', '+ ' : 'ol', '- ': 'ol reversed'}
-COMMENT_STARTER = '§§'
+#------------------------------------------------------------------------------
+# Class
+#------------------------------------------------------------------------------
 
-#-------------------------------------------------------------------------------
-# Data model
-#-------------------------------------------------------------------------------
-# Generation class : contains the config of a generation
-# - process_lines puts the result of the generation in lines
-# - process_string returns directly the generated string
-#-------------------------------------------------------------------------------
+class HamillException(Exception):
+    pass
 
-class Generation:
+# Tagged lines
 
-    def __init__(self, default_lang='en', default_encoding='utf-8',
-                 default_code='text', default_find_image=None,
-                 includes = None, links = None, inner_links = None,
-                 error_locale=False):
-        self.constants = {}
-        self.variables = {}
-        self.lines = []
-        self.header_links = []
-        self.header_css = []
-        self.includes = [] if includes is None else includes
-        self.links = {} if links is None else links
-        self.inner_links = [] if inner_links is None else inner_links
-        # 6 HTML constants
-        self.constants['TITLE'] = None
-        self.constants['ENCODING'] = default_encoding
-        self.constants['LANG'] = default_lang
-        self.constants['ICON'] = None
-        self.constants['BODY_CLASS'] = None
-        self.constants['BODY_ID'] = None
-        # 1 generation constant
-        try:
-            dt = datetime.datetime.now()
-            found = False
-            # first try
-            language_alias = {'en': ['en_US'], 'fr': ['fr_FR']}
-            encoding_alias = {'utf-8': ['utf8'], 'utf8': ['utf-8']}
-            all_alias = [(default_lang, default_encoding)]
-            if default_lang in language_alias:
-                for elem in language_alias[default_lang]:
-                    all_alias.append((elem, default_encoding))
-                    if default_encoding in encoding_alias:
-                        for enco in encoding_alias[default_encoding]:
-                            all_alias.append((elem, enco))
-            for lg, en in all_alias:
-                try:
-                    locale.setlocale(locale.LC_TIME, (lg, en))
-                    info(f'Locale set to {lg} and encoding {en}')
-                    found = True
-                    break
-                except locale.Error:
-                    pass
-            # second try, our lang, our encoding
-            if not found:
-                for lang, encoding in locale.locale_alias.items():
-                    if lang.startswith(default_lang) and default_encoding in encoding.lower():
-                        try:
-                            locale.setlocale(locale.LC_TIME, (lang, encoding))
-                            info(f'Locale set to {lang} and encoding {encoding}')
-                            found = True
-                            break
-                        except locale.Error:
-                            if (error_locale):
-                                warning(f'Impossible to set locale to ({lang}, {encoding}).')
-                            pass
-            # third try, our lang, any encoding
-            if not found:
-                for lang, encoding in locale.locale_alias.items():
-                    if lang.startswith(default_lang):
-                        try:
-                            locale.setlocale(locale.LC_TIME, (lang, encoding))
-                            found = True
-                            warning(f'Locale not found for ({default_lang}, {default_encoding}), defaulting to ({lang}, {encoding})')
-                            break
-                        except locale.Error:
-                            if (error_locale):
-                                warning(f'Impossible to set locale to ({lang}, {encoding}).')
-                            pass
-            # last try, ugly fix for Windows 7
-            if not found:
-                res = locale.setlocale(locale.LC_TIME, '')
-                warning(f'Locale not found for {default_lang} in any encoding. Setting to default: {res}')
-            self.constants['GENDATE'] = dt.strftime("%d %B %Y")
-            #self.constants['GENDATE'] = f'{dt.year}/{dt.month}/{dt.day}'
-        except KeyError:
-            self.constants['GENDATE'] = f'{dt.day}/{dt.month}/{dt.year}'
-        # 2 var from markup {{.cls}} or {{#id}}
-        self.variables['EXPORT_COMMENT'] = False
-        self.variables['DEFINITION_AS_PARAGRAPH'] = False
-        self.variables['DEFAULT_CODE'] = default_code
-        self.variables['DEFAULT_PAR_CLASS'] = None
-        self.variables['NEXT_PAR_CLASS'] = None
-        self.variables['NEXT_PAR_ID'] = None
-        self.variables['DEFAULT_TAB_CLASS'] = None
-        self.variables['NEXT_TAB_CLASS'] = None
-        self.variables['NEXT_TAB_ID'] = None
-        self.variables['DEFAULT_FIND_IMAGE'] = default_find_image
+class Line:
 
-    def first(self):
-        return self.lines[0]
+    def __init__(self, value, type, param = None):
+        self.value = value
+        self.type = type
+        self.param = param
 
-    def __getitem__(self, key):
-        if isinstance(key, str):
-            if key in self.constants:
-                return self.constants[key]
-            elif key in self.variables:
-                return self.variables[key]
-            else:
-                raise Exception('Key not known: ' + str(key))
-
-    def __setitem__(self, key, value):
-        if isinstance(key, str):
-            if key in self.constants:
-                self.constants[key] = value
-            elif key in self.variables:
-                self.variables[key] = value
-            else:
-                raise Exception('Key not known: ' + str(key))
-
-    def append(self, line):
-        self.lines.append(line)
-
-    def __iter__(self):
-        for line in self.lines:
-            yield line
-
-    def __str__(self):
-        return ''.join(self.lines)
-
-#-------------------------------------------------------------------------------
-# Tool functions
-#-------------------------------------------------------------------------------
-# count_list_level: count the list level starting a line
-# super_strip     : strip and remove comments
-# prev_next       : get prev, next, prev_prev from a string
-# multi_start     : if a string starts with one of the starters defined
-# multi_find      : if a string contains one of the motif
-# find_unsescaped : if a string contains a motif unescaped
-# escape          : handles escaped characters
-# safe            : transform some characters
-# find_title      : find a title
-# make_id         : make an id from a string (replace ' ' by '-' and lower)
-# write_code      : write code by creating a list of tokens
-#-------------------------------------------------------------------------------
-
-def count_list_level(line):
-    """Return the level of the list, the kind of starter and if it is
-       a continuity of a previous level."""
-    starter = line[0]
-    if starter + ' ' not in LIST_STARTERS:
-        raise Exception('Unknown list starter: ' + line[0] + ' in ' + line)
-    level = 0
-    continuity = False
-    while line.startswith(starter + ' '):
-        level += 1
-        line = line[2:]
-    if line.startswith('| '):
-        level += 1
-        continuity = True
-    return level, starter, continuity
-
-
-def super_strip(line):
-    """Remove any blanks at the start or the end of the string AND the comments §§"""
-    line = line.strip()
-    if len(line) == 0:
-        return line
-    index = find_unescaped(line, COMMENT_STARTER)
-    if index != -1:
-        return line[:index].strip()
-    else:
-        return line
-
-
-def prev_next(line, index):
-    if index > 0:
-        _prev = line[index - 1]
-    else:
-        _prev = None
-    if index > 1:
-        _prev_prev = line[index - 2]
-    else:
-        _prev_prev = None
-    if index < len(line) - 1:
-        _next = line[index + 1]
-    else:
-        _next = None
-    return _prev, _next, _prev_prev
-
-
-def multi_start(string, starts):
-    for key in starts:
-        if string.startswith(key):
-            return key
-
-
-def multi_find(string, finds):
-    for key in finds:
-        if find_unescaped(string, key) != -1:
-            return key
-    return None
-
-
-# Compte le nombre de fois où le motif apparaît __non échappé__
-def count(line, motif):
-    a = find_unsecaped(line, motif)
-    while a > -1:
-        nb += 1
-        a = find_unsecaped(line, motif, a + 1)
-    return nb
-
-
-def find_unescaped(line, motif, start=0):
-    "Used by super_strip, code handling and multi_find"
-    index = start
-    while index < len(line):
-        found = line.find(motif, index)
-        if found == -1:
-            break
-        elif found == 0 or line[found - 1] != '\\':
-            return found
+    def __repr__(self):
+        if self.param is None:
+            return f"{self.type} |{self.value}|"
         else:
-            index = found + 1 #len(motif)
-    return -1
+            return f"{self.type} |{self.value}| ({self.param})"
 
+# Document nodes
 
-def escape(line):
-    # Escaping
-    if line.find('\\') == -1:
-        return line
-    new_line = ''
-    index_char = 0
-    while index_char < len(line):
-        char = line[index_char]
-        _, next_char, _ = prev_next(line, index_char)
-        if char == '\\' and next_char in ['*', "'", '^', '#', '-', '_', '[', '@', '%', '+', '$', '!', '|', '{', '•']:
-            new_line += next_char
-            index_char += 2    
+class EmptyNode:
+
+    def __init__(self, document, ids = None, cls = None):
+        self.document = document
+        if self.document is None:
+            raise HamillException("Undefined or null document")
+        self.ids = ids
+        self.cls = cls
+
+    def __repr__(self):
+        return self.__class__.__name__
+
+class Node(EmptyNode):
+
+    def __init__(self, document, content = None, ids = None, cls = None):
+        super().__init__(document, ids, cls)
+        self.content = content
+
+    def __repr__(self):
+        if self.content is None:
+            return self.__class__.__name__
         else:
-            new_line += char
-            index_char += 1
-    return new_line
+            return self.__class__.__name__ + " { content: " + self.content + " }"
 
+class Text(Node):
+    def to_html(self):
+        return self.document.safe(self.content)
 
-def safe(line):
-    # Do not escape !html line
-    if line.startswith('!html'):
-        return line
-    # Replace special glyph
-    line = line.replace('<==', '⇐')
-    line = line.replace('==>', '⇒')
-    # Replace HTML special char but not all (can't use html.escape for that)
-    new_line = ''
-    index_char = 0
-    escape = False
-    while index_char < len(line):
-        char = line[index_char]
-        prev_char, next_char, _ = prev_next(line, index_char)
-        # replace
-        if char == '@' and next_char == '@':
-            escape = not escape
-        if not escape:
-            if char == '&':
-                new_line += '&amp;'
+class Start(Node):
+    def to_html(self):
+        markups = {
+            "bold": "b",
+            "italic": "i",
+            "stroke": "s",
+            "underline": "u",
+            "sup": "sup",
+            "sub": "sub",
+            "strong": "strong",
+            "em": "em",
+            # 'code': 'code'
+        }
+        if self.content not in markups:
+            raise HamillException(f"Unknown text style:{self.content}")
+        return f"<{markups[self.content]}>"
+
+class Stop(Node):
+    def to_html(self):
+        markups = {
+            "bold": "b",
+            "italic": "i",
+            "stroke": "s",
+            "underline": "u",
+            "sup": "sup",
+            "sub": "sub",
+            "strong": "strong",
+            "em": "em",
+            # 'code': 'code'
+        }
+        if self.content not in markups:
+            raise HamillException(f"Unknown text style:{self.content}")
+        return f"</{markups[self.content]}>"
+
+class Picture(Node):
+
+    def __init__(self, document, url, text = None, cls = None, ids = None):
+        super().__init__(self, document, url, ids, cls)
+        self.text = text
+
+    def to_html(self):
+        cls = '' if self.cls is None else f' class="{self.cls}"'
+        ids = '' if self.ids is None else f' id="{self.ids}"'
+        if self.text is not None:
+            return f'<figure><img{cls}{ids} src="{self.content}" alt="{self.text}"></img><figcaption>{self.text}</figcaption></figure>'
+        else:
+            return f'<img{cls}{ids} src="{self.content}"/>'
+
+class HR(EmptyNode):
+
+    def to_html(self):
+        return "<hr>\n"
+
+class BR(EmptyNode):
+
+    def to_html(self):
+        return "<br>"
+
+class Span(Node):
+
+    def to_html(self):
+        cls = '' if self.cls is None else f' class={self.cls}"'
+        ids = '' if self.ids is None else f' id="{self.ids}"'
+        return f'<span{ids}{cls}>{self.content}</span>'
+
+class ParagraphIndicator(EmptyNode):
+
+    def to_html(self):
+        cls = '' if self.cls is None else f' class="{self.cls}"'
+        ids = '' if tselfhis.ids is None else f' id="{self.ids}"'
+        return f'<p{ids}{cls}>'
+
+class Comment(Node):
+    pass
+
+class Row(EmptyNode):
+
+    def __init__(self, document, node_list_list):
+        super().__init__(document)
+        self.node_list_list = node_list_list
+        self.is_header = False
+
+class RawHTML(Node):
+
+    def to_html(self):
+        return self.content + "\n"
+
+class Include(Node):
+    pass
+
+class Title(Node):
+
+    def __init__(self, document, content, level):
+        super().__init__(document, content)
+        self.level = level
+
+class StartDetail(Node):
+
+    def to_html(self):
+        cls =  '' if self.cls is None else f' class="{self.cls}"'
+        ids =  '' if self.ids is None else f' id="{self.ids}"'
+        return f'<details{ids}{cls}><summary>{self.content}</summary>\n'
+
+class Detail(Node):
+
+    def __init__(self, document, content, data, ids = None, cls = None):
+        super().__init__(document, content, ids, cls)
+        self.data = data
+
+    def to_html(self):
+        cls = '' if self.cls is None else f' class="{self.cls}"'
+        ids = '' if self.ids is None else f' id="{self.ids}"'
+        return f'<details{ids}{cls}><summary>{self.content}</summary>{self.data}</details>\n'
+
+class EndDetail(EmptyNode):
+
+    def to_html(self):
+        return "</details>\n"
+
+class StartDiv(EmptyNode):
+
+    def __init__(self, document, ids = None, cls = None):
+        super().__init__(document, ids, cls)
+
+    def to_html(self):
+        cls = '' if self.cls is None else f' class="{self.cls}"'
+        ids = '' if self.ids is None else f' id="{self.ids}"'
+        return f'<div{ids}{cls}>\n'
+
+class EndDiv(EmptyNode):
+
+    def to_html(self):
+        return "</div>\n"
+
+class Composite(EmptyNode):
+
+    def __init__(self, document, parent = None):
+        super().__init__(document)
+        self.children = []
+        self.parent = parent
+
+    def add_child(self, o):
+        if not isinstance(o, EmptyNode):
+            raise HamillException("A composite can only be made of EmptyNode and subclasses")
+        self.children.append(o)
+        if isinstance(o, Composite):
+            o.parent = self
+        return o
+
+    def add_children(self, ls):
+        for e in ls:
+            self.add_child(e)
+
+    def last(self):
+        return self.children[-1]
+
+    def get_parent(self):
+        return self.parent
+
+    def root(self):
+        if self.parent is None:
+            return self
+        else:
+            return self.parent.root()
+
+    def __repr__(self):
+        return self.__class__.__name__ + f' ({len(self.children)})'
+
+    def pop(self):
+        return self.children.pop()
+
+    def to_html(self, level = 0):
+        s = ""
+        for child in self.children:
+            if isinstance(child, List):
+                s += "\n" + child.to_html(level)
+            else:
+                s += child.to_html()
+        return s
+
+class TextLine(Composite):
+
+    def __init__(self, document, children = None):
+        children = [] if children is None else children
+        super().__init__(document)
+        self.add_children(children)
+
+    def to_html(self, level=None):
+        return self.document.string_to_html("", self.children)
+
+class List(Composite):
+
+    def __init__(self, document, parent, ordered = False, reverse = False, level = 0, children = None):
+        super().__init__(document, parent)
+        children = [] if children is None else children
+        self.add_children(children)
+        self.level = level
+        self.ordered = ordered
+        self.reverse = reverse
+
+    def to_html(self, level = 0):
+        start = "    " * level
+        end = "    " * level
+        if self.ordered:
+            if self.reverse:
+                start += "<ol reversed>"
+            else:
+                start += "<ol>"
+            end += "</ol>"
+        else:
+            start += "<ul>"
+            end += "</ul>"
+        s = start + "\n"
+        for child in self.children:
+            s += "    " * level + "  <li>"
+            if isinstance(child, List):
+                s += "\n" + child.to_html(level + 1) + "  </li>\n"
+            elif isinstance(child, Composite) and not isinstance(child, TextLine):
+                s += child.to_html(level + 1) + "  </li>\n"
+            else:
+                s += child.to_html() + "</li>\n"
+        s += end + "\n"
+        return s
+
+# [[label]] (you must define somewhere ::label:: https://) display = url
+# [[https://...]] display = url
+# [[display->label]] (you must define somewhere ::label:: https://)
+# [[display->https://...]]
+# [[display->#id]]
+# [[display->#]] forge un id à partir du display
+# http[s] can be omitted, but in this case the url should start by www.
+class Link(EmptyNode):
+
+    def __init__(self, document, url, display = None):
+        super().__init__(document)
+        self.url = url
+        self.display = display # list of nodes
+
+    def __repr__(self):
+        return self.__class__.__name__ + f' {self.display} -> {self.url}'
+
+    def to_html(self):
+        url = self.url
+        display = None
+        if self.display is not None:
+            display = self.document.string_to_html("", self.display)
+        if not url.startswith("https://") and not url.startswith("http://") and not url.startswith("www."):
+            if url == "#":
+                url = self.document.get_label(self.document.make_anchor(display))
+            elif url.startswith("#"):
+                # nothing to do
+                pass
+            else:
+                url = self.document.get_label(url)
+        if display is None:
+            display = url
+        return f'<a href="{url}">{display}</a>'
+
+class Definition(Node):
+
+    def __init__(self, document, header, content):
+        super().__init__(document, content)
+        self.header = header
+
+class Quote(Node):
+
+    def __init__(self, document, content, cls = None, ids = None):
+        super().__init__(document, content)
+        self.cls = cls
+        self.ids = ids
+
+    def __repr__(self):
+        content = self.content.replace("\n", "\\n")
+        return 'Quote { ' + f'content: {content}' + '}'
+
+    def to_html(self):
+        cls =  '' if self.cls is None else f' class="{self.cls}'
+        ids =  '' if self.ids is None else f' id="{self.ids}"'
+        content = self.document.safe(self.content).replace("\n", "<br>\n")
+        return f'<blockquote{ids}{cls}>\n' + content + "</blockquote>\n"
+
+class Code(Node):
+
+    def __init__(self, document, content, ids = None, cls = None, lang = None, inline = False):
+        super().__init__(document, content, ids, cls)
+        self.inline = inline
+        self.lang = lang
+
+    def __repr__(self):
+        lang = "" if self.lang is None else f':{self.lang}'
+        inline =  " inline" if self.inline else ""
+        return f'Code{lang} ' + '{' + f'content: {self.content}' + '}' + inline
+
+    def to_html(self):
+        output = ""
+        if self.lang is not None and self.lang in LANGUAGES:
+            output = LEXERS[self.lang].to_html(self.content, None, ["blank"])
+        else:
+            output = self.content
+        if self.inline:
+            return "<code>" + output + "</code>"
+        else:
+            return "<pre>\n" + output + "</pre>\n"
+
+class GetVar(Node):
+
+    def __init__(self, document, content):
+        super().__init__(document, content)
+        if content is None:
+            raise HamillException("A GetVar node must have a content")
+
+class SetVar(EmptyNode):
+
+    def __init__(self, document, id, value, type, constant):
+        super().__init__(document)
+        self.id = id
+        self.value = value
+        self.type = type
+        self.constant = constant
+
+class Markup(Node):
+    pass
+
+# Variable & document
+
+class Variable:
+
+    def __init__(self, document, name, type, constant = False, value = None):
+        self.document = document
+        self.name = name
+        if type != "number" and type != "string" and type != "boolean":
+            raise HamillException(f'Unknown type {type} for variable {name}')
+        self.type = type
+        self.constant = constant
+        self.value = value
+
+    def set_variable(self, value):
+        if self.value is not None and self.constant:
+            raise HamillException(f"Can't set the value of the already defined constant: {self.name} of type {self.type}")
+        if (math.isnan(value) and self.type == "number") or \
+            (isinstance(value, str) and self.type != "string") or \
+            (isinstance(value, bool) and self.type != "boolean"):
+            raise HamillException(f"Cant't set the value to {value} for variable {self.name} of type {self.type}")
+        self.value = value
+
+    def get_value(self):
+        if self.name == "NOW":
+            return datetime.now().strftime("%A %d %B %Y")
+        else:
+            return self.value
+
+class Document:
+
+    def __init__(self, name = None):
+        self.predefined_constants = [
+            "TITLE",
+            "ICON",
+            "LANG",
+            "ENCODING",
+            "BODY_CLASS",
+            "BODY_ID",
+            "VERSION",
+            "NOW",
+        ]
+        self.name = name
+        self.variables = {
+            "VERSION": Variable(self, "VERSION", "string", "true", f'Hamill {VERSION}'),
+            "NOW": Variable(self, "NOW", "string", "true", ""),
+            "PARAGRAPH_DEFINITION": Variable(self, "PARAGRAPH_DEFINITION", "boolean", False, False),
+            "EXPORT_COMMENT": Variable(self, "EXPORT_COMMENT", "boolean", False, False),
+            "DEFAULT_CODE": Variable(self, "DEFAULT_CODE", "string", "false"),
+        }
+        self.required = []
+        self.css = []
+        self.labels = {}
+        self.nodes = []
+
+    def set_name(self, name):
+        self.name = name
+
+    def to_html_file(self, output_directory = ""):
+        parts = self.name.split("/")
+        outfilename = parts[-1]
+        outfilename = outfilename[0 : outfilename.lastIndexOf(".hml")] + ".html"
+        target = ""
+        if os.path.isdir(output_directory):
+            target = output_directory + path.sep + outfilename
+        else:
+            target = outfilename
+        f = open(target)
+        f.write(self.to_html(True)) # With header
+        f.close()
+        print("Outputting in:", target)
+
+    def has_variable(self, k):
+        return k in self.variables and self.variables[k] is not None
+
+    def set_variable(self, k, v, t = "string", c = False):
+        if k in self.variables:
+            self.variables[k].set_variable(v)
+        else:
+            self.variables[k] = Variable(self, k, t, c, v)
+
+    def get_variable(self, k, default_value = None):
+        if k in self.variables:
+            return self.variables[k].get_value()
+        elif default_value is not None:
+            return default_value
+        else:
+            print("Dumping variables:")
+            for v in self.variables:
+                print("   ", v.name, "=", v.value)
+            raise HamillException(f'Unknown variable: {k}')
+
+    def add_required(self, r):
+        self.required.append(r)
+
+    def add_css(self, c):
+        self.css.append(c)
+
+    def add_label(self, l, v):
+        self.labels[l] = v
+
+    def add_node(self, n):
+        if n is None:
+            raise HamillException("Trying to add a null node")
+        self.nodes.append(n)
+
+    def get_node(self, i):
+        return self.nodes[i]
+
+    def get_label(self, target):
+        if target not in self.labels:
+            for label in self.labels:
+                print(label)
+            raise HamillException("Label not found : |" + target + "|")
+        return self.labels[target]
+
+    def make_anchor(self, text):
+        step1 = text.replace(" ", "-").lower()
+        result = ""
+        in_html = False
+        for c in step1:
+            if c == "<":
+                in_html = True
+            elif c == ">":
+                in_html = False
+            elif not in_html:
+                result += c
+        return result
+
+    def string_to_html(self, content, nodes):
+        if nodes is None:
+            raise HamillException("No nodes to process")
+        if not isinstance(content, str):
+            raise HamillException("Parameter content should be of type string")
+        if not isinstance(nodes, list):
+            raise HamillException("Parameter nodes should be an array")
+        # Parameter nodes should be an array of Start|Stop|Text|BR|Picture|ParagraphIndicator|Span|Link|GetVar|Code(inline)
+        for node in nodes:
+            if isinstance(node, Start) or \
+                isinstance(node, Stop) or \
+                isinstance(node, Span) or \
+                isinstance(node, Picture) or \
+                isinstance(node, BR) or \
+                isinstance(node, Text) or \
+                (isinstance(node, Code) and node.inline) or \
+                isinstance(node, ParagraphIndicator):
+                content += node.to_html()
+            elif isinstance(node, Link):
+                content += node.to_html(self)
+            elif isinstance(node, GetVar):
+                content += self.get_variable(node.content)
+            else:
+                raise HamillException("Impossible to handle this type of node: " + node.__class__.__name__)
+        return content
+
+    def safe(self, s):
+        index = 0
+        word = ''
+        specials = ["@", "(", "[", "{", "$", "*", "!", "'", "/", "_", "^", "%", "-", "#", "\\", "•"]
+        while index < len(s):
+            char = s[index]
+            nextc = s[index + 1] if index + 1 < len(s) else None
+            next_next = str[index + 2] if index + 2 < len(s) else None
+            prev = s[index - 1] if index - 1 >= 0 else None
+            # Glyphs - Trio
+            if char == "." and nextc == "." and next_next == "." and prev != "\\":
+                word += "…"
+                index += 2
+            elif char == "=" and nextc == "=" and next_next == ">" and prev != "\\":
+                word += "&DoubleRightArrow;"; # ==>
+                index += 2
+            elif char == "<" and nextc == "=" and next_next == "=" and prev != "\\":
+                word += "&DoubleLeftArrow;" # <==
+                index += 2
+                # Glyphs - Duo
+            elif char == "-" and nextc == ">" and prev == "\\":
+                word += "&ShortRightArrow;" # ->
+                index += 1
+            elif char == "<" and nextc == "-" and prev != "\\":
+                word += "&ShortLeftArrow;" # <-
+                index += 1
+            elif char == "o" and nextc == "e" and prev != "\\":
+                word += "&oelig;" # oe
+                index += 1
+            elif char == "O" and nextc == "E" and prev != "\\":
+                word += "&OElig;" # OE
+                index += 1
+            elif char == "=" and nextc == "=" and prev != "\\":
+                word += "&Equal;" # ==
+                index += 1
+            elif char == "!" and nextc == "=" and prev != "\\":
+                word += "&NotEqual;" # !=
+                index += 1
+            elif char == ">" and nextc == "=" and prev != "\\":
+                word += "&GreaterSlantEqual;" # >=
+                index += 1
+            elif char == "<" and nextc == "=" and prev != "\\":
+                word += "&LessSlantEqual;" # <=
+                index += 1
+                # Glyph - solo
+            elif char == '&':
+                word += '&amp;'
             elif char == '<':
-                new_line += '&lt;'
-            elif char == '>' and next_char == '>' and index_char == 0: # must not replace >>
-                new_line += '>>'
-                index_char += 1
-            elif char == '>' and prev_char not in ['-', '[', '|']: # must not replace -> and [> and |>
-                new_line += '&gt;'
+                word += '&lt;'
+            elif char == '>':
+                word += '&gt;'
+            # Escaping
+            elif char == "\\" and nextc in specials:
+                # Do nothing, this is an escaping slash
+                if nextc == "\\":
+                    word += "\\"
+                    index += 1
             else:
-                new_line += char
-        else:
-            new_line += char
-        index_char += 1
-    return new_line
+                word += char
+            index += 1
+        return word
 
-
-def find_title(line):
-    c = 0
-    nb = 0
-    while c < len(line):
-        if line[c] == '#':
-            nb += 1
-        else:
-            break
-        c += 1
-    if nb > 0:
-        title = line.replace('#' * nb, '', 1).strip()
-        id_title = make_id(title)
-        return nb, title, id_title
-    return 0, None, None
-
-
-def make_id(string):
-    """Translate : A simple Title -> a_simple_title"""
-    return string.replace(' ', '-').lower()
-
-
-def write_code(line, code_lang):
-    line = line.replace('\\@', '@') # warning bug if \\@
-    #print('write_code', code_lang, line)
-    return Lexer(LANGUAGES[code_lang]).to_html(text=line, raws=['blank'])
-
-
-def write_code2(line, code_lang):
-    line = line.replace('\\@', '@') # warning bug if \\@
-    #print('write_code', code_lang, line)
-    #print('Lang:', code_lang, 'Envoyé:', line)
-    import requests
-    import logging
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    r = requests.post("http://localhost:7000", data={'id': 3, 'lang': code_lang, 'text': line})
-    #print(r.status_code, r.reason)
-    #print(r.json()['result'])
-    return r.json()['result']
-
-
-def check_link(link, links, inner_links):
-    if multi_start(link, ('https://', 'http://')):
-        pass
-    elif make_id(link) in inner_links:
-        link = '#' + make_id(link)
-    elif link in inner_links:
-        link = '#' + link
-    elif link in links:
-        link = links[link]
-    else:
-        warning(f'Undefined link: {link}')
-    return link
-
-
-#-------------------------------------------------------------------------------
-# Processors functions
-#-------------------------------------------------------------------------------
-
-def process_string(line, gen=None):
-    if line.find('\n') != -1:
-        raise Exception("process_string() can't process multilines input")
-    gen = Generation() if gen is None else gen
-    nb, title, id_title = find_title(line)
-    if nb > 0:
-        new_line = f'<h{nb} id="{id_title}">{title}</h{nb}>'
-        return new_line
-    new_line = ''
-    in_bold = False
-    in_italic = False
-    in_strikethrough = False
-    in_underline = False
-    in_power = False
-    in_sub = False
-    in_code = False
-    code = ''
-    char_index = -1
-    while char_index < len(line) - 1:
-        char_index += 1
-        char = line[char_index]
-        prev_char, next_char, prev_prev_char = prev_next(line, char_index)
-        # Paragraph et span class (div class are handled elsewhere)
-        if char == '{' and next_char == '{' and prev_char != '\\' and line.find('}}', char_index+1) != -1:
-            continue
-        if char == '{' and prev_char == '{' and prev_prev_char != '\\':
-            ending = line.find('}}', char_index)
-            if ending != -1:
-                inside = line[char_index + 1:ending]
-                cls = ''
-                ids = ''
-                txt = ''
-                state = 'start'
-                for c in inside:
-                    if state == 'start':
-                        if c == '.':
-                            state = 'cls'
-                            cls += c
-                        elif c == '#':
-                            state = 'ids'
-                            ids += c
-                        else:
-                            state = 'txt'
-                            txt += c
-                    elif state == 'cls':
-                        if c != ' ':
-                            cls += c
-                        else:
-                            state = 'start'
-                    elif state == 'ids':
-                        if c != ' ':
-                            ids += c
-                        else:
-                            state = 'start'
-                    elif state == 'txt': # you can't escape txt mode
-                        txt += c
-                if len(txt) > 0:
-                    if len(ids) > 0 and len(cls) > 0:
-                        new_line += f'<span id="{ids[1:]}" class="{cls[1:]}">{txt}</span>'
-                    elif len(ids) > 0:
-                        new_line += f'<span id="{ids[1:]}">{txt}</span>'
-                    elif len(cls) > 0:
-                        new_line += f'<span class="{cls[1:]}">{txt}</span>'
-                    else:
-                        new_line += f'<span>{txt}</span>'
-                else:
-                    if len(ids) > 0:
-                        gen['NEXT_PAR_ID'] = ids[1:]
-                    if len(cls) > 0:
-                        gen['NEXT_PAR_CLASS'] = cls[1:]
-                char_index = ending + 1
-                continue
-        # Links and images
-        if char == '[' and prev_char != '\\' and next_char != '[': # [[ the first is not a link!
-            ending = line.find(']', char_index)
-            if ending != -1:
-                is_link = True
-                if next_char == '#': # [# ... ] creating inner link
-                    link_name = line[char_index + 2:ending]
-                    id_link = make_id(link_name)
-                    new_line += f'<span id="{id_link}">{link_name}</span>'
-                elif next_char == '!': # [! ... ] image
-                    link = line[char_index + 2:ending]
-                    if gen['DEFAULT_FIND_IMAGE'] is None:
-                        new_line += f'<img src="{link}"></img>'
-                    else:
-                        new_line += f'<img src="{gen["DEFAULT_FIND_IMAGE"]}{link}"></img>'
-                elif next_char == '>': # [> ... ] direct URL or REF
-                    link_or_name = line[char_index + 2:ending]
-                    link = check_link(link_or_name, gen.links, gen.inner_links)
-                    new_line += f'<a href="{link}">{link_or_name}</a>'
-                elif next_char == '=': # [= ... ] display a value
-                    ids = line[char_index + 2:ending]
-                    if ids in gen.constants:
-                        new_line += str(gen.constants[ids])
-                    elif ids in gen.variables:
-                        new_line += str(gen.variables[ids])
-                    else:
-                        warning(f'Undefined identifier: {ids}')
-                        new_line += '<undefined>'
-                elif line[char_index + 1:ending].find('->') != -1: # [ name -> direct URL | REF | # ]
-                    link = line[char_index + 1:ending]
-                    link_name, link = link.split('->', 1)
-                    if link == '#':
-                        link = link_name
-                    # Check link
-                    link = check_link(link, gen.links, gen.inner_links)
-                    # Make link
-                    link_name = process_string(link_name, gen)
-                    new_line += f'<a href="{link}">{link_name}</a>'
-                else:
-                    is_link = False
-                if is_link:
-                    char_index = ending
-                    continue
-        # Italic
-        if char == "'" and next_char == "'" and prev_char != '\\':
-            continue
-        if char == "'" and prev_char == "'" and prev_prev_char != '\\':
-            if not in_italic and next_char is not None and line.find("''", char_index + 1) != -1:
-                new_line += '<i>'
-                in_italic = True
-            elif in_italic:
-                new_line += '</i>'
-                in_italic = False
-            else:
-                new_line += "''"
-            continue
-        # Strong
-        if char == '*' and next_char == '*' and prev_char != '\\':
-            continue
-        if char == '*' and prev_char == '*' and prev_prev_char != '\\':
-            if not in_bold and next_char is not None and line.find("**", char_index + 1) != -1:
-                new_line += '<b>'
-                in_bold = True
-            elif in_bold:
-                new_line += '</b>'
-                in_bold = False
-            else:
-                new_line += '**'
-            continue
-        # Strikethrough
-        if char == '-' and next_char == '-' and prev_char != '\\':
-            continue
-        if char == '-' and prev_char == '-' and prev_prev_char != '\\':
-            if not in_strikethrough and next_char is not None and line.find("--", char_index + 1) != -1:
-                new_line += '<s>'
-                in_strikethrough = True
-            elif in_strikethrough:
-                new_line += '</s>'
-                in_strikethrough = False
-            else:
-                new_line += '--'
-            continue
-        # Underline
-        if char == '_' and next_char == '_' and prev_char != '\\':
-            continue
-        if char == '_' and prev_char == '_' and prev_prev_char != '\\':
-            if not in_underline and next_char is not None and line.find("__", char_index + 1) != -1:
-                new_line += '<u>'
-                in_underline = True
-            elif in_underline:
-                new_line += '</u>'
-                in_underline = False
-            else:
-                new_line += '__'
-            continue
-        # Superscript
-        if char == '^' and next_char == '^' and prev_char != '\\':
-            continue
-        if char == '^' and prev_char == '^' and prev_prev_char != '\\':
-            if not in_power and next_char is not None and line.find("^^", char_index + 1) != -1:
-                new_line += '<sup>'
-                in_power = True
-            elif in_power:
-                new_line += '</sup>'
-                in_power = False
-            else:
-                new_line += '^^'
-            continue
-        # Subscript
-        if char == '%' and next_char == '%' and prev_char != '\\':
-            continue
-        if char == '%' and prev_char == '%' and prev_prev_char != '\\':
-            if not in_sub and next_char is not None and line.find("%%", char_index + 1) != -1:
-                new_line += '<sub>'
-                in_sub = True
-            elif in_sub:
-                new_line += '</sub>'
-                in_sub = False
-            else:
-                new_line += '%%'
-            continue
-        # Code
-        if char == '@' and next_char == '@' and prev_char != '\\':
-            continue
-        if char == '@' and prev_char == '@' and prev_prev_char != '\\':
-            if next_char is not None and line.find("@@", char_index + 1) != -1:
-                ending = find_unescaped(line, '@@', char_index)
-                code = line[char_index + 1:ending]
-                length = len(code) + 2
-                s = multi_start(code, RECOGNIZED_LANGUAGES)
-                if s is not None:
-                    code = code.replace(s + ' ', '', 1) # delete also the space between the language and the actual code
-                else:
-                    s = gen['DEFAULT_CODE']
-                new_line += '<code>' + write_code(code, s) + '</code>'
-                char_index += length
-            else:
-                new_line += '@@'
-            continue
-        new_line += char
-    return new_line
-
-
-def process_constvar(line):
-    if line.startswith('!const'):
-        command, value = line.replace('!const ', '').split('=')
-    elif line.startswith('!var'):
-        command, value = line.replace('!var ', '').split('=')
-    else:
-        raise Exception('No variable or constant defined here: ' + line)
-    command = command.strip()
-    value = value.strip()
-    return command, value
-
-
-def process_file(input_name, output_name=None, default_lang=None, includes=None):
-    info(f'Processing file: {input_name}')
-    if not os.path.isfile(input_name):
-        raise Exception('Process_file: Invalid source file: ' + str(input_name))
-    source = open(input_name, mode='r', encoding='utf8')
-    content = source.readlines()
-    source.close()
-
-    result = process_lines(content,
-                           Generation(default_lang=default_lang, includes=includes))
-
-    if output_name is None:
-        if input_name.endswith('.hml'):
-            output_name = input_name.replace('.hml', '.html')
-        else:
-            output_name = input_name + '.html'
-    output = open(output_name, mode='w', encoding='utf8')
-
-    # Header
-    if result["LANG"] is not None:
-        output.write(f'<html lang="{result["LANG"]}">\n')
-    else:
-        output.write(f'<html>\n')
-    output.write('<head>\n')
-    output.write(f'  <meta charset={result["ENCODING"]}>\n')
-    output.write('  <meta http-equiv="X-UA-Compatible" content="IE=edge">\n')
-    output.write('  <meta name="viewport" content="width=device-width, initial-scale=1">\n')
-    if result["TITLE"] is not None:
-        output.write(f'  <title>{result["TITLE"]}</title>\n')
-    if result["ICON"] is not None:
-        output.write(f'  <link rel="icon" href="{result["ICON"]}" type="image/x-icon" />\n')
-        output.write(f'  <link rel="shortcut icon" href="{result["ICON"]}" type="image/x-icon" />\n')
-
-    # Should I put script in head?
-    for line in result.header_links:
-        output.write(line)
-    # Inline CSS
-    for line in result.header_css:
-        output.write('<style type="text/css">\n')
-        output.write(line + '\n')
-        output.write('</style>\n')
-
-    output.write('</head>\n')
-
-    if result["BODY_CLASS"] is None and result["BODY_ID"] is None:
-        output.write('<body>\n')
-    elif result["BODY_ID"] is None:
-        output.write(f'<body class="{result["BODY_CLASS"]}">\n')
-    elif result["BODY_CLASS"] is None:
-        output.write(f'<body id="{result["BODY_ID"]}">\n')
-    else:
-        output.write(f'<body id="{result["BODY_ID"]}" class="{result["BODY_CLASS"]}">\n')
-
-    for line in result:
-        output.write(line)
-
-    output.write('</body>')
-    output.close()
-
-
-def output_list(gen, list_array):
-    heap = []
-    closed = False
-    for index in range(len(list_array)):
-        elem = list_array[index]
-        level = elem['level']
-        starter = LIST_STARTERS[elem['starter'] + ' ']
-        ender = starter[:2]
-        line = elem['line']
-        cont = elem['cont']
-        # Iterate
-        if index > 0:
-            prev_level = list_array[index - 1]['level']
-        else:
-            prev_level = None
-        if index < len(list_array) - 1:
-            next_level = list_array[index + 1]['level']
-            next_cont = list_array[index + 1]['cont']
-        else:
-            next_level = None
-            next_cont = None
-        # Output
-        if prev_level is None or level > prev_level:
-            start = 0 if prev_level is None else prev_level
-            for current in range(start, level):
-                gen.append('    ' * current + f'<{starter}>\n')
-                heap.append(ender)
-                if current < level - 1:
-                    gen.append('    ' * current + f'  <li>\n')
-        elif prev_level == level:
-            current = level - 1
-            if not closed and not cont:
-                    gen.append('    ' * current + '  </li>\n')
-        elif level < prev_level:
-            start = prev_level
-            for current in range(start, level, -1):
-                ender = heap[-1]
-                if current != start:
-                    gen.append('    ' * (current - 1) + '  </li>\n')
-                gen.append('    ' * (current - 1) + f'</{ender}>\n')
-                heap.pop()
-            current -= 2
-            gen.append('    ' * current + '  </li>\n')
-        # Line
-        s = '    ' * current + '  '
-        if cont:
-            s += '<br>'
-        else:
-            s += '<li>'
-        s += line
-        if (next_level is None or next_level <= level) and not (next_level == level and next_cont):
-            s += '</li>\n'
-            closed = True
-        #elif next_cont is not None and not next_cont)
-        else:
-            s += '\n'
-            closed = False
-        gen.append(s)
-    if len(heap) > 0:
-        while len(heap) > 0:
-            ender = heap[-1]
-            if not closed:
-                gen.append('    ' * (len(heap) - 1) + '  </li>\n')
-            gen.append('    ' * (len(heap) - 1) + f'</{ender}>\n')
-            closed = False
-            heap.pop()
-
-
-def process_lines(lines, gen=None):
-    gen = Generation() if gen is None else gen
-    if isinstance(lines, str):
-        lines = [line + '\n' for line in lines.split('\n')]
-    # The 6 HTML constants are defined in Result class
-    in_table = False
-    in_definition_list = False
-    in_code_free_block = False
-    in_code_block = False
-    in_pre_block = False
-    code_lang = None
-    
-    # 1st Pass : prefetch links, replace special HTML char, skip comments
-    # Empty line must be kept to separate lists!
-    after = []
-    for line in lines:
-        # Constant must be read first, are defined once, anywhere in the doc
-        if line.startswith('!const '):
-            command, value = process_constvar(line)
-            if command == 'TITLE':
-                gen["TITLE"] = value
-            elif command == 'ENCODING':
-                gen["ENCODING"] = value
-            elif command == 'ICON':
-                gen["ICON"] = value
-            elif command == 'LANG':
-                gen["LANG"] = value
-            elif command == 'BODY_CLASS':
-                gen["BODY_CLASS"] = value
-            elif command == 'BODY_ID':
-                gen["BODY_ID"] = value
-            else:
-                raise Exception('Unknown constant: ' + command + 'with value= ' + value)
-        elif line.startswith('!require ') and super_strip(line).endswith('.css'):
-            required = super_strip(line.replace('!require ', '', 1))
-            gen.header_links.append(f'  <link href="{required}" rel="stylesheet">\n')
-        # Inline CSS
-        elif line.startswith('!css '):
-            gen.header_css.append(super_strip(line.replace('!css ', '', 1)))
-        else:
-            # Block of code
-            if len(line) > 2 and line[0:3] == '@@@':
-                if not in_code_free_block:
-                    in_code_free_block = True
-                else:
-                    in_code_free_block = False
-            if line.startswith('@@'):
-                in_code_block = True
-            else:
-                in_code_block = False
-            if not in_code_free_block and not in_code_block:
-                # Strip
-                line = super_strip(line)
-                # Special chars
-                line = safe(line)
-            # Link library
-            if len(line) > 0 and line[0] == '[' and multi_find(line, [']: https://', ']: http://']):
-                name = line[1:line.find(']: ')]
-                link = line[line.find(']: ') + len(']: '):]
-                gen.links[name] = link
-                continue
-            # Inner links
-            if line.find('[#') != -1:
-                char_index = 0
-                while char_index < len(line):
-                    char = line[char_index]
-                    prev_char, next_char, prev_prev_char = prev_next(line, char_index)
-                    if char == '[' and next_char == '#' and prev_char != '\\': # [# ... ] inner link
-                        ending = line.find(']', char_index)
-                        if ending != -1:
-                            link_name = line[char_index + 2:ending]
-                            id_link = make_id(link_name)
-                            if id_link in gen.inner_links:
-                                warning(f"Multiple definitions of anchor: {id_link}")
-                            gen.inner_links.append(id_link)
-                            char_index = ending
-                            continue
-                    char_index += 1
-            # Inner links from Title
-            nb, title, id_title = find_title(line)
-            if nb > 0:
-                gen.inner_links.append(id_title)
-            after.append(line)
-    content = after
-    
-    # Start of output
-    list_array = []
-    
-    # 2nd Pass
-    index = -1
-    in_code_block = False
-    in_code_free_block = False
-    while index < len(content) - 1:
-        index += 1
-        line = content[index]
-        # Next line
-        if index < len(content) - 2:
-            next_line = content[index + 1]
-        else:
-            next_line = None
-        # Variables
-        if line.startswith('!var '):
-            command, value = process_constvar(line)
-            if command == 'EXPORT_COMMENT':
-                if value == 'true':
-                    gen['EXPORT_COMMENT'] = True
-                elif value == 'false':
-                    gen['EXPORT_COMMENT'] = False
-            elif command == 'PARAGRAPH_DEFINITION':
-                if value == 'true':
-                    gen['DEFINITION_AS_PARAGRAPH'] = True
-                else:
-                    gen['DEFINITION_AS_PARAGRAPH'] = False
-            elif command == 'DEFAULT_CODE':
-                if value in RECOGNIZED_LANGUAGES:
-                    gen['DEFAULT_CODE'] = value
-                else:
-                    warning(f'Not recognized language in var VAR_DEFAULT_CODE: {value}')
-            elif command == 'NEXT_PAR_ID':
-                gen['NEXT_PAR_ID'] = value if value != 'reset' else None
-            elif command == 'NEXT_PAR_CLASS':
-                gen['NEXT_PAR_CLASS'] = value if value != 'reset' else None
-            elif command == 'DEFAULT_PAR_CLASS':
-                gen['DEFAULT_PAR_CLASS'] = value if value != 'reset' else None
-            elif command == 'NEXT_TAB_CLASS':
-                gen['NEXT_TAB_CLASS'] = value if value != 'reset' else None
-            elif command == 'NEXT_TAB_ID':
-                gen['NEXT_TAB_ID'] = value if value != 'reset' else None
-            elif command == 'DEFAULT_TAB_CLASS':
-                gen['DEFAULT_TAB_CLASS'] = value if value != 'reset' else None
-            elif command == 'DEFAULT_FIND_IMAGE':
-                gen['DEFAULT_FIND_IMAGE'] = value if value != 'reset' else None
-            else:
-                raise Exception('Var unknown: ' + command + ' with value = ' + value)
-            continue
-        # Comment
-        if line.startswith(COMMENT_STARTER):
-            if gen['EXPORT_COMMENT']:
-                line = line.replace(COMMENT_STARTER, '<!--', 1) + ' -->'
-                gen.append(line + '\n')
-            continue
-        # Require CSS or JS file
-        if line.startswith('!require '):
-            required = line.replace('!require ', '', 1)
-            if required.endswith('.js'):
-                gen.append(f'  <script src="{required}"></script>\n')
-            else:
-                raise Exception("I don't known how to handle this file: " + required)
-            continue
-        # Include HTML file
-        if line.startswith('!include '):
-            included = line.replace('!include ', '', 1).strip()
-            if gen.includes is not None:
-                filepath = None
-                for file in gen.includes:
-                    if os.path.basename(file) == included:
-                        filepath = file
-                if filepath is not None:
-                    file = open(filepath, mode='r', encoding='utf8')
-                    file_content = file.read()
-                    file.close()
-                    gen.append(file_content + '\n')
-                else:
-                    warning(f'Included file {included} not found in includes.')
-            else:
-                warning('No included files for generation.')
-            continue
-        # Inline HTML
-        if line.startswith('!html '):
-            gen.append(line.replace('!html ', '', 1) + '\n')
-            continue
-        # HR
-        if line.startswith('---'):
-            if line.count('-') == len(line):
-                gen.append('<hr>\n')
-                continue
-        # BR
-        if line.find(' !! ') != -1:
-            line = line.replace(' !! ', '<br>')
-        # Block of pre
-        if line.startswith('>>'):
-            if not in_pre_block:
-                gen.append('<pre>\n')
-                in_pre_block = True
-            line = escape(line[2:])
-            gen.append(line + '\n')
-            continue
-        elif in_pre_block:
-            gen.append('</pre>\n')
-            in_pre_block = False
-        # Block of code 1 'code_free_block' (only first and last lines must start with @@@)
-        if len(line) > 2 and line[0:3] == '@@@':
-            # Writing start of block
-            gen.append('<pre class="code">\n')
-            code_lang = line.replace('@@@', '', 1).strip()
-            if len(code_lang) == 0:
-                code_lang = gen['DEFAULT_CODE']
-            # Finding its limit and processing
-            sub_index = index + 1
-            found = None
-            code_block = ''
-            while sub_index < len(content):
-                line = content[sub_index]
-                if len(line) > 2 and line[0:3] == '@@@':
-                    found = sub_index
-                    break
-                code_block += line
-                sub_index += 1
-            if not found:
-                raise Exception(f"No closing @@@ found for block of free code at line {index}")
-            # The entire block is sent to write_code in order to comply with multilines comment
-            gen.append(write_code(code_block, code_lang))
-            # Closing block
-            gen.append('</pre>\n')
-            index = sub_index
-            continue 
-        # Block of code 2 'code_block' (each lines must start with @@)
-        if line.startswith('@@') and (len(super_strip(line)) == 2 or line[2] != '@'):
-            # Writing start of block
-            gen.append('<pre class="code">\n')
-            code_lang = line.replace('@@', '', 1).strip()
-            if len(code_lang) == 0:
-                code_lang = gen['DEFAULT_CODE']
-            # Finding its limit and processing
-            sub_index = index + 1
-            found = None
-            while sub_index < len(content):
-                line = content[sub_index]
-                if not line.startswith('@@'):
-                    break
-                line = line[2:] # remove starting @@
-                gen.append(write_code(line, code_lang))
-                sub_index += 1
-            # Closing block
-            gen.append('</pre>\n')
-            index = sub_index
-            continue
-        # Div {{#ids .cls}}
-        if line.startswith('{{') and line.endswith('}}'):
-            inside = line[2:-2]
-            if inside == 'end':
-                gen.append('</div>\n')
-            else:
-                cls = ''
-                ids = ''
-                state = 'start'
-                for c in inside:
-                    # state
-                    if c == '.':
-                        state = 'cls'
-                    elif c == ' ':
-                        state = 'start'
-                    elif c == '#':
-                        state = 'ids'
-                    # save
-                    if state == 'cls':
-                        cls += c
-                    elif state == 'ids':
-                        ids += c
-                if len(cls) > 0 and len(ids) > 0:
-                    gen.append(f'<div id="{ids[1:]}" class="{cls[1:]}">\n')
-                elif len(cls) > 0:
-                    gen.append(f'<div class="{cls[1:]}">\n')
-                elif len(ids) > 0:
-                    gen.append(f'<div id="{ids[1:]}">\n')
-                else:
-                    gen.append(f'<div id="{cls}">\n')
-            continue
+    def to_html(self, header = False, skip_error = False):
+        start_time = datetime.now()
+        content = ""
+        if header:
+            content = '<!DOCTYPE HTML>\n<html lang="${this.get_variable("LANG", "en")}">\
+<head>\
+  <meta charset="${this.get_variable("ENCODING", "utf-8")}">\
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">\
+  <meta name="viewport" content="width=device-width, initial-scale=1">\
+  <title>' + self.get_variable("TITLE", "Undefined title") + '</title>\
+  <link rel="icon" href="' + self.get_variable("ICON", "Undefined icon") + '" type="image/x-icon" />\
+  <link rel="shortcut icon" href="https://xitog.github.io/dgx/img/favicon.ico" type="image/x-icon" />\n'
+            # For CSS
+            if len(self.required) > 0:
+                for req in self.required:
+                    if req.endswith(".css"):
+                        content += f'  <link href="{req}" rel="stylesheet">\n'
+            if len(self.css) > 0:
+                content += '  <style type="text/css">\n'
+                for cs in self.css:
+                    content += "    " + cs + "\n"
+                content += "  </style>\n"
+            # For javascript
+            if len(self.required) > 0:
+                for req in self.required:
+                    if req.endswith(".js"):
+                        content += f'  <script src="{req}"></script>\n'
+            content += "</head>\n"
+            bclass = ""
+            bid = ""
+            if self.has_variable("BODY_ID"):
+                bid = ' id="' + self.get_variable("BODY_ID") + '"'
+            if self.has_variable("BODY_CLASS"):
+                bclass = ' class="' + self.get_variable("BODY_CLASS") + '"'
+            content += f'<body{bid}{bclass}>\n'
+        first_text = True
+        not_processed = 0
+        types_not_processed = []
         # Table
-        if len(line) > 0 and line[0] == '|' and line[-1] == '|':
-            if not in_table:
-                if gen['NEXT_TAB_CLASS'] is not None:
-                    cls = f' class="{gen["NEXT_TAB_CLASS"]}"'
-                    gen['NEXT_TAB_CLASS'] = None
-                elif gen['DEFAULT_TAB_CLASS'] is not None:
-                    cls = f' class="{gen["DEFAULT_TAB_CLASS"]}"'
-                else:
-                    cls = ''
-                if gen['NEXT_TAB_ID'] is not None:
-                    ids = f' id="{gen["NEXT_TAB_ID"]}"'
-                    gen['NEXT_TAB_ID'] = None
-                else:
-                    ids = ''
-                gen.append(f'<table{ids}{cls}>\n')
-                in_table = True
-            if next_line is not None and next_line.startswith('|-'):
-                element = 'th'
-            else:
-                element = 'td'
-            # Replacing :
-            # columns = line.split('|')
-            # We must consider the | used in the text of column, not for the table structure
-            # By :
-            columns = []
-            col = ''
-            prev = None
-            for c in line:
-                if c == '|' and (prev is None or prev != '\\'):
-                    columns.append(col)
-                    col = ''
-                elif c == '|' and prev == '\\':
-                    col = col[0:-1] + c # on enlève le \\
-                else:
-                    col += c
-                prev = c
-            # End of replacement
-            skip = True
-            for col in columns:
-                if len(col.replace('-', '').strip()) != 0:
-                    skip = False
-            if not skip:
-                gen.append('<tr>')
-                for col in columns:
-                    if col != '':
-                        # center or right-align
-                        if len(col) > 0 and col[0] == '>':
-                            align = ' align="right"'
-                            col = col[1:]
-                        elif len(col) > 0 and col[0] == '=':
-                            align = ' align="center"'
-                            col = col[1:]
-                        else:
-                            align = ''
-                        # row and col span
-                        span = ''
-                        if len(col) > 0 and col[0] == '#':
-                            if len(col) > 1 and col[1] in ['c', 'r']:
-                                ending = col.find('#', 1)
-                                if ending != -1:
-                                    if col[1] == 'c':
-                                        span = f' colspan={int(col[2:ending])}'
-                                    else:
-                                        span = f' rowspan={int(col[2:ending])}'
-                                    col = col[ending+1:]
-                        val = process_string(escape(col), gen)         
-                        gen.append(f'<{element}{align}{span}>{val}</{element}>')
-                gen.append('</tr>\n')
-            continue
-        elif in_table:
-            gen.append('</table>\n')
-            in_table = False
-        # Bold & Italic & Strikethrough & Underline & Power
-        if multi_find(line, ('**', '--', '__', '^^', '%%', "''", "[", '@@', '{{')) and \
-           not line.startswith('|-'):
-            line = process_string(line, gen)
-        # Title
-        if line.startswith('#'):
-            line = process_string(line, gen)
-            gen.append(line + '\n')
-            continue
-        # Liste
-        found = multi_start(line, LIST_STARTERS)
-        if found:
-            level, starter, cont = count_list_level(line)
-            list_array.append({'level': level, 'starter': starter, 'line': escape(line[level * 2:]), 'cont': cont})
-            continue
-        elif len(list_array) > 0 and len(line) > 0 and line[0] == '|':
-            level = list_array[-1]['level']
-            starter = list_array[-1]['starter']
-            list_array.append({'level': level, 'starter': starter, 'line': escape(line[2:]), 'cont': True})
-            continue
-        elif len(list_array) > 0:
-            output_list(gen, list_array)
-            list_array = []
-        # Definition list
-        if line.startswith('$ '):
-            if not in_definition_list:
-                in_definition_list = True
-                gen.append('<dl>\n')
-            else:
-                gen.append('</dd>\n')
-            gen.append(f'<dt>{line.replace("$ ", "", 1)}</dt>\n<dd>\n')
-            continue
-        elif len(line) != 0 and in_definition_list:
-            if not gen['DEFINITION_AS_PARAGRAPH']:
-                gen.append(escape(line) +'\n')
-            else:
-                gen.append('<p>' + escape(line) +'</p>\n')
-            continue
-        # empty line
-        elif len(line) == 0 and in_definition_list:
-            in_definition_list = False
-            gen.append('</dl>\n')
-            continue
-        # Replace escaped char
-        line = escape(line)
-        # Paragraph
-        if len(line) > 0:
-            cls = f'class="{gen["DEFAULT_PAR_CLASS"]}"' if gen['DEFAULT_PAR_CLASS'] is not None else ''
-            cls = f'class="{gen["NEXT_PAR_CLASS"]}"' if gen['NEXT_PAR_CLASS'] is not None else cls
-            ids = f'id="{gen["NEXT_PAR_ID"]}"' if gen['NEXT_PAR_ID'] is not None else ''
-            space1 = ' ' if len(cls) > 0 or len(ids) > 0 else ''
-            space2 = ' ' if len(cls) > 0 and len(ids) > 0 else ''
-            gen['NEXT_PAR_ID'] = None
-            gen['NEXT_PAR_CLASS'] = None
-            gen.append(f'<p{space1}{ids}{space2}{cls}>' + super_strip(line) + '</p>\n')
-    # Are a definition list still open?
-    if in_definition_list:
-        gen.append('</dl>\n')
-    # Are some lists still open?
-    if len(list_array) > 0:
-        output_list(gen, list_array)
-    # Are a table still open?
-    if in_table:
-        gen.append('</table>\n')
         in_table = False
-    # Are we stil in in_pre_block?
-    if in_pre_block:
-        gen.append('</pre>')
-    # Are we still in in_code_block?
-    if in_code_block:
-        gen.append('</pre>')
-    return gen
+        # List
+        stack = []
+        # Paragraph
+        in_paragraph = False
+        in_def_list = False
+        for node in self.nodes:
 
-#-------------------------------------------------------------------------------
-# Main functions
-#-------------------------------------------------------------------------------
+            # Consistency
+            if not isinstance(node, TextLine) and in_paragraph:
+                content += END_PARAGRAPH
+                in_paragraph = False
+            if not isinstance(node, Definition) and in_def_list:
+                content += "</dl>\n"
+                in_def_list = False
+            if not isinstance(node, Row) and in_table:
+                content += "</table>\n"
+                in_table = False
 
-def process_dir(source, dest, default_lang=None, includes=None):
-    """Process a directory:
-            - If it is a .hml file, it is translated in HTML
-            - Else the file is copied into the new directory
-       The destination directory is systematically DELETED at each run.
-    """
-    info(f'Processing directory: {source}')
-    if not os.path.isdir(source):
-        raise Exception('Process_dir: Invalid source directory: ' + str(source))
-    if os.path.isdir(dest):
-        shutil.rmtree(dest)
-    info(f'Making dir: {dest}')
-    os.mkdir(dest)
-    for name_ext in os.listdir(source):
-        path = os.path.join(source, name_ext)
-        if os.path.isfile(path):
-            name, ext = os.path.splitext(name_ext)
-            if ext == '.hml':
-                process_file(path, os.path.join(dest, name + '.html'), default_lang, includes)
+            # Handling of nodes
+            if isinstance(node, Include):
+                file = open(node.content, 'r', encoding='utf-8')
+                content += file.read() + "\n"
+                file.close()
+            elif isinstance(node, Title):
+                content_as_string = self.string_to_html("", node.content)
+                content += f'<h{node.level} id="{self.make_anchor(content_as_string)}">{content_as_string}</h{node.level}>\n'
+            elif isinstance(node, Comment):
+                if self.get_variable("EXPORT_COMMENT"):
+                    content += "<!--" + node.content + " -->\n"
+            elif isinstance(node, SetVar):
+                if not node.constant:
+                    if self.predefined_constants.includes(node.id):
+                        raise HamillException(f'You cannot use {node.id} for a variable because it is a predefined constant.')
+                self.set_variable(node.id, node.value, node.type, node.constant)
+            elif isinstance(node, HR) or isinstance(node, StartDiv) or isinstance(node, EndDiv) or isinstance(node, StartDetail) or isinstance(node, EndDetail) or isinstance(node, Detail) or isinstance(node, RawHTML) or isinstance(node, List) or isinstance(node, Quote) or isinstance(node, Code):
+                content += node.to_html()
+            elif isinstance(node, TextLine):
+                # Check that ParagraphIndicator must be only at 0
+                for nc in range(0, len(node.children)):
+                    if isinstance(node.children[nc], ParagraphIndicator) and nc > 0:
+                        raise HamillException("A paragraph indicator must always be at the start of a text line")
+                if not in_paragraph:
+                    in_paragraph = True
+                    # If the first child is a pragraph indicator, don't start the paragraph !
+                    if len(node.children) > 0 and not isinstance(node.children[0], ParagraphIndicator):
+                        content += "<p>"
+                else:
+                    content += "<br>\n"; # Chaque ligne donnera une ligne avec un retour à la ligne
+                print("aaaaa")
+                content += node.to_html()
+            elif isinstance(node, Definition):
+                if not in_def_list:
+                    in_def_list = True
+                    content += "<dl>\n"
+                content += "<dt>"
+                content = self.string_to_html(content, node.header) + "</dt>\n"
+                content += "<dd>"
+                if self.get_variable("PARAGRAPH_DEFINITION"):
+                    content += "<p>"
+                content = self.string_to_html(content, node.content)
+                if self.get_variable("PARAGRAPH_DEFINITION"):
+                    content += END_PARAGRAPH
+                content += "</dd>\n"
+            elif isinstance(node, Row):
+                if not in_table:
+                    in_table = True
+                    content += "<table>\n"
+                content += "<tr>"
+                delim = "th" if node.is_header else "td"
+                for node_list in node.node_list_list:
+                    center = ""
+                    span = ""
+                    if len(node_list) > 0 and isinstance(node_list[0], Node) and len(node_list[0].content) > 0 and node_list[0].content[0] == "=":
+                        node_list[0].content = node_list[0].content[1:]
+                        center = ' style="text-align: center"'
+                    elif len(node_list) > 0 and isinstance(node_list[0], Node) and len(node_list[0].content) > 0 and node_list[0].content[0] == ">":
+                        node_list[0].content = node_list[0].content[1:]
+                        center = ' style="text-align: right"'
+                    if len(node_list) > 0 and isinstance(node_list[0], Node) and len(node_list[0].content) > 2 and node_list[0].content[0] == "#":
+                        if node_list[0].content[1] == 'c':
+                            span = ' colspan="'
+                        elif node_list[0].content[1] == 'r':
+                            span = ' rowspan="'
+                        if span != '':
+                            i = 2
+                            found  = False
+                            while i < len(node_list[0].content):
+                                if node_list[0].content[i] == '#':
+                                    found = True
+                                i += 1
+                            if not found:
+                                span = ''
+                            else:
+                                span += node_list[0].content[2 : i] + '"'
+                                node_list[0].content = node_list[0].content[i+1:]
+                    content += f'<{delim}{center}{span}>'
+                    content = self.string_to_html(content, node_list)
+                    content += '</{' + delim + '}>'
+                content += "</tr>\n"
+            elif skip_error:
+                not_processed += 1
+                if node.__class__.__name__ not in types_not_processed:
+                    types_not_processed[node.constructor.name] = 0
+                types_not_processed[node.constructor.name] += 1
+            elif isinstance(node, EmptyNode):
+                # Nothing, it is just too close the paragraph, done above.
+                pass
             else:
-                info(f'Copying file: {path}')
-                shutil.copy2(path, os.path.join(dest, name_ext))
-        elif os.path.isdir(path):
-            process_dir(path, os.path.join(dest, name_ext), default_lang, includes)
+                raise HamillException(f'Unknown node: {node.constructor.name}')
+        if in_paragraph:
+            content += END_PARAGRAPH
+        if len(stack) > 0:
+            content = self.assure_list_consistency(content, stack, 0, None, None)
+        if in_table:
+            content += "</table>\n"
+        if not first_text:
+            content += END_PARAGRAPH
+        if header:
+            content += "\n  </body>\n</html>"
+        print("\nRoot nodes processed:", len(self.nodes) - not_processed, "/", len(self.nodes))
+        if not_processed > 0:
+            print(f'Nodes not processed {not_processed}:')
+            for k, v in types_not_processed.items():
+                print("   -", k, v)
+        end_time = datetime.now()
+        elapsed = (end_time - start_time) / 1000
+        print("Processed in:        %ds", elapsed, "\n")
+        return content
 
+    def to_s(self, level = 0, node = None, header = False):
+        out = ""
+        if node is None:
+            if header:
+                out += "\n------------------------------------------------------------------------\n"
+                out += "Liste des nodes du document\n"
+                out += "------------------------------------------------------------------------\n\n"
+            for n in self.nodes:
+                out += self.to_s(level, n)
+        else:
+            info = "    " + str(node)
+            out += "    " * level + info + "\n"
+            if isinstance(node, Composite):
+                for n in node.children:
+                    out += self.to_s(level + 1, n)
+            if isinstance(node, Row):
+                for n in node.node_list_list:
+                    out += self.to_s(level + 1, n)
+        return out
 
-def process(source, dest=None, default_lang=None, includes=None, gen=None):
-    """Process a line, some lines, a file or a directory"""
-    if os.path.isfile(source):
-        if dest is None:
-            raise Exception('When processing a file, Hamill needs an output file')
-        process_file(source, dest, default_lang, includes)
-    elif os.path.isdir(source):
-        if dest is None:
-            raise Exception('When processing a directory, Hamill nedds an output directory')
-        process_dir(source, dest, default_lang, includes)
-    elif source.find('\n') != -1:
-        if dest is not None:
-            raise Exception(f'When processing lines, dest should be None instead of |{dest}|')
-        return process_lines(source, gen)
+class Hamill:
+
+    VERSION = VERSION
+
+    @staticmethod
+    def process(string_or_filename):
+        # Try to read as a file name, if it fails, take it as a string
+        data = None
+        name = None
+        try:
+            data = fs.readFileSync(string_or_filename, "utf-8")
+            print("Data read from file: {string_or_filename}")
+            name = string_or_filename
+        except Exception:
+            pass
+        if data is None:
+            data = string_or_filename
+            print('Raw string:')
+            print(data.replace("\n", '\\n') + "\n")
+            print("Data read from string:")
+        data = data.replace("\r\n", "\n")
+        data = data.replace("\r", "\n")
+        # Display raw lines
+        lines = data.split("\n")
+        for index, line in enumerate(lines):
+            nline = line.replace("\n", "<NL>")
+            print(f"    {index + 1}. {nline}")
+        # Tag lines
+        tagged = Hamill.tag_lines(data.split("\n"))
+        print("\nTagged Lines:")
+        for index, line in enumerate(tagged):
+            print(f"    {index + 1}. {line}")
+        # Make a document
+        doc = Hamill.parse_tagged_lines(tagged)
+        doc.set_name(name)
+        print("\nDocument:")
+        print(doc.to_s())
+        return doc
+
+    # First pass: we tag all the lines
+    @staticmethod
+    def tag_lines(raw):
+        msg = "Level list must be indented by a multiple of two"
+        lines = []
+        next_is_def = False
+        in_code_block = False # only the first and the last line start with @@@
+        in_code_block_prefixed = False # each line must start with @@
+        in_quote_block = False # only the first and the last line start with >>>
+        for value in raw:
+            trimmed = value.strip()
+            # Check states
+            # End of prefixed block
+            if in_code_block_prefixed and not trimmed.startswith('@@') and not trimmed.startswith('@@@'):
+                in_code_block_prefixed = False
+                # Final line @@@ of a not prefixed block
+            elif in_code_block and trimmed == '@@@':
+                in_code_block = False
+                continue
+            elif in_quote_block and trimmed == '>>>':
+                in_quote_block = False
+                continue
+
+            # States handling
+            if in_code_block or in_code_block_prefixed:
+                lines.append(Line(value, "code"))
+            elif in_quote_block:
+                lines.append(Line(value, "quote"))
+            elif len(trimmed) == 0:
+                lines.append(Line("", "empty"))
+                # Titles :
+            elif trimmed[0] == "#":
+                lines.append(Line(trimmed, "title"))
+            # HR :
+            elif len(re.findall("/-/", trimmed) or []) == len(trimmed): ## MATCH TODO
+                lines.append(Line("", "separator"))
+            # Lists, line with the first non empty character is "* " or "+ " or "- " :
+            elif trimmed[0:2] == "* ":
+                start = value.indexOf("* ")
+                level = Math.trunc(start / 2)
+                if level * 2 != start:
+                    raise HamillException(msg)
+                lines.append(Line(value, "unordered_list", level + 1))
+            elif trimmed[0:2] == "+ ":
+                start = value.index("+ ")
+                level = Math.trunc(start / 2)
+                if level * 2 != start:
+                    raise HamillException(msg)
+                lines.append(Line(value, "ordered_list", level + 1))
+            elif trimmed[0:2] == "- ":
+                start = value.index("- ")
+                level = Math.trunc(start / 2)
+                if level * 2 != start:
+                    raise HamillException(msg)
+                lines.append(Line(value, "reverse_list", level + 1))
+            # Keywords, line with the first non empty character is "!" :
+            # var, const, include, require, css, html, comment
+            elif trimmed.startswith("!var "):
+                lines.append(Line(trimmed, "var"))
+            elif trimmed.startswith("!const "):
+                lines.append(Line(trimmed, "const"))
+            elif trimmed.startswith("!include "):
+                lines.append(Line(trimmed, "include"))
+            elif trimmed.startswith("!require "):
+                lines.append(Line(trimmed, "require"))
+            elif trimmed.startswith("!css "):
+                lines.append(Line(value, "css"))
+            elif trimmed.startswith("!html"):
+                lines.append(Line(value, "html"))
+            elif trimmed.startswith("!rem") or trimmed[0:2] == "§§":
+                lines.append(Line(trimmed, "comment"))
+            # Block of code
+            elif trimmed[0:3] == "@@@":
+                in_code_block = True
+                lines.push(Line(value, "code"))
+            elif trimmed[0:2] == "@@" and not trimmed[2:].includes("@@"):
+                in_code_block_prefixed = True
+                lines.push(Line(value, "code"))
+            # Block of quote
+            elif trimmed[0:3] == ">>>":
+                in_quote_block = True # will be desactivate in Check states
+                lines.append(Line(value, "quote"))
+            elif trimmed[0:2] == ">>":
+                lines.append(Line(value, "quote"))
+            # Labels
+            elif trimmed[0:2] == "::":
+                lines.append(Line(trimmed, "label"))
+                # Div (Si la ligne entière est {{ }}, c'est une div. On ne fait pas de span d'une ligne)
+            elif trimmed[0:2] == "{{" and trimmed.endswith("}}") and trimmed.lastIndexOf("{{") == 0:
+                # span au début et à la fin = erreur
+                lines.append(Line(trimmed, "div"))
+                # Detail
+            elif trimmed[0:2] == "<<" and trimmed.endswith(">>") and trimmed.lastIndexOf("<<") == 0:
+                lines.push(Line(trimmed, "detail"))
+                # Tables
+            elif trimmed[0] == "|" and trimmed[trimmed.length - 1] == "|":
+                lines.push(Line(trimmed, "row"))
+                # Definition lists
+            elif trimmed[0:2] == "$ ":
+                lines.append(Line(trimmed[2:], "definition-header"))
+                next_is_def = True
+            elif not next_is_def:
+                lines.append(Line(trimmed, "text"))
+            else:
+                lines.append(Line(trimmed, "definition-content"))
+                next_is_def = False
+        return lines
+
+    @staticmethod
+    def escaped_split(sep, s):
+        parts = []
+        part = ""
+        index = 0
+        while index < len(s):
+            char = s[index]
+            try_sep = s[index : index + len(sep)]
+            nextc = s[index + 1 : index + 1 + len(sep)] if (index + 1) < len(s) else ""
+            if try_sep == sep:
+                parts.append(part)
+                part = ""
+                index += len(sep) - 1
+            elif char == "\\" and nextc == sep:
+                part += sep
+                index += len(sep)
+            else:
+                part += char
+            index += 1
+        if len(part) > 0:
+            parts.append(part)
+        return parts
+
+    # Take a list of tagged lines return a valid Hamill document
+    @staticmethod
+    def parse_tagged_lines(lines):
+        if (DEBUG): print(f'\nProcessing {len(lines)} lines')
+        doc = Document()
+        definition = None
+        # Lists
+        actual_list = None
+        actual_level = 0
+        starting_level = 0
+        # On pourrait avoir un root aussi
+        # Main loop
+        count = 0
+        while count < len(lines):
+            line = lines[count]
+            text = None
+            ids = None
+            value = None
+            # List
+            if actual_list is not None and line.type != "unordered_list" and line.type != "ordered_list" and line.type != "reverse_list":
+                doc.add_node(actual_list.root())
+                actual_list = None
+                actual_level = 0
+            # Titles
+            lvl = 0
+            # Quotes
+            node_content = ""
+            free = False
+            # Lists
+            delimiters = {
+                "unordered_list": "* ",
+                "ordered_list": "+ ",
+                "reverse_list": "- ",
+            }
+            delimiter = ""
+            list_level = 0
+            elem_is_unordered = False
+            elem_is_ordered = False
+            elem_is_reverse = False
+            item_text = ""
+            item_nodes = []
+            # Includes
+            include = ""
+            # Rows
+            content = ""
+            # Divs
+            res = None
+            if line.type == "title":
+                for char in line.value:
+                    if char == "#":
+                        lvl += 1
+                    else:
+                        break
+                text = line.value.substring(lvl).strip()
+                try:
+                    interpreted = Hamill.parse_inner_string(doc, text)
+                    doc.add_node(Title(doc, interpreted, lvl))
+                    doc.add_label(doc.make_anchor(text), "#" + doc.make_anchor(text))
+                except Exception as e:
+                    print(f"Error at line {count} on title: {line}")
+                    raise e
+                break
+            elif line.type == "separator":
+                doc.add_node(HR(doc))
+                break
+            elif line.type == "text":
+                if line.value.strip().startswith("\\* ") or line.value.strip().startswith("\\!html") or line.value.strip().startswith("\\!var") or line.value.strip().startswith("\\!const") or line.value.strip().startswith("\\!include") or line.value.strip().startswith("\\!require"):
+                    line.value = line.value.strip().substring(1)
+                try:
+                    n = Hamill.parse_inner_string(doc, line.value)
+                    doc.add_node(TextLine(doc, n))
+                except Exception as e:
+                    print(f"Error at line ${count} on text: {line}")
+                    raise e
+                break
+            elif line.type == "unordered_list":
+                elem_is_unordered = True
+                if actual_list is None:
+                    actual_list = List(doc, None, False, False)
+                    actual_level = 1
+                    starting_level = line.param
+            # next
+            elif line.type == "ordered_list":
+                if line.type == "ordered_list": elem_is_ordered = True
+                if actual_list is None:
+                    actual_list = List(doc, None, True, False)
+                    actual_level = 1
+                    starting_level = line.param
+            # next
+            elif line.type == "reverse_list":
+                if line.type == "reverse_list": elem_is_reverse = True
+                if actual_list is None:
+                    actual_list = List(doc, None, True, True)
+                    actual_level = 1
+                    starting_level = line.param
+                # common code
+                # compute item level
+                delimiter = delimiters[line.type]
+                list_level = line.param; # Math.floor(line.value.indexOf(delimiter) / 2) + 1
+                # check coherency with the starting level
+                if list_level < starting_level:
+                    raise HamillException("Coherency error: a following item of list has a lesser level than its starting level.")
+                else:
+                    list_level = list_level - (starting_level - 1)
+                # coherency
+                if list_level == actual_level:
+                    if (elem_is_unordered and (actual_list.ordered or actual_list.reverse)) or (elem_is_ordered and not actual_list.ordered) or (elem_is_reverse and not actual_list.reverse):
+                        raise HamillException(f"Incoherency with previous item {actual_level} at this level {list_level}: ul:{elem_is_unordered} ol:{elem_is_unordered} r:{elem_is_reverse} vs o:{actual_list.ordered} r:{actual_list.reverse}")
+                while list_level > actual_level:
+                    last = actual_list.pop() # get and remove the last item
+                    c = Composite(doc, actual_list) # create a new composite
+                    c.add_child(last) # put the old last item in it
+                    actual_list = actual_list.add_child(c) # link the new composite to the list
+                    sub = List(doc, c, elem_is_ordered, elem_is_reverse) # create a new list
+                    actual_list = actual_list.add_child(sub)
+                    actual_level += 1
+                while list_level < actual_level:
+                    actual_list = actual_list.get_parent()
+                    if isinstance(actual_list, Composite):
+                        # L'item était un composite, il faut remonter à la liste mère !
+                        actual_list = actual_list.get_parent()
+                    actual_level -= 1
+                    if isinstance(actual_list, List):
+                        raise HamillException(f"List incoherency: last element is not a list but a {actual_list.constructor.name}")
+                # creation
+                item_text = line.value.substring(line.value.indexOf(delimiter) + 2).strip()
+                item_nodes = Hamill.parse_inner_string(doc, item_text)
+                actual_list.add_child(TextLine(doc, item_nodes))
+                break
+            elif line.type == "html":
+                doc.add_node(RawHTML(doc, line.value.replace("!html ", "").trimEnd()))
+                break
+            elif line.type == "css":
+                text = line.value.replace("!css ", "").trimEnd()
+                doc.add_css(text)
+                break
+            elif line.type == "include":
+                include = line.value.replace("!include ", "").strip()
+                doc.add_node(Include(doc, include))
+                break
+            elif line.type == "require":
+                text = line.value.replace("!require ", "").strip()
+                doc.add_required(text)
+                break
+            elif line.type == "const":
+                text = line.value.replace("!const ", "").split("=")
+                ids = text[0].strip()
+                value = text[1].strip()
+                doc.set_variable(ids, value, "string", True)
+                break
+            elif line.type == "var":
+                text = line.value.replace("!var ", "").split("=")
+                ids = text[0].strip()
+                value = text[1].strip()
+                if value == "true": value = True
+                if value == "TRUE": value = True
+                if value == "false": value = False
+                if value == "FALSE": value = False
+                doc.add_node(SetVar(doc, ids, value, "boolean" if isinstance(value, bool) else "string", False))
+                break
+            elif line.type == "label":
+                value = line.value.replace("::", "").strip()
+                text = value.split("::") # ???
+                doc.add_label(text[0].strip(), text[1].strip()) # label, url
+                break
+            elif line.type == "detail":
+                value = line.value.substring(2, line.value.length - 2).strip()
+                if value == "end":
+                    doc.add_node(EndDetail(doc))
+                else:
+                    parts = value.split("->")
+                    res = Hamill.parse_inner_markup(parts[0])
+                    if len(parts) == 1 or len(parts[1].strip()) == 0:
+                        doc.add_node(StartDetail(doc, res["text"].strip(), res["id"], res["class"]))
+                    else:
+                        # Detail simple <<summary -> content>>
+                        doc.add_node(Detail(doc, res["text"].strip(), parts[1].strip(), res["id"], res["class"]))
+                break
+            elif line.type == "div":
+                value = line.value.substring(2, line.value.length - 2).strip()
+                res = Hamill.parse_inner_markup(value)
+                if res["text"] == "end":
+                    doc.add_node(EndDiv(doc)) # We can put {{end .myclass #myid}} but it has no meaning except to code reading
+                elif res["has_only_text"] and res["text"] != "begin":
+                    print(res)
+                    text = res["text"]
+                    raise HamillException(f"Unknown quick markup: {text} in {line}")
+                elif res["text"] == "begin" or res["text"] is None:
+                    # begin can be omitted if there is no class nor id
+                    doc.add_node(StartDiv(doc, res["id"], res["class"]))
+                break
+            elif line.type == "comment":
+                if line.value.startswith("!rem "):
+                    doc.add_node(Comment(doc, line.value.substring(4)))
+                else:
+                    doc.add_node(Comment(doc, line.value.substring(2)))
+                break
+            elif line.type == "row":
+                content = line.value.substring(1, len(line.value) - 1)
+                if len(content) == len(content.match("[-|]") or []):
+                    i = len(doc.nodes) - 1
+                    while isinstance(doc.get_node(i), Row):
+                        doc.get_node(i).is_header = True
+                        i -= 1
+                else:
+                    parts = self.escaped_split("|", content); # Handle escape
+                    all_nodes = []
+                    for p in parts:
+                        nodes = Hamill.parse_inner_string(doc, p)
+                        all_nodes.push(nodes)
+                    doc.add_node(Row(doc, all_nodes))
+                break
+            elif line.type == "empty":
+                # Prevent multiple empty nodes
+                if len(doc.nodes) == 0 or not isinstance(doc.nodes[-1], EmptyNode):
+                    doc.add_node(EmptyNode(doc))
+                break
+            elif line.type == "definition-header":
+                definition = Hamill.parse_inner_string(doc, line.value)
+                break
+            elif line.type == "definition-content":
+                if definition == None:
+                    raise HamillException("Definition content without header: " + line.value)
+                doc.add_node(Definition(doc, definition, Hamill.parse_inner_string(doc, line.value)))
+                definition = null
+                break
+            elif line.type == "quote":
+                res = {}
+                res['class'] = None
+                res['id'] = None
+                if line.value == ">>>":
+                    free = True
+                    count += 1
+                elif line.value.startswith(">>>"):
+                    free = True
+                    res = this.parse_inner_markup(line.value.substring(3))
+                    if res["has_text"]:
+                        raise HamillException("A line starting a blockquote should only have a class or id indication not text")
+                    count += 1
+                while count < len(lines) and lines[count].type == "quote":
+                    line = lines[count]
+                    if not free and not line.value.startswith(">>"):
+                        break
+                    elif free and line.value == ">>>":
+                        break
+                    elif not free:
+                        node_content += line.value.substring(2) + "\n"
+                    else:
+                        node_content += line.value + "\n"
+                    count += 1
+                doc.add_node(Quote(doc, node_content, res['class'], res['id']))
+                if count < len(lines) and lines[count].type != "quote":
+                    count -= 1
+                break
+            elif line.type == "code":
+                res = {}
+                res['class'] = None
+                res['id'] = None
+                if line.value == "@@@":
+                    free = True
+                    count += 1
+                    res = None
+                elif line.value.startswith("@@@"):
+                    free = True
+                    res = line.value.substring(3)
+                    count += 1
+                elif line.value.startswith("@@"):
+                    res = line.value.substring(2)
+                    if res in LANGUAGES:
+                        count += 1 # skip
+                while count < len(lines) and lines[count].type == "code":
+                    line = lines[count]
+                    if not free and not line.value.startswith("@@"):
+                        break
+                    elif free and line.value == "@@@":
+                        break
+                    elif not free:
+                        nodeContent += line.value.substring(2) + "\n"
+                    else:
+                        nodeContent += line.value + "\n"
+                    count += 1
+                doc.add_node(Code(doc, nodeContent, None, None, res, False)); # res is the language
+                if count < len(lines) and lines[count].type != "code":
+                    count -= 1
+                break
+            else:
+                raise HamillException(f"Unknown {line.type}")
+            count += 1
+        # List
+        if actual_list is not None:
+            doc.add_node(actual_list.root())
+        return doc
+
+    # Find a pattern in a string. Pattern can be any character wide. Won't find any escaped pattern \pattern but will accept double escaped \\pattern
+    @staticmethod
+    def find(s, start, pattern):
+        # String not big enough to have the motif
+        if len(pattern) > len(s[start:]):
+            return -1
+        for i in range(start, len(s)):
+            if s[i:i + len(pattern)] == pattern:
+                if (i - 1 < start) \
+                    or (i - 1 >= start and s[i - 1] != "\\") \
+                    or (i - 2 < start) \
+                    or (i - 2 >= start and s[i - 1] == "\\" and s[i - 2] == "\\"):
+                    return i
+        return -1
+
+    @staticmethod
+    def unescape_code(s):
+        res = ""
+        i = 0
+        while i < len(s):
+            char = s[i]
+            nextc = s[i + 1] if i + 1 < len(s) else ""
+            if char == "\\" and nextc == '@':
+                res += "@"
+                i += 1
+            elif char == "\\" and nextc == "\\":
+                res += "\\"
+                i += 1
+            else:
+                res += char
+            i += 1
+        return res
+
+    @staticmethod
+    def parse_inner_string(doc, s):
+        index = 0
+        word = ""
+        nodes = []
+        matches = [
+            ["@", "@", "code"],
+            ["(", "(", "picture"],
+            ["[", "[", "link"],
+            ["{", "{", "markup"],
+            ["$", "$", "echo"],
+            ["*", "*", "bold"],
+            ["!", "!", "strong"],
+            ["'", "'", "italic"],
+            ["/", "/", "em"],
+            ["_", "_", "underline"],
+            ["^", "^", "sup"],
+            ["%", "%", "sub"],
+            ["-", "-", "stroke"],
+        ]
+        modes = {
+            "bold": False,
+            "strong": False,
+            "italic": False,
+            "em": False,
+            "underline": False,
+            "sup": False,
+            "sub": False,
+            "stroke": False,
+        }
+        stack = []
+
+        while index < len(s):
+            char = s[index]
+            nextc = s[index + 1] if index + 1 < len(s) else None
+            next_next = s[index + 2] if index + 2 < len(s) else None
+            prev = s[index - 1] if index - 1 >= 0 else None
+            # Remplacement des glyphes
+            # Glyphs - Quatuor
+            if char == "#" and nextc == "#" and prev != "\\":
+                if len(word) > 0:
+                    nodes.append(
+                        Text(doc, word[0:word.length].strip())
+                    )
+                    word = ""
+                nodes.append(BR(doc))
+                index += 1; # set on the second #
+                # in case of a ## b, the first space is removed by strip() above
+                # and the second space by this :
+                if index + 1 < len(s) and s[index + 1] == ' ':
+                    index +=1
+            elif char == "\\" and nextc == "\\" and next_next == "\\":
+                # escape it
+                word += "\\\\"
+                index += 4
+            # Text Styles
+            else:
+                match = None
+                for pattern in matches:
+                    if char == pattern[0] and nextc == pattern[1] and prev != "\\":
+                        match = pattern[2]
+                        break
+                if match != None:
+                    if len(word) > 0:
+                        nodes.append(Text(doc, word))
+                        word = ""
+                    if match == "picture":
+                        end = s.index("))", index)
+                        if end == -1:
+                            raise HamillException(f"Unclosed image in {s}")
+                        content = s.substring(index + 2, end)
+                        res = Hamill.parse_inner_picture(content)
+                        nodes.append(
+                            Picture(
+                                doc,
+                                res["url"],
+                                res["text"],
+                                res["class"],
+                                res["id"]
+                            )
+                        )
+                        index = end + 1
+                    elif match == "link":
+                        end = s.index("]]", index)
+                        if end == -1:
+                            raise HamillException(f"Unclosed link in {s}")
+                        content = s.substring(index + 2, end)
+                        parts = Hamill.escaped_split("->", content)
+                        display = None
+                        url = None
+                        if len(parts) == 1:
+                            url = parts[0].strip()
+                        elif len(parts) == 2:
+                            display = Hamill.parse_inner_string(
+                                doc,
+                                parts[0].strip()
+                            )
+                            url = parts[1].strip()
+                        elif len(parts) > 2:
+                            raise HamillException(f"Malformed link: {content}")
+                        nodes.append(Link(doc, url, display))
+                        index = end + 1
+                    elif match == "markup":
+                        end = s.index("}}", index)
+                        if end == -1:
+                            raise HamillException(f"Unclosed markup in {s}")
+                        content = s.substring(index + 2, end)
+                        res = Hamill.parse_inner_markup(content)
+                        if res["has_text"]:
+                            nodes.append(
+                                Span(
+                                    doc,
+                                    res["text"],
+                                    res["id"],
+                                    res["class"]
+                                )
+                            )
+                        else:
+                            nodes.append(
+                                ParagraphIndicator(
+                                    doc,
+                                    res["id"],
+                                    res["class"]
+                                )
+                            )
+                        index = end + 1
+                    elif match == "echo":
+                        end = s.index("$$", index + 2)
+                        if end == -1:
+                            raise HamillException(f"Unclosed display in {s}")
+                        content = s.substring(index + 2, end)
+                        nodes.append(GetVar(doc, content))
+                        index = end + 1
+                    elif match == "code":
+                        is_code_ok = Hamill.find(s, index + 2, "@@")
+                        if is_code_ok == -1:
+                            raise HamillException(
+                                "Unfinished inline code sequence: " + s
+                            )
+                        code_str = s.slice(index + 2, is_code_ok)
+                        lang = None
+                        language = code_str.split(" ")[0]
+                        if language in LANGUAGES:
+                            lang = language
+                            code_str = code_str.substring(language.length+1) # remove the language and one space
+                        nodes.append(Code(doc, Hamill.unescape_code(code_str), None, None, lang, True)) # unescape only @@ !
+                        index = is_code_ok + 1 # will inc by 1 at the end of the loop
+                    else:
+                        # match with text modes
+                        if not modes[match]:
+                            modes[match] = true
+                            stack.append(match)
+                            nodes.append(Start(doc, match))
+                        else:
+                            modes[match] = False
+                            last_mode = stack.pop()
+                            if last_mode != match:
+                                raise HamillException(f"Incoherent stacking of the modifier: finishing {match} but {last_mode} should be closed first!")
+                            nodes.append(Stop(doc, match))
+                        index += 1
+                # no match
+                else:
+                    word += char
+            index += 1
+        if len(word) > 0:
+            nodes.append(Text(doc, word))
+        if len(stack) > 0:
+            raise HamillException(f"Unclosed {stack.pop()} text mode.")
+        return nodes
+
+    @staticmethod
+    def parse_inner_picture(content):
+        res = None
+        parts = content.split("->")
+        if len(parts) == 1:
+            return {
+                "has_text": False,
+                "has_only_text": False,
+                "class": None,
+                "id": None,
+                "text": None,
+                "url": parts[0],
+            }
+        else:
+            content = parts[0]
+            res = Hamill.parse_inner_markup(content)
+            res["url"] = parts[1].strip()
+        return res
+
+    @staticmethod
+    def parse_inner_markup(content):
+        cls = None
+        in_class = False
+        ids = None
+        in_ids = False
+        text = None
+        in_text = False
+        for c in content:
+            if c == "." and not in_class and not in_ids and not in_text and cls is None and text is None:
+                in_class = True
+                cls = ""
+                continue
+            elif c == ".":
+                raise HamillException(f'Class or text already defined for this markup: {content}')
+
+            if c == "#" and not in_class and not in_ids and not in_text and ids is None and text is None:
+                in_ids = True
+                ids = ""
+                continue
+            elif c == "#":
+                raise HamillException(f'ID or text alreay defined for this markup: {content}')
+
+            if c == " " and in_class:
+                in_class = False
+
+            if c == " " and in_ids:
+                in_ids = False
+
+            if c != " " and not in_class and not in_ids and not in_text and text is None:
+                in_text = True
+                text = ""
+
+            if in_class:
+                cls += c
+            elif in_ids:
+                ids += c
+            elif in_text:
+                text += c
+
+        has_text = (text is not None)
+        has_only_text = has_text and cls is None and ids is None
+        return {
+            "has_text": has_text,
+            "has_only_text": has_only_text,
+            "class": cls,
+            "id": ids,
+            "text": text,
+        }
+#------------------------------------------------------------------------------
+# Functions
+#------------------------------------------------------------------------------
+
+tests = [
+    # Comments, HR and BR
+    ["!rem This is a comment", ""],
+    ["§§ This is another comment", ""],
+    [
+        "!var EXPORT_COMMENT=true\n!rem This is a comment",
+        "<!-- This is a comment -->\n",
+    ],
+    [
+        "!var EXPORT_COMMENT=true\n§§ This is a comment",
+        "<!-- This is a comment -->\n",
+    ],
+    ["---", "<hr>\n"],
+    ["a ## b", "<p>a<br>b</p>\n"],
+    ["a ##", "<p>a<br></p>\n"],
+    ["a ##b ##", "<p>a<br>b<br></p>\n"],
+    ["livre : ##\nchanceux ##", "<p>livre :<br><br>\nchanceux<br></p>\n"],
+    # Titles
+    ["### Title 3", '<h3 id="title-3">Title 3</h3>\n'],
+    ["#Title 1", '<h1 id="title-1">Title 1</h1>\n'],
+    # Paragraph
+    ["a", "<p>a</p>\n"],
+    ["a\n\n\n", "<p>a</p>\n"],
+    ["a\nb\n\n", "<p>a<br>\nb</p>\n"],
+    # Text modifications
+    ["**bonjour**", "<p><b>bonjour</b></p>\n"],
+    ["''italic''", "<p><i>italic</i></p>\n"],
+    ["--strikethrough--", "<p><s>strikethrough</s></p>\n"],
+    ["__underline__", "<p><u>underline</u></p>\n"],
+    ["^^superscript^^", "<p><sup>superscript</sup></p>\n"],
+    ["%%subscript%%", "<p><sub>subscript</sub></p>\n"],
+    ["@@code@@", "<p><code>code</code></p>\n"],
+    ["!!ceci est strong!!", "<p><strong>ceci est strong</strong></p>\n"],
+    ["//ceci est emphase//", "<p><em>ceci est emphase</em></p>\n"],
+    # Escaping
+    ["\\**bonjour\\**", "<p>**bonjour**</p>\n"],
+    [
+        "@@code \\@@variable = '\\n' end@@",
+        "<p><code>code @@variable = '\\n' end</code></p>\n",
+    ],
+    # Div, p and span
+    ["{{#myid .myclass}}", '<div id="myid" class="myclass">\n'],
+    ["{{#myid}}", '<div id="myid">\n'],
+    ["{{.myclass}}", '<div class="myclass">\n'],
+    ["{{begin}}", "<div>\n"],
+    ["{{end}}", "</div>\n"],
+    [
+        "{{#myid .myclass}}content",
+        '<p id="myid" class="myclass">content</p>\n',
+    ],
+    [
+        "{{#myid}}content",
+        '<p id="myid">content</p>\n'],
+    [
+        "{{.myclass}}content",
+        '<p class="myclass">content</p>\n'],
+    [
+        "je suis {{#myid .myclass rouge}} et oui !",
+        '<p>je suis <span id="myid" class="myclass">rouge</span> et oui !</p>\n',
+    ],
+    [
+        "je suis {{#myid rouge}} et oui !",
+        '<p>je suis <span id="myid">rouge</span> et oui !</p>\n',
+    ],
+    [
+        "je suis {{.myclass rouge}} et oui !",
+        '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n',
+    ],
+    # Details
+    [
+        "<<small -> petit>>",
+        "<details><summary>small</summary>petit</details>\n",
+    ],
+    [
+        "<<.reddetail small -> petit>>",
+        '<details class="reddetail"><summary>small</summary>petit</details>\n',
+    ],
+    [
+        "<<#mydetail small -> petit>>",
+        '<details id="mydetail"><summary>small</summary>petit</details>\n',
+    ],
+    [
+        "<<.reddetail #mydetail small -> petit>>",
+        '<details id="mydetail" class="reddetail"><summary>small</summary>petit</details>\n',
+    ],
+    [
+        "<<big>>\n* This is very big!\n* Indeed\n<<end>>",
+        "<details><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n",
+    ],
+    [
+        "<<.mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+        '<details class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n',
+    ],
+    [
+        "<<#reddetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+        '<details id="reddetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n',
+    ],
+    [
+        "<<#reddetail .mydetail big>>\n* This is very big!\n* Indeed\n<<end>>",
+        '<details id="reddetail" class="mydetail"><summary>big</summary>\n<ul>\n  <li>This is very big!</li>\n  <li>Indeed</li>\n</ul>\n</details>\n',
+    ],
+    # Code
+    [
+        "@@code@@",
+        "<p><code>code</code></p>\n"
+    ],
+    [
+        "Été @@2006@@ Mac, Intel, Mac OS X",
+        "<p>Été <code>2006</code> Mac, Intel, Mac OS X</p>\n"
+    ],
+    [
+        "Voici du code : @@if a == 5 then puts('hello 5') end@@",
+        "<p>Voici du code : <code>if a == 5 then puts('hello 5') end</code></p>\n",
+    ],
+    [
+        "Voici du code Ruby : @@ruby if a == 5 then puts('hello 5') end@@",
+        '<p>Voici du code Ruby : <code><span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span> <span class="ruby-identifier" title="token n°10 : identifier">puts</span><span class="ruby-separator" title="token n°11 : separator">(</span><span class="ruby-string" title="token n°12 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°13 : separator">)</span> <span class="ruby-keyword" title="token n°15 : keyword">end</span></code></p>\n',
+    ],
+    [
+        "@@ruby\n@@if a == 5 then\n@@    puts('hello 5')\n@@end\n",
+        '<pre>\
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">\
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">\
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">\
+</span></pre>\n'
+    ],
+    [
+        "@@@ruby\nif a == 5 then\n    puts('hello 5')\nend\n@@@\n",
+        '<pre>\
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">\
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">\
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">\
+</span></pre>\n'
+    ],
+    # Quotes
+    [
+        ">>ceci est une quote\n>>qui s'étend sur une autre ligne\nText normal",
+        "<blockquote>\nceci est une quote<br>\nqui s'étend sur une autre ligne<br>\n</blockquote>\n<p>Text normal</p>\n"
+    ],
+    [
+        ">>>\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        "<blockquote>\nceci est une quote libre<br>\nqui s'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n"
+    ],
+    [
+        ">>>.redquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        '<blockquote class="redquote">\nceci est une quote libre<br>\nqui s\'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n'
+    ],
+    [
+        ">>>#myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        '<blockquote id="myquote">\nceci est une quote libre<br>\nqui s\'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n'
+    ],
+    [
+        ">>>.redquote #myquote\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        '<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s\'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n'
+    ],
+    [
+        ">>>.redquote #myquote OH NON DU TEXTE !\nceci est une quote libre\nqui s'étend sur une autre ligne aussi\n>>>\nText normal",
+        '<blockquote id="myquote" class="redquote">\nceci est une quote libre<br>\nqui s\'étend sur une autre ligne aussi<br>\n</blockquote>\n<p>Text normal</p>\n',
+        "A line starting a blockquote should only have a class or id indication not text"
+    ],
+    # Lists
+    [
+        "* Bloc1\n  * A\n  * B\n* Bloc2\n  * C",
+        "<ul>\n  <li>Bloc1\n    <ul>\n      <li>A</li>\n      <li>B</li>\n    </ul>\n  </li>\n  <li>Bloc2\n    <ul>\n      <li>C</li>\n    </ul>\n  </li>\n</ul>\n",
+    ],
+    ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
+    # Definition lists
+    # Tables
+    [
+        "|abc|def|",
+        "<table>\n<tr><td>abc</td><td>def</td></tr>\n</table>\n"
+    ],
+    [
+        "|abc|=def|",
+        '<table>\n<tr><td>abc</td><td style="text-align: center">def</td></tr>\n</table>\n'
+    ],
+    [
+        "|abc|>def|",
+        '<table>\n<tr><td>abc</td><td style="text-align: right">def</td></tr>\n</table>\n'
+    ],
+    [
+        "|abc|def\\|ghk|",
+        "<table>\n<tr><td>abc</td><td>def|ghk</td></tr>\n</table>\n"
+    ],
+    # Links
+    [
+        "[[https://www.spotify.com/]]",
+        '<p><a href="https://www.spotify.com/">https://www.spotify.com/</a></p>\n'
+    ],
+    [
+        "[[Spotify->https://www.spotify.com/]]",
+        '<p><a href="https://www.spotify.com/">Spotify</a></p>\n'
+    ],
+    [
+        "[[Spotify->grotify]]\n::grotify:: https://www.spotify.com/",
+        '<p><a href="https://www.spotify.com/">Spotify</a></p>\n'
+    ],
+    [
+        "## Youhou\n[[Go to title->youhou]]",
+        '<h2 id="youhou">Youhou</h2>\n<p><a href="#youhou">Go to title</a></p>\n'
+    ],
+    [
+        "[[Ceci est un mauvais lien->",
+        "",
+        "Unclosed link in [[Ceci est un mauvais lien->",
+    ],
+    [
+        "{{#idp}} blablah\n\n[[#idp]]",
+        '<p id="idp"> blablah</p>\n<p><a href="#idp">#idp</a></p>\n'
+    ],
+    [
+        "[[Escaped \\-> link->https://www.spotify.com/]]",
+        '<p><a href="https://www.spotify.com/">Escaped &ShortRightArrow; link</a></p>\n'
+    ],
+    # Images
+    [
+        "((https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg))",
+        '<p><img src="https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg"/></p>\n'
+    ],
+    # Constants
+    ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
+    ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
+    [
+        "!const ALPHACONST = abcd\n!const ALPHACONST = efgh",
+        "",
+        "Can't set the value of the already defined constant: ALPHACONST of type string",
+    ],
+    [
+        "$$VERSION$$",
+        f"<p>Hamill {VERSION}</p>\n"
+    ],
+    # Variables
+    ["!var NUMBER=5\n$$NUMBER$$", "<p>5</p>\n"],
+    [
+        "!var ALPHA=je suis un poulpe\n$$ALPHA$$",
+        "<p>je suis un poulpe</p>\n",
+    ],
+    ["!var BOOLEAN=true\n$$BOOLEAN$$", "<p>true</p>\n"],
+    [
+        "!var NUM=1\n$$NUM$$\n!var NUM=25\n$$NUM$$\n",
+        "<p>1</p>\n<p>25</p>\n",
+    ],
+    ["\\!var I AM NOT A VAR", "<p>!var I AM NOT A VAR</p>\n"],
+    ["$$UNKNOWNVAR$$", "", "Unknown variable: UNKNOWNVAR"],
+    [
+        "!var TITLE=ERROR",
+        "",
+        "You cannot use TITLE for a variable because it is a predefined constant.",
+    ],
+    # Inclusion of HTML files
+    ["!include include_test.html", "<h1>Hello World!</h1>\n"],
+    [
+        "\\!include I AM NOT AN INCLUDE",
+        "<p>!include I AM NOT AN INCLUDE</p>\n",
+    ],
+    # Links to CSS and JavaScript files
+    ["!require pipo.css", ""],
+    [
+        "\\!require I AM NOT A REQUIRE",
+        "<p>!require I AM NOT A REQUIRE</p>\n",
+    ],
+    # Raw HTML and CSS
+    ["!html <div>Hello</div>", "<div>Hello</div>\n"],
+    [
+        "\\!html <div>Hello</div>",
+        "<p>!html &lt;div&gt;Hello&lt;/div&gt;</p>\n",
+    ], # Error, the \ should be removed!
+    ["!css p { color: pink;}", ""],
+    # New feature
+    [
+        "**started but not finished",
+        "",
+        "Unclosed bold text mode."
+    ],
+    [
+        "**started __first** closed wrong__",
+        "",
+        "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
+    ]
+]
+
+def run_all_tests(stop_on_first_error = True, stop_at = None):
+    print("\n========================================================================")
+    print("Starting tests")
+    print("========================================================================")
+    nb_ok = 0
+    for index, t in tests.entries():
+        if t is None or not isinstance(t, list) or (len(t) != 2 and len(t) != 3):
+            raise HamillException("Test not well defined:", t)
+        print("\n-------------------------------------------------------------------------")
+        print(f"Test {index + 1}")
+        print("-------------------------------------------------------------------------\n")
+        if run_test(t[0], t[1], t[2] if len(t) == 3 else None):
+            nb_ok += 1
+        elif stop_on_first_error:
+            raise HamillException("Stopping on first error")
+        if stop_at is not None and stop_at == index + 1:
+            print(f"Stopped at {stop_at}")
+            break
+    print(f"\nTests ok : {nb_ok} / {tests.length}\n")
+
+def run_test(text, result, error = None):
+    try:
+        doc = Hamill.process(text)
+        output = doc.to_html()
+        print("RESULT:")
+        if output == "":
+            print("EMPTY")
+        else:
+            print(output)
+        if output == result:
+            print("Test Validated")
+            return True
+        else:
+            if result == "":
+                result = "EMPTY"
+            print(f"Error, expected:\n{result}")
+            return False
+    except Exception as e:
+        print("RESULT:")
+        if error != None and e.message == error:
+            print("Error expected:", e.message)
+            print("Test Validated")
+            return True
+        elif error is not None:
+            print(e.message)
+            print(f"Error, expected:\n{error}")
+            return False
+        else:
+            print("Unexpected error:", e.message, e.stack)
+            print(f"No error expected, expected:\n{result}")
+            return False
+
+#------------------------------------------------------------------------------
+# Main
+#------------------------------------------------------------------------------
+
+do_test = False
+DEBUG = True
+
+if DEBUG:
+    print(f"Running Hamill v{Hamill.VERSION}")
+
+message = "---\n"
+message += "> Use hamill.mjs --process (or -p) <input config filepath> to convert the HML file to HTML\n"
+message += "  The file must be a dict {} with a key named targets with an array value of pairs :\n"
+message += '            ["inputFile", "outputDir"]\n'
+message += f"> Use hamill.mjs --tests (or -t) to launch all the tests ({len(tests)}).\n"
+message += "> Use hamill.mjs --eval (or -e) to run a read-eval-print-loop from hml to html\n"
+message += "> Use hamill.mjs --help (or -h) to display this message"
+
+if len(sys.argv) == 2:
+    if sys.argv[1] == '--tests' or sys.argv[1] == '-t':
+        do_test = True
+    elif sys.argv[1] == "--eval" or sys.argv[1] == '-e':
+        print('---')
+        print('Type exit to quit')
+        cmd = None
+        while cmd != "exit":
+            cmd = input('> ')
+            if cmd != "exit":
+                doc = Hamill.process(cmd)
+                print(doc.to_html(False))
+    elif sys.argv[2] == "--help" or sys.argv[2] == "-h":
+        print(message)
     else:
-        if dest is not None:
-            raise Exception(f'When processing a line, dest should be None instead of |{dest}|')
-        return process_string(source, gen)
+        print("Unrecognized option(s). Type --help for help.")
+elif len(sys.argv) == 3:
+    if sys.argv[1] == '--process' or sys.argv[1] == '-p':
+        filepath = sys.argv[2]
+        if not os.path.isfile(filepath):
+            raise HamillException(f"Impossible to find a valid hamill config file at {filepath}")
+        workingDir = os.path.dirname(filepath)
+        os.chdir(workingDir)
+        print(f"Set current working directory: {os.getcwd()}")
+        f = open(filepath, 'r', encoding='utf-8')
+        config = json.load(f)
+        f.close()
+        for target in config["targets"]:
+            if target[0] != "comment":
+                inputFile = target[0]
+                targetOK = os.path.isfile(inputFile)
+                if not targetOK:
+                    print(f"{inputFile} is an invalid target. Aborting.")
+                    exit()
+                outputDir = target[1]
+                Hamill.process(
+                    inputFile
+                ).to_html_file(outputDir)
+    else:
+        print("Unrecognized options. Type --help for help.")
+else:
+    print(message)
+
+if do_test:
+    run_all_tests(True) #, 5)
