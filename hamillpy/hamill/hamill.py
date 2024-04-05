@@ -28,7 +28,10 @@
 # Imports
 #------------------------------------------------------------------------------
 
+from lexer import LANGUAGES
 from datetime import datetime
+import time
+import traceback
 import os.path
 import json
 import math
@@ -89,7 +92,13 @@ class Node(EmptyNode):
         if self.content is None:
             return self.__class__.__name__
         else:
-            return self.__class__.__name__ + " { content: " + self.content + " }"
+            txt = ""
+            if isinstance(self.content, list):
+                txt = map(lambda x: str(x), self.content)
+                txt = ", ".join(txt)
+            else:
+                txt = self.content
+            return self.__class__.__name__ + " { content: " + txt + " }"
 
 class Text(Node):
     def to_html(self):
@@ -156,7 +165,7 @@ class BR(EmptyNode):
 class Span(Node):
 
     def to_html(self):
-        cls = '' if self.cls is None else f' class={self.cls}"'
+        cls = '' if self.cls is None else f' class="{self.cls}"'
         ids = '' if self.ids is None else f' id="{self.ids}"'
         return f'<span{ids}{cls}>{self.content}</span>'
 
@@ -164,7 +173,7 @@ class ParagraphIndicator(EmptyNode):
 
     def to_html(self):
         cls = '' if self.cls is None else f' class="{self.cls}"'
-        ids = '' if tselfhis.ids is None else f' id="{self.ids}"'
+        ids = '' if self.ids is None else f' id="{self.ids}"'
         return f'<p{ids}{cls}>'
 
 class Comment(Node):
@@ -478,7 +487,7 @@ class Document:
     def to_html_file(self, output_directory = ""):
         parts = self.name.split("/")
         outfilename = parts[-1]
-        outfilename = outfilename[0 : outfilename.lastIndexOf(".hml")] + ".html"
+        outfilename = outfilename[0 : outfilename.rfind(".hml")] + ".html"
         target = ""
         if os.path.isdir(output_directory):
             target = output_directory + path.sep + outfilename
@@ -579,7 +588,7 @@ class Document:
         while index < len(s):
             char = s[index]
             nextc = s[index + 1] if index + 1 < len(s) else None
-            next_next = str[index + 2] if index + 2 < len(s) else None
+            next_next = s[index + 2] if index + 2 < len(s) else None
             prev = s[index - 1] if index - 1 >= 0 else None
             # Glyphs - Trio
             if char == "." and nextc == "." and next_next == "." and prev != "\\":
@@ -635,7 +644,7 @@ class Document:
         return word
 
     def to_html(self, header = False, skip_error = False):
-        start_time = datetime.now()
+        start_time = time.time()
         content = ""
         if header:
             content = '<!DOCTYPE HTML>\n<html lang="${this.get_variable("LANG", "en")}">\
@@ -705,7 +714,7 @@ class Document:
                     content += "<!--" + node.content + " -->\n"
             elif isinstance(node, SetVar):
                 if not node.constant:
-                    if self.predefined_constants.includes(node.id):
+                    if node.id in self.predefined_constants:
                         raise HamillException(f'You cannot use {node.id} for a variable because it is a predefined constant.')
                 self.set_variable(node.id, node.value, node.type, node.constant)
             elif isinstance(node, HR) or isinstance(node, StartDiv) or isinstance(node, EndDiv) or isinstance(node, StartDetail) or isinstance(node, EndDetail) or isinstance(node, Detail) or isinstance(node, RawHTML) or isinstance(node, List) or isinstance(node, Quote) or isinstance(node, Code):
@@ -722,7 +731,6 @@ class Document:
                         content += "<p>"
                 else:
                     content += "<br>\n"; # Chaque ligne donnera une ligne avec un retour à la ligne
-                print("aaaaa")
                 content += node.to_html()
             elif isinstance(node, Definition):
                 if not in_def_list:
@@ -798,9 +806,9 @@ class Document:
             print(f'Nodes not processed {not_processed}:')
             for k, v in types_not_processed.items():
                 print("   -", k, v)
-        end_time = datetime.now()
-        elapsed = (end_time - start_time) / 1000
-        print("Processed in:        %ds", elapsed, "\n")
+        end_time = time.time()
+        elapsed = (end_time - start_time)
+        print(f"Processed in:        {round(elapsed, 5)}s\n")
         return content
 
     def to_s(self, level = 0, node = None, header = False):
@@ -896,18 +904,18 @@ class Hamill:
             elif trimmed[0] == "#":
                 lines.append(Line(trimmed, "title"))
             # HR :
-            elif len(re.findall("/-/", trimmed) or []) == len(trimmed): ## MATCH TODO
+            elif len(re.findall("-", trimmed) or []) == len(trimmed):
                 lines.append(Line("", "separator"))
             # Lists, line with the first non empty character is "* " or "+ " or "- " :
             elif trimmed[0:2] == "* ":
-                start = value.indexOf("* ")
-                level = Math.trunc(start / 2)
+                start = value.find("* ")
+                level = math.trunc(start / 2)
                 if level * 2 != start:
                     raise HamillException(msg)
                 lines.append(Line(value, "unordered_list", level + 1))
             elif trimmed[0:2] == "+ ":
                 start = value.index("+ ")
-                level = Math.trunc(start / 2)
+                level = math.trunc(start / 2)
                 if level * 2 != start:
                     raise HamillException(msg)
                 lines.append(Line(value, "ordered_list", level + 1))
@@ -936,10 +944,10 @@ class Hamill:
             # Block of code
             elif trimmed[0:3] == "@@@":
                 in_code_block = True
-                lines.push(Line(value, "code"))
-            elif trimmed[0:2] == "@@" and not trimmed[2:].includes("@@"):
+                lines.append(Line(value, "code"))
+            elif trimmed[0:2] == "@@" and "@@" not in trimmed[2:]:
                 in_code_block_prefixed = True
-                lines.push(Line(value, "code"))
+                lines.append(Line(value, "code"))
             # Block of quote
             elif trimmed[0:3] == ">>>":
                 in_quote_block = True # will be desactivate in Check states
@@ -950,15 +958,15 @@ class Hamill:
             elif trimmed[0:2] == "::":
                 lines.append(Line(trimmed, "label"))
                 # Div (Si la ligne entière est {{ }}, c'est une div. On ne fait pas de span d'une ligne)
-            elif trimmed[0:2] == "{{" and trimmed.endswith("}}") and trimmed.lastIndexOf("{{") == 0:
+            elif trimmed[0:2] == "{{" and trimmed.endswith("}}") and trimmed.rfind("{{") == 0:
                 # span au début et à la fin = erreur
                 lines.append(Line(trimmed, "div"))
                 # Detail
-            elif trimmed[0:2] == "<<" and trimmed.endswith(">>") and trimmed.lastIndexOf("<<") == 0:
-                lines.push(Line(trimmed, "detail"))
+            elif trimmed[0:2] == "<<" and trimmed.endswith(">>") and trimmed.rfind("<<") == 0:
+                lines.append(Line(trimmed, "detail"))
                 # Tables
-            elif trimmed[0] == "|" and trimmed[trimmed.length - 1] == "|":
-                lines.push(Line(trimmed, "row"))
+            elif trimmed[0] == "|" and trimmed[-1] == "|":
+                lines.append(Line(trimmed, "row"))
                 # Definition lists
             elif trimmed[0:2] == "$ ":
                 lines.append(Line(trimmed[2:], "definition-header"))
@@ -1004,9 +1012,15 @@ class Hamill:
         actual_level = 0
         starting_level = 0
         # On pourrait avoir un root aussi
+        delimiters = {
+            "unordered_list": "* ",
+            "ordered_list": "+ ",
+            "reverse_list": "- ",
+        }
         # Main loop
         count = 0
         while count < len(lines):
+            print("DEBUG:", count + 1, "/", len(lines), lines[count], actual_list)
             line = lines[count]
             text = None
             ids = None
@@ -1022,11 +1036,6 @@ class Hamill:
             node_content = ""
             free = False
             # Lists
-            delimiters = {
-                "unordered_list": "* ",
-                "ordered_list": "+ ",
-                "reverse_list": "- ",
-            }
             delimiter = ""
             list_level = 0
             elem_is_unordered = False
@@ -1046,7 +1055,7 @@ class Hamill:
                         lvl += 1
                     else:
                         break
-                text = line.value.substring(lvl).strip()
+                text = line.value[lvl:].strip()
                 try:
                     interpreted = Hamill.parse_inner_string(doc, text)
                     doc.add_node(Title(doc, interpreted, lvl))
@@ -1054,44 +1063,36 @@ class Hamill:
                 except Exception as e:
                     print(f"Error at line {count} on title: {line}")
                     raise e
-                break
             elif line.type == "separator":
                 doc.add_node(HR(doc))
                 break
             elif line.type == "text":
                 if line.value.strip().startswith("\\* ") or line.value.strip().startswith("\\!html") or line.value.strip().startswith("\\!var") or line.value.strip().startswith("\\!const") or line.value.strip().startswith("\\!include") or line.value.strip().startswith("\\!require"):
-                    line.value = line.value.strip().substring(1)
+                    line.value = line.value.strip()[1:]
                 try:
                     n = Hamill.parse_inner_string(doc, line.value)
                     doc.add_node(TextLine(doc, n))
                 except Exception as e:
-                    print(f"Error at line ${count} on text: {line}")
+                    print(f"Error at line {count} on text: {line}")
                     raise e
-                break
-            elif line.type == "unordered_list":
-                elem_is_unordered = True
+            elif line.type in ["unordered_list", "ordered_list", "reverse_list"]:
+                elem_is_unordered = False
+                elem_is_ordered = False
+                elem_is_reverse = False
+                if line.type == "unordered_list":
+                    elem_is_unordered = True
+                elif line.type == "ordered_list":
+                    elem_is_ordered = True
+                elif line.type == "reverse_list":
+                    elem_is_reverse = True
                 if actual_list is None:
-                    actual_list = List(doc, None, False, False)
+                    actual_list = List(doc, None, elem_is_ordered or elem_is_reverse, elem_is_reverse)
                     actual_level = 1
                     starting_level = line.param
-            # next
-            elif line.type == "ordered_list":
-                if line.type == "ordered_list": elem_is_ordered = True
-                if actual_list is None:
-                    actual_list = List(doc, None, True, False)
-                    actual_level = 1
-                    starting_level = line.param
-            # next
-            elif line.type == "reverse_list":
-                if line.type == "reverse_list": elem_is_reverse = True
-                if actual_list is None:
-                    actual_list = List(doc, None, True, True)
-                    actual_level = 1
-                    starting_level = line.param
-                # common code
+                # common code between lists
                 # compute item level
                 delimiter = delimiters[line.type]
-                list_level = line.param; # Math.floor(line.value.indexOf(delimiter) / 2) + 1
+                list_level = line.param; # Math.floor(line.value.find(delimiter) / 2) + 1
                 # check coherency with the starting level
                 if list_level < starting_level:
                     raise HamillException("Coherency error: a following item of list has a lesser level than its starting level.")
@@ -1118,31 +1119,25 @@ class Hamill:
                     if isinstance(actual_list, List):
                         raise HamillException(f"List incoherency: last element is not a list but a {actual_list.constructor.name}")
                 # creation
-                item_text = line.value.substring(line.value.indexOf(delimiter) + 2).strip()
+                item_text = line.value[line.value.find(delimiter) + 2:].strip()
                 item_nodes = Hamill.parse_inner_string(doc, item_text)
                 actual_list.add_child(TextLine(doc, item_nodes))
-                break
             elif line.type == "html":
                 doc.add_node(RawHTML(doc, line.value.replace("!html ", "").trimEnd()))
-                break
             elif line.type == "css":
                 text = line.value.replace("!css ", "").trimEnd()
                 doc.add_css(text)
-                break
             elif line.type == "include":
                 include = line.value.replace("!include ", "").strip()
                 doc.add_node(Include(doc, include))
-                break
             elif line.type == "require":
                 text = line.value.replace("!require ", "").strip()
                 doc.add_required(text)
-                break
             elif line.type == "const":
                 text = line.value.replace("!const ", "").split("=")
                 ids = text[0].strip()
                 value = text[1].strip()
                 doc.set_variable(ids, value, "string", True)
-                break
             elif line.type == "var":
                 text = line.value.replace("!var ", "").split("=")
                 ids = text[0].strip()
@@ -1152,14 +1147,12 @@ class Hamill:
                 if value == "false": value = False
                 if value == "FALSE": value = False
                 doc.add_node(SetVar(doc, ids, value, "boolean" if isinstance(value, bool) else "string", False))
-                break
             elif line.type == "label":
                 value = line.value.replace("::", "").strip()
                 text = value.split("::") # ???
                 doc.add_label(text[0].strip(), text[1].strip()) # label, url
-                break
             elif line.type == "detail":
-                value = line.value.substring(2, line.value.length - 2).strip()
+                value = line.value[2:-2].strip() # end : line.value.length - 2
                 if value == "end":
                     doc.add_node(EndDetail(doc))
                 else:
@@ -1170,9 +1163,8 @@ class Hamill:
                     else:
                         # Detail simple <<summary -> content>>
                         doc.add_node(Detail(doc, res["text"].strip(), parts[1].strip(), res["id"], res["class"]))
-                break
             elif line.type == "div":
-                value = line.value.substring(2, line.value.length - 2).strip()
+                value = line.value[2 : -2].strip()
                 res = Hamill.parse_inner_markup(value)
                 if res["text"] == "end":
                     doc.add_node(EndDiv(doc)) # We can put {{end .myclass #myid}} but it has no meaning except to code reading
@@ -1183,15 +1175,13 @@ class Hamill:
                 elif res["text"] == "begin" or res["text"] is None:
                     # begin can be omitted if there is no class nor id
                     doc.add_node(StartDiv(doc, res["id"], res["class"]))
-                break
             elif line.type == "comment":
                 if line.value.startswith("!rem "):
-                    doc.add_node(Comment(doc, line.value.substring(4)))
+                    doc.add_node(Comment(doc, line.value[4:]))
                 else:
-                    doc.add_node(Comment(doc, line.value.substring(2)))
-                break
+                    doc.add_node(Comment(doc, line.value[2:]))
             elif line.type == "row":
-                content = line.value.substring(1, len(line.value) - 1)
+                content = line.value[1:-1]
                 if len(content) == len(content.match("[-|]") or []):
                     i = len(doc.nodes) - 1
                     while isinstance(doc.get_node(i), Row):
@@ -1202,23 +1192,19 @@ class Hamill:
                     all_nodes = []
                     for p in parts:
                         nodes = Hamill.parse_inner_string(doc, p)
-                        all_nodes.push(nodes)
+                        all_nodes.append(nodes)
                     doc.add_node(Row(doc, all_nodes))
-                break
             elif line.type == "empty":
                 # Prevent multiple empty nodes
                 if len(doc.nodes) == 0 or not isinstance(doc.nodes[-1], EmptyNode):
                     doc.add_node(EmptyNode(doc))
-                break
             elif line.type == "definition-header":
                 definition = Hamill.parse_inner_string(doc, line.value)
-                break
             elif line.type == "definition-content":
                 if definition == None:
                     raise HamillException("Definition content without header: " + line.value)
                 doc.add_node(Definition(doc, definition, Hamill.parse_inner_string(doc, line.value)))
                 definition = null
-                break
             elif line.type == "quote":
                 res = {}
                 res['class'] = None
@@ -1228,7 +1214,7 @@ class Hamill:
                     count += 1
                 elif line.value.startswith(">>>"):
                     free = True
-                    res = this.parse_inner_markup(line.value.substring(3))
+                    res = this.parse_inner_markup(line.value[3:])
                     if res["has_text"]:
                         raise HamillException("A line starting a blockquote should only have a class or id indication not text")
                     count += 1
@@ -1239,14 +1225,13 @@ class Hamill:
                     elif free and line.value == ">>>":
                         break
                     elif not free:
-                        node_content += line.value.substring(2) + "\n"
+                        node_content += line.value[2:] + "\n"
                     else:
                         node_content += line.value + "\n"
                     count += 1
                 doc.add_node(Quote(doc, node_content, res['class'], res['id']))
                 if count < len(lines) and lines[count].type != "quote":
                     count -= 1
-                break
             elif line.type == "code":
                 res = {}
                 res['class'] = None
@@ -1257,10 +1242,10 @@ class Hamill:
                     res = None
                 elif line.value.startswith("@@@"):
                     free = True
-                    res = line.value.substring(3)
+                    res = line.value[3:]
                     count += 1
                 elif line.value.startswith("@@"):
-                    res = line.value.substring(2)
+                    res = line.value[2:]
                     if res in LANGUAGES:
                         count += 1 # skip
                 while count < len(lines) and lines[count].type == "code":
@@ -1270,14 +1255,13 @@ class Hamill:
                     elif free and line.value == "@@@":
                         break
                     elif not free:
-                        nodeContent += line.value.substring(2) + "\n"
+                        nodeContent += line.value[2:] + "\n"
                     else:
                         nodeContent += line.value + "\n"
                     count += 1
                 doc.add_node(Code(doc, nodeContent, None, None, res, False)); # res is the language
                 if count < len(lines) and lines[count].type != "code":
                     count -= 1
-                break
             else:
                 raise HamillException(f"Unknown {line.type}")
             count += 1
@@ -1361,7 +1345,7 @@ class Hamill:
             if char == "#" and nextc == "#" and prev != "\\":
                 if len(word) > 0:
                     nodes.append(
-                        Text(doc, word[0:word.length].strip())
+                        Text(doc, word[0:].strip())
                     )
                     word = ""
                 nodes.append(BR(doc))
@@ -1389,7 +1373,7 @@ class Hamill:
                         end = s.index("))", index)
                         if end == -1:
                             raise HamillException(f"Unclosed image in {s}")
-                        content = s.substring(index + 2, end)
+                        content = s[index + 2:end]
                         res = Hamill.parse_inner_picture(content)
                         nodes.append(
                             Picture(
@@ -1405,7 +1389,7 @@ class Hamill:
                         end = s.index("]]", index)
                         if end == -1:
                             raise HamillException(f"Unclosed link in {s}")
-                        content = s.substring(index + 2, end)
+                        content = s[index + 2:end]
                         parts = Hamill.escaped_split("->", content)
                         display = None
                         url = None
@@ -1425,7 +1409,7 @@ class Hamill:
                         end = s.index("}}", index)
                         if end == -1:
                             raise HamillException(f"Unclosed markup in {s}")
-                        content = s.substring(index + 2, end)
+                        content = s[index + 2:end]
                         res = Hamill.parse_inner_markup(content)
                         if res["has_text"]:
                             nodes.append(
@@ -1449,7 +1433,7 @@ class Hamill:
                         end = s.index("$$", index + 2)
                         if end == -1:
                             raise HamillException(f"Unclosed display in {s}")
-                        content = s.substring(index + 2, end)
+                        content = s[index + 2:end]
                         nodes.append(GetVar(doc, content))
                         index = end + 1
                     elif match == "code":
@@ -1458,18 +1442,18 @@ class Hamill:
                             raise HamillException(
                                 "Unfinished inline code sequence: " + s
                             )
-                        code_str = s.slice(index + 2, is_code_ok)
+                        code_str = s[index + 2:is_code_ok]
                         lang = None
                         language = code_str.split(" ")[0]
                         if language in LANGUAGES:
                             lang = language
-                            code_str = code_str.substring(language.length+1) # remove the language and one space
+                            code_str = code_str[len(language)+1:] # remove the language and one space
                         nodes.append(Code(doc, Hamill.unescape_code(code_str), None, None, lang, True)) # unescape only @@ !
                         index = is_code_ok + 1 # will inc by 1 at the end of the loop
                     else:
                         # match with text modes
                         if not modes[match]:
-                            modes[match] = true
+                            modes[match] = True
                             stack.append(match)
                             nodes.append(Start(doc, match))
                         else:
@@ -1847,11 +1831,11 @@ def run_all_tests(stop_on_first_error = True, stop_at = None):
     print("Starting tests")
     print("========================================================================")
     nb_ok = 0
-    for index, t in tests.entries():
+    for index, t in enumerate(tests):
         if t is None or not isinstance(t, list) or (len(t) != 2 and len(t) != 3):
             raise HamillException("Test not well defined:", t)
         print("\n-------------------------------------------------------------------------")
-        print(f"Test {index + 1}")
+        print(f"Test {index + 1} / {len(tests)}")
         print("-------------------------------------------------------------------------\n")
         if run_test(t[0], t[1], t[2] if len(t) == 3 else None):
             nb_ok += 1
@@ -1881,8 +1865,8 @@ def run_test(text, result, error = None):
             return False
     except Exception as e:
         print("RESULT:")
-        if error != None and e.message == error:
-            print("Error expected:", e.message)
+        if error != None and str(e) == error:
+            print("Error expected:", str(e))
             print("Test Validated")
             return True
         elif error is not None:
@@ -1890,7 +1874,8 @@ def run_test(text, result, error = None):
             print(f"Error, expected:\n{error}")
             return False
         else:
-            print("Unexpected error:", e.message, e.stack)
+            print("Unexpected error:", str(e))
+            traceback.print_tb(e.__traceback__)
             print(f"No error expected, expected:\n{result}")
             return False
 
