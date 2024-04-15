@@ -28,7 +28,7 @@
 # Imports
 #------------------------------------------------------------------------------
 
-from lexer import LANGUAGES
+from weyland import LANGUAGES, LEXERS
 from datetime import datetime
 import time
 import traceback
@@ -380,7 +380,7 @@ class Quote(Node):
         return 'Quote { ' + f'content: {content}' + '}'
 
     def to_html(self):
-        cls =  '' if self.cls is None else f' class="{self.cls}'
+        cls =  '' if self.cls is None else f' class="{self.cls}"'
         ids =  '' if self.ids is None else f' id="{self.ids}"'
         content = self.document.safe(self.content).replace("\n", "<br>\n")
         return f'<blockquote{ids}{cls}>\n' + content + "</blockquote>\n"
@@ -574,7 +574,7 @@ class Document:
                 isinstance(node, ParagraphIndicator):
                 content += node.to_html()
             elif isinstance(node, Link):
-                content += node.to_html(self)
+                content += node.to_html()
             elif isinstance(node, GetVar):
                 content += self.get_variable(node.content)
             else:
@@ -647,9 +647,9 @@ class Document:
         start_time = time.time()
         content = ""
         if header:
-            content = '<!DOCTYPE HTML>\n<html lang="${this.get_variable("LANG", "en")}">\
+            content = f'<!DOCTYPE HTML>\n<html lang="{self.get_variable("LANG", "en")}">\
 <head>\
-  <meta charset="${this.get_variable("ENCODING", "utf-8")}">\
+  <meta charset="{self.get_variable("ENCODING", "utf-8")}">\
   <meta http-equiv="X-UA-Compatible" content="IE=edge">\
   <meta name="viewport" content="width=device-width, initial-scale=1">\
   <title>' + self.get_variable("TITLE", "Undefined title") + '</title>\
@@ -779,18 +779,18 @@ class Document:
                                 node_list[0].content = node_list[0].content[i+1:]
                     content += f'<{delim}{center}{span}>'
                     content = self.string_to_html(content, node_list)
-                    content += '</{' + delim + '}>'
+                    content += f'</{delim}>'
                 content += "</tr>\n"
             elif skip_error:
                 not_processed += 1
                 if node.__class__.__name__ not in types_not_processed:
-                    types_not_processed[node.constructor.name] = 0
-                types_not_processed[node.constructor.name] += 1
+                    types_not_processed[node.__class__.__name__] = 0
+                types_not_processed[node.__class__.__name__] += 1
             elif isinstance(node, EmptyNode):
                 # Nothing, it is just too close the paragraph, done above.
                 pass
             else:
-                raise HamillException(f'Unknown node: {node.constructor.name}')
+                raise HamillException(f'Unknown node: {node.__class__.__name__}')
         if in_paragraph:
             content += END_PARAGRAPH
         if len(stack) > 0:
@@ -1116,8 +1116,8 @@ class Hamill:
                         # L'item était un composite, il faut remonter à la liste mère !
                         actual_list = actual_list.get_parent()
                     actual_level -= 1
-                    if isinstance(actual_list, List):
-                        raise HamillException(f"List incoherency: last element is not a list but a {actual_list.constructor.name}")
+                    if not isinstance(actual_list, List):
+                        raise HamillException(f"List incoherency: last element is not a list but a {actual_list.__class__.__name__}")
                 # creation
                 item_text = line.value[line.value.find(delimiter) + 2:].strip()
                 item_nodes = Hamill.parse_inner_string(doc, item_text)
@@ -1182,13 +1182,13 @@ class Hamill:
                     doc.add_node(Comment(doc, line.value[2:]))
             elif line.type == "row":
                 content = line.value[1:-1]
-                if len(content) == len(content.match("[-|]") or []):
+                if len(content) == len(re.findall("[-|]", content) or []):
                     i = len(doc.nodes) - 1
                     while isinstance(doc.get_node(i), Row):
                         doc.get_node(i).is_header = True
                         i -= 1
                 else:
-                    parts = self.escaped_split("|", content); # Handle escape
+                    parts = Hamill.escaped_split("|", content); # Handle escape
                     all_nodes = []
                     for p in parts:
                         nodes = Hamill.parse_inner_string(doc, p)
@@ -1214,7 +1214,7 @@ class Hamill:
                     count += 1
                 elif line.value.startswith(">>>"):
                     free = True
-                    res = this.parse_inner_markup(line.value[3:])
+                    res = Hamill.parse_inner_markup(line.value[3:])
                     if res["has_text"]:
                         raise HamillException("A line starting a blockquote should only have a class or id indication not text")
                     count += 1
@@ -1233,13 +1233,10 @@ class Hamill:
                 if count < len(lines) and lines[count].type != "quote":
                     count -= 1
             elif line.type == "code":
-                res = {}
-                res['class'] = None
-                res['id'] = None
+                res = None
                 if line.value == "@@@":
                     free = True
                     count += 1
-                    res = None
                 elif line.value.startswith("@@@"):
                     free = True
                     res = line.value[3:]
@@ -1255,11 +1252,11 @@ class Hamill:
                     elif free and line.value == "@@@":
                         break
                     elif not free:
-                        nodeContent += line.value[2:] + "\n"
+                        node_content += line.value[2:] + "\n"
                     else:
-                        nodeContent += line.value + "\n"
+                        node_content += line.value + "\n"
                     count += 1
-                doc.add_node(Code(doc, nodeContent, None, None, res, False)); # res is the language
+                doc.add_node(Code(doc, node_content, None, None, res, False)); # res is the language
                 if count < len(lines) and lines[count].type != "code":
                     count -= 1
             else:
@@ -1665,18 +1662,18 @@ tests = [
     ],
     [
         "@@ruby\n@@if a == 5 then\n@@    puts('hello 5')\n@@end\n",
-        '<pre>\
-<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">\
-</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">\
-</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">\
+        '<pre>\n\
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">\n\
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">\n\
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">\n\
 </span></pre>\n'
     ],
     [
         "@@@ruby\nif a == 5 then\n    puts('hello 5')\nend\n@@@\n",
-        '<pre>\
-<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">\
-</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">\
-</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">\
+        '<pre>\n\
+<span class="ruby-keyword" title="token n°0 : keyword">if</span> <span class="ruby-identifier" title="token n°2 : identifier">a</span> <span class="ruby-operator" title="token n°4 : operator">==</span> <span class="ruby-integer" title="token n°6 : integer">5</span> <span class="ruby-keyword" title="token n°8 : keyword">then</span><span class="ruby-newline" title="token n°9 : newline">\n\
+</span>    <span class="ruby-identifier" title="token n°11 : identifier">puts</span><span class="ruby-separator" title="token n°12 : separator">(</span><span class="ruby-string" title="token n°13 : string">\'hello 5\'</span><span class="ruby-separator" title="token n°14 : separator">)</span><span class="ruby-newline" title="token n°15 : newline">\n\
+</span><span class="ruby-keyword" title="token n°16 : keyword">end</span><span class="ruby-newline" title="token n°17 : newline">\n\
 </span></pre>\n'
     ],
     # Quotes

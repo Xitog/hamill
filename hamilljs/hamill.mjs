@@ -712,7 +712,7 @@ class Document {
             ) {
                 content += node.to_html();
             } else if (node instanceof Link) {
-                content += node.to_html(this);
+                content += node.to_html();
             } else if (node instanceof GetVar) {
                 content += this.get_variable(node.content);
             } else {
@@ -1699,13 +1699,10 @@ class Hamill {
                     }
                     break;
                 case "code":
-                    res = {};
-                    res['class'] = null;
-                    res['id'] = null;
+                    res = null;
                     if (line.value === "@@@") {
                         free = true;
                         count += 1;
-                        res = null;
                     } else if (line.value.startsWith("@@@")) {
                         free = true;
                         res = line.value.substring(3); // this.parse_inner_markup(
@@ -2088,9 +2085,9 @@ class Hamill {
     }
 }
 
-//-------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Functions
-//-------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 
 let tests = [
     // Comments, HR and BR
@@ -2454,7 +2451,6 @@ function runTest(text, result, error = null) {
 //-------------------------------------------------------------------------------
 
 let do_test = false;
-const do_files = false;
 const DEBUG = true;
 
 if (DEBUG) {
@@ -2522,10 +2518,6 @@ if (argv !== null) {
 if (fs !== null) {
     if (do_test) {
         runAllTests(true); //, 5);
-    }
-    if (do_files) {
-        //- RTS -------------------------------------------------------------------
-
     }
 }
 

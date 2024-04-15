@@ -2,17 +2,17 @@
 # MIT Licence (Expat License Wording)
 # -----------------------------------------------------------
 # Copyright © 2020, Damien Gouteux
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -37,7 +37,7 @@ import re
 #-------------------------------------------------------------------------------
 
 class Language:
-    
+
     def __init__(self, name, definitions, wrong=None, specials=None):
         wrong = [] if wrong is None else wrong
         specials = {} if specials is None else specials
@@ -65,7 +65,7 @@ class Language:
 
     def is_wrong(self, typ):
         return typ in self.wrong
-    
+
     def get_name(self):
         return self.name
 
@@ -108,10 +108,16 @@ STRING       = ['"[^"]*"', "'[^']*'"] # pb : can't escape \" and \'
 PATTERNS = {
     'IDENTIFIER'    : ['[a-zA-Z]\\w*'],
     'INTEGER'       : ['\\d+'],
+    'INTEGER_HEXA'  : ['0[xX][\\dABCDEFabcdef]+'],
+    'INTEGER_BIN'   : ['0[bB][01]+'],
     'WRONG_INTEGER' : ['\\d+\\w+'],
-    'BLANKS'        : ['[ \\t]+'],
+    'FLOAT'         : ['\\d+\\.\\d+', '\\d+[eE]-\\d+', '\\d+\\.\\d+[eE]-?\\d+'],
+    'WRONG_FLOAT'   : ['\\d+\\.'],
+    'BLANKS'        : ['[ \u00A0\\t]+'],
     'NEWLINES'      : ['\n', '\n\r', '\r\n'],
-    'STRINGS'       : ["'([^\\\\]|\\\\['nt])*'", '"([^\\\\]|\\\\["nt])*"'],
+    'OPERATORS'     : ['==', '=', '\\.'],
+    'STRINGS'       : ["'([^\\\\']|\\\\['nt])*'", '"([^\\\\"]|\\\\["nt])*"'],
+    'SEPARATORS'    : ['\\(', '\\)']
 }
 
 LANGUAGES = {
@@ -222,7 +228,45 @@ LANGUAGES = {
             'newline' : PATTERNS['NEWLINES'],
             'line_comment': ['§§'],
         },
-    )
+    ),
+    'ruby': Language('ruby',
+        {
+            'keyword': [
+                '__ENCODING__', '__LINE__', '__FILE__',
+                'BEGIN', 'END',
+                'alias', 'begin', 'break', 'case', 'class',
+                'def', 'defined?', 'do', 'else', 'elsif', 'end', 'ensure',
+                'for', 'if', 'in', 'module', 'next', 'nil',
+                'redo', 'rescue', 'retry', 'return', 'self', 'super',
+                'then', 'undef', 'unless', 'until', 'when', 'while', 'yield'
+            ],
+            'special': ['writeln', 'write'],
+            'boolean' : ['false', 'true'],
+            'identifier' : ['[a-zA-Z]\\w*[\\?\\!]?'],
+            'affectation' : ['='],
+            'combined_affectation' : ['\\+=', '-=', '\\*=', '/=', '//=', '\\*\\*=', '%='],
+            'integer' : PATTERNS["INTEGER"] + PATTERNS["INTEGER_BIN"] + PATTERNS["INTEGER_HEXA"],
+            'number' : PATTERNS["FLOAT"],
+            'nil': ['nil'],
+            'operator' : ['-', 'not', '#', '~', 'and', 'or', # boolean
+                'in', # belongs to
+                '\\+', '-', '\\*', '/', '//', '\\*\\*', '%', # mathematical
+                '&', '\\|', '~', '>>', '<<', # bitwise
+                '<', '<=', '>', '>=', '==', '!=', # comparison
+                '\\.'], # call
+            'separator': ['\\{', '\\}', '\\(', '\\)', '\\[', '\\]', ',', ';'],
+            'wrong_int' : PATTERNS["WRONG_INTEGER"],
+            'blank': PATTERNS["BLANKS"],
+            'newline' : PATTERNS["NEWLINES"],
+            'comment': ['#[^\n]*'],
+            'string' : PATTERNS["STRINGS"],
+        },
+        ['wrong_int'],
+        # Special
+        {
+            'ante_identifier': ['module', 'class', 'def']
+        }
+    ),
 }
 
 RECOGNIZED_LANGUAGES = LANGUAGES.keys()
