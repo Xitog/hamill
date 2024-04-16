@@ -882,7 +882,7 @@ const LANGUAGES = {
         },
         ['wrong_integer']), //, 'wrong_float']);
     'text': new Language('text', {
-        'normal': ['[^ \\t]*'],
+        'normal': ['[^ \\t\\n]*'],
         'blank': PATTERNS['BLANKS'],
         'newline': PATTERNS['NEWLINES'],
         }),

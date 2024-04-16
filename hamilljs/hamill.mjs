@@ -1542,7 +1542,7 @@ class Hamill {
                     doc.add_node(new SetVar(doc, id, value, typeof value === "boolean" ? "boolean" : "string", false));
                     break;
                 case "label":
-                    value = line.value.replace(/::/, "").trim();
+                    value = line.value.replace(/::/, "").trim(); // Remove only the first
                     text = value.split("::");
                     doc.add_label(text[0].trim(), text[1].trim()); // label, url
                     break;
@@ -2435,12 +2435,16 @@ function runTest(text, result, error = null) {
             console.log("Test Validated");
             return true;
         } else if (error !== null) {
+            console.log('-- Unexpected error:');
             console.log(e.message);
-            console.log(`Error, expected:\n${error}`);
+            console.log(e.stack);
+            console.log(`-- Another error was expected:\n${error}`);
             return false;
         } else {
-            console.log("Unexpected error:", e.message, e.stack);
-            console.log(`No error expected, expected:\n${result}`);
+            console.log("Unexpected error:");
+            console.log(e.message);
+            console.log(e.stack);
+            console.log(`-- No error expected, expected:\n${result}`);
             return false;
         }
     }

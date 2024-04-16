@@ -141,7 +141,7 @@ class Stop(Node):
 class Picture(Node):
 
     def __init__(self, document, url, text = None, cls = None, ids = None):
-        super().__init__(self, document, url, ids, cls)
+        super().__init__(document, url, ids, cls)
         self.text = text
 
     def to_html(self):
@@ -443,7 +443,7 @@ class Variable:
     def set_variable(self, value):
         if self.value is not None and self.constant:
             raise HamillException(f"Can't set the value of the already defined constant: {self.name} of type {self.type}")
-        if (math.isnan(value) and self.type == "number") or \
+        if (isinstance(value, str) and not value.isnumeric() and self.type == "number") or \
             (isinstance(value, str) and self.type != "string") or \
             (isinstance(value, bool) and self.type != "boolean"):
             raise HamillException(f"Cant't set the value to {value} for variable {self.name} of type {self.type}")
@@ -485,15 +485,18 @@ class Document:
         self.name = name
 
     def to_html_file(self, output_directory = ""):
+        output_directory = output_directory.replace("/", os.path.sep)
+        if output_directory[-1] != os.path.sep:
+            output_directory += os.path.sep
         parts = self.name.split("/")
         outfilename = parts[-1]
         outfilename = outfilename[0 : outfilename.rfind(".hml")] + ".html"
         target = ""
         if os.path.isdir(output_directory):
-            target = output_directory + path.sep + outfilename
+            target = output_directory + outfilename
         else:
             target = outfilename
-        f = open(target)
+        f = open(target, 'w', encoding='utf-8')
         f.write(self.to_html(True)) # With header
         f.close()
         print("Outputting in:", target)
@@ -514,7 +517,7 @@ class Document:
             return default_value
         else:
             print("Dumping variables:")
-            for v in self.variables:
+            for v in self.variables.values():
                 print("   ", v.name, "=", v.value)
             raise HamillException(f'Unknown variable: {k}')
 
@@ -576,7 +579,11 @@ class Document:
             elif isinstance(node, Link):
                 content += node.to_html()
             elif isinstance(node, GetVar):
-                content += self.get_variable(node.content)
+                v = self.get_variable(node.content)
+                s = str(v)
+                if type(v) == bool:
+                    s = "true" if v else "false"
+                content += s
             else:
                 raise HamillException("Impossible to handle this type of node: " + node.__class__.__name__)
         return content
@@ -601,7 +608,7 @@ class Document:
                 word += "&DoubleLeftArrow;" # <==
                 index += 2
                 # Glyphs - Duo
-            elif char == "-" and nextc == ">" and prev == "\\":
+            elif char == "-" and nextc == ">" and prev != "\\":
                 word += "&ShortRightArrow;" # ->
                 index += 1
             elif char == "<" and nextc == "-" and prev != "\\":
@@ -647,13 +654,13 @@ class Document:
         start_time = time.time()
         content = ""
         if header:
-            content = f'<!DOCTYPE HTML>\n<html lang="{self.get_variable("LANG", "en")}">\
-<head>\
-  <meta charset="{self.get_variable("ENCODING", "utf-8")}">\
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">\
-  <meta name="viewport" content="width=device-width, initial-scale=1">\
-  <title>' + self.get_variable("TITLE", "Undefined title") + '</title>\
-  <link rel="icon" href="' + self.get_variable("ICON", "Undefined icon") + '" type="image/x-icon" />\
+            content = f'<!DOCTYPE HTML>\n<html lang="{self.get_variable("LANG", "en")}">\n\
+<head>\n\
+  <meta charset="{self.get_variable("ENCODING", "utf-8")}">\n\
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">\n\
+  <meta name="viewport" content="width=device-width, initial-scale=1">\n\
+  <title>' + self.get_variable("TITLE", "Undefined title") + '</title>\n\
+  <link rel="icon" href="' + self.get_variable("ICON", "Undefined icon") + '" type="image/x-icon" />\n\
   <link rel="shortcut icon" href="https://xitog.github.io/dgx/img/favicon.ico" type="image/x-icon" />\n'
             # For CSS
             if len(self.required) > 0:
@@ -771,6 +778,7 @@ class Document:
                             while i < len(node_list[0].content):
                                 if node_list[0].content[i] == '#':
                                     found = True
+                                    break
                                 i += 1
                             if not found:
                                 span = ''
@@ -840,12 +848,12 @@ class Hamill:
         # Try to read as a file name, if it fails, take it as a string
         data = None
         name = None
-        try:
-            data = fs.readFileSync(string_or_filename, "utf-8")
+        if (os.path.isfile(string_or_filename)):
+            f = open(string_or_filename, 'r', encoding='utf-8')
+            data = f.read()
+            f.close()
             print("Data read from file: {string_or_filename}")
             name = string_or_filename
-        except Exception:
-            pass
         if data is None:
             data = string_or_filename
             print('Raw string:')
@@ -921,7 +929,7 @@ class Hamill:
                 lines.append(Line(value, "ordered_list", level + 1))
             elif trimmed[0:2] == "- ":
                 start = value.index("- ")
-                level = Math.trunc(start / 2)
+                level = math.trunc(start / 2)
                 if level * 2 != start:
                     raise HamillException(msg)
                 lines.append(Line(value, "reverse_list", level + 1))
@@ -1020,7 +1028,7 @@ class Hamill:
         # Main loop
         count = 0
         while count < len(lines):
-            print("DEBUG:", count + 1, "/", len(lines), lines[count], actual_list)
+            #print("DEBUG:", count + 1, "/", len(lines), lines[count], actual_list)
             line = lines[count]
             text = None
             ids = None
@@ -1065,7 +1073,6 @@ class Hamill:
                     raise e
             elif line.type == "separator":
                 doc.add_node(HR(doc))
-                break
             elif line.type == "text":
                 if line.value.strip().startswith("\\* ") or line.value.strip().startswith("\\!html") or line.value.strip().startswith("\\!var") or line.value.strip().startswith("\\!const") or line.value.strip().startswith("\\!include") or line.value.strip().startswith("\\!require"):
                     line.value = line.value.strip()[1:]
@@ -1123,9 +1130,9 @@ class Hamill:
                 item_nodes = Hamill.parse_inner_string(doc, item_text)
                 actual_list.add_child(TextLine(doc, item_nodes))
             elif line.type == "html":
-                doc.add_node(RawHTML(doc, line.value.replace("!html ", "").trimEnd()))
+                doc.add_node(RawHTML(doc, line.value.replace("!html ", "").rstrip()))
             elif line.type == "css":
-                text = line.value.replace("!css ", "").trimEnd()
+                text = line.value.replace("!css ", "").rstrip()
                 doc.add_css(text)
             elif line.type == "include":
                 include = line.value.replace("!include ", "").strip()
@@ -1148,8 +1155,9 @@ class Hamill:
                 if value == "FALSE": value = False
                 doc.add_node(SetVar(doc, ids, value, "boolean" if isinstance(value, bool) else "string", False))
             elif line.type == "label":
-                value = line.value.replace("::", "").strip()
+                value = line.value.replace("::", "", 1).strip() # Remove only the first
                 text = value.split("::") # ???
+                print('aaa', text)
                 doc.add_label(text[0].strip(), text[1].strip()) # label, url
             elif line.type == "detail":
                 value = line.value[2:-2].strip() # end : line.value.length - 2
@@ -1196,7 +1204,7 @@ class Hamill:
                     doc.add_node(Row(doc, all_nodes))
             elif line.type == "empty":
                 # Prevent multiple empty nodes
-                if len(doc.nodes) == 0 or not isinstance(doc.nodes[-1], EmptyNode):
+                if len(doc.nodes) == 0 or not type(doc.nodes[-1]) == EmptyNode:
                     doc.add_node(EmptyNode(doc))
             elif line.type == "definition-header":
                 definition = Hamill.parse_inner_string(doc, line.value)
@@ -1204,7 +1212,7 @@ class Hamill:
                 if definition == None:
                     raise HamillException("Definition content without header: " + line.value)
                 doc.add_node(Definition(doc, definition, Hamill.parse_inner_string(doc, line.value)))
-                definition = null
+                definition = None
             elif line.type == "quote":
                 res = {}
                 res['class'] = None
@@ -1383,7 +1391,7 @@ class Hamill:
                         )
                         index = end + 1
                     elif match == "link":
-                        end = s.index("]]", index)
+                        end = s.find("]]", index)
                         if end == -1:
                             raise HamillException(f"Unclosed link in {s}")
                         content = s[index + 2:end]
@@ -1841,7 +1849,7 @@ def run_all_tests(stop_on_first_error = True, stop_at = None):
         if stop_at is not None and stop_at == index + 1:
             print(f"Stopped at {stop_at}")
             break
-    print(f"\nTests ok : {nb_ok} / {tests.length}\n")
+    print(f"\nTests ok : {nb_ok} / {len(tests)}\n")
 
 def run_test(text, result, error = None):
     try:
@@ -1867,13 +1875,16 @@ def run_test(text, result, error = None):
             print("Test Validated")
             return True
         elif error is not None:
-            print(e.message)
-            print(f"Error, expected:\n{error}")
+            print(f"-- Unexpected error:")
+            print(repr(e))
+            traceback.print_tb(e.__traceback__)
+            print(f"-- Another error was expected:\n{error}")
             return False
         else:
-            print("Unexpected error:", str(e))
+            print("Unexpected error:")
+            print(repr(e))
             traceback.print_tb(e.__traceback__)
-            print(f"No error expected, expected:\n{result}")
+            print(f"-- No error was expected, expected:\n{result}")
             return False
 
 #------------------------------------------------------------------------------

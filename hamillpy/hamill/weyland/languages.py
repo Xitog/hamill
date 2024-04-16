@@ -208,7 +208,7 @@ LANGUAGES = {
     ),
     'text': Language('text',
         {
-            'normal': ['[^\\t\\n]*'],
+            'normal': ['[^ \\t\\n]*'],
             'blank': PATTERNS['BLANKS'],
             'newline': PATTERNS['NEWLINES'],
         }
