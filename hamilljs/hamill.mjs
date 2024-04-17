@@ -156,7 +156,7 @@ class Picture extends Node {
         let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
         let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
         if (this.text !== null) {
-            return `<figure><img${cls}${ids} src="${this.content}" alt="${this.text}"></img$><figcaption>${this.text}</figcaption></figure>`;
+            return `<figure><img${cls}${ids} src="${this.content}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
         } else {
             return `<img${cls}${ids} src="${this.content}"/>`;
         }

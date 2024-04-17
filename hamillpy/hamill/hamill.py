@@ -496,7 +496,7 @@ class Document:
             target = output_directory + outfilename
         else:
             target = outfilename
-        f = open(target, 'w', encoding='utf-8')
+        f = open(target, 'w', encoding='utf-8', newline='\n')
         f.write(self.to_html(True)) # With header
         f.close()
         print("Outputting in:", target)
