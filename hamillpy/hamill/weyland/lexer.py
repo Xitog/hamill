@@ -66,7 +66,7 @@ class Token:
         return self.start
 
     def __eq__(self, o):
-        if type(o) != Token:
+        if not isinstance(o, Token):
             return False
         return self.typ == o.typ and self.value == o.value and self.start == o.start
 
@@ -90,9 +90,9 @@ class Mini:
 
 class Lexer:
 
-    def __init__(self, lang, discards=[]):
+    def __init__(self, lang, discards=None):
         self.lang = lang
-        self.discards = discards
+        self.discards = [] if discards is None else discards
 
     def get_language(self):
         return self.lang
@@ -186,8 +186,6 @@ class Lexer:
                 val = val.replace('&', '&amp;')
                 val = val.replace('>', '&gt;')
                 val = val.replace('<', '&lt;')
-                #val = val.replace('"', '&quot;')
-                #val = val.replace("'", '&#x27;')
                 output += f'<span class="{self.lang.get_name()}-{tok.get_type()}" title="token n°{index} : {tok.get_type()}">{val}</span>'
         return output
 
@@ -199,7 +197,7 @@ class Test:
         self.text = text
         self.result = result
         if self.result is None:
-            raise Exception(f"No expected results for test {text}")
+            raise LexingException(f"No expected results for test {text}")
 
     def test(self, num=0, debug=False):
         tokens = self.lexer.lex(self.text, None, debug)
@@ -213,7 +211,7 @@ class Test:
                     print(f"{index:5d} None            {tokens[index].get_type():15s} {ln(tokens[index].get_value())}")
                 elif index < len(self.result):
                     print(index, self.result[index], 'None')
-            raise Exception(f"Error: expected {len(self.result)} tokens and got {len(tokens)}")
+            raise LexingException(f"Error: expected {len(self.result)} tokens and got {len(tokens)}")
         for index, r in enumerate(self.result):
             if tokens[index].get_type() != r:
                 raise LexingException(f"Error: expected {r} and got {tokens[index].get_type()} in {self.text}")
@@ -242,8 +240,6 @@ TESTS = [
     Test(lex_ash, '2..3', ['number', 'operator', 'number']),
     Test(lex_ash, 'a = 5', ['identifier', 'operator', 'number'])
 ]
-
-#TESTS = [Test(lex, '3+5', ['number', 'operator', 'number']),]
 
 def tests(debug=False):
     ok = 0

@@ -841,6 +841,8 @@ class Document {
                 for (let req of this.required) {
                     if (req.endsWith(".js")) {
                         content += `  <script src="${req}"></script>\n`;
+                    } else if (req.endsWith(".mjs")) {
+                        content += `  <script type="module" src="${req}"></script>\n`;
                     }
                 }
             }
@@ -1699,7 +1701,6 @@ class Hamill {
                     }
                     break;
                 case "code":
-                    res = null;
                     if (line.value === "@@@") {
                         free = true;
                         count += 1;

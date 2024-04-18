@@ -36,22 +36,25 @@ import re
 # Class
 #-------------------------------------------------------------------------------
 
+class LanguageException(Exception):
+    pass
+
 class Language:
 
     def __init__(self, name, definitions, wrong=None, specials=None):
         wrong = [] if wrong is None else wrong
         specials = {} if specials is None else specials
         self.name = name
-        if type(definitions) != dict:
-            raise Exception("Tokens should be an object of {type: [regex]} and it is a " + type(definitions))
+        if not isinstance(definitions, dict):
+            raise LanguageException("Tokens should be an object of {type: [regex]} and it is a " + type(definitions))
         self.definitions = definitions
         for typ, variants in definitions.items():
             if variants is None:
-                raise Exception(f"No variants for {typ} in language {name}")
+                raise LanguageException(f"No variants for {typ} in language {name}")
         # In order to match the entire string we put ^ and $ at the start of each regex
         for variants in definitions.values():
             for index, pattern in enumerate(variants):
-                if type(pattern) != re.Pattern:
+                if not isinstance(pattern, re.Pattern):
                     if pattern[0] != '^':
                         pattern = '^' + pattern
                     if pattern[-1] != '$':
@@ -219,7 +222,6 @@ LANGUAGES = {
             'boolean': ['true', 'false'],
             'identifier' : PATTERNS['IDENTIFIER'],
             'integer' : ['\\d+'],
-            'boolean' : ['true', 'false'],
             'nil': [],
             'operator': [':'],
             'separator' : ['{', '}', '\#', '.'],

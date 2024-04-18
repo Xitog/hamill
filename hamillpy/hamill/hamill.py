@@ -677,6 +677,8 @@ class Document:
                 for req in self.required:
                     if req.endswith(".js"):
                         content += f'  <script src="{req}"></script>\n'
+                    elif req.endswith(".mjs"):
+                        content += f'  <script type="module" src="{req}"></script>\n'
             content += "</head>\n"
             bclass = ""
             bid = ""
