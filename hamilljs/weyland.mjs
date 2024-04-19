@@ -655,6 +655,7 @@ const LANGUAGES = {
         function(tokens)
         {
             let res = [];
+            return tokens;
             // Première passe, fusion des speciaux / liste
             for (const [index, tok] of tokens.entries())
             {

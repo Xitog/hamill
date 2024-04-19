@@ -166,7 +166,7 @@ class Lexer:
                 if debug:
                     print('token emis: ' + repr(tokens[-1]))
         elif len(word) > 0:
-            raise LexingException(f'Text not lexed at the end: |{word}| in |{ln(text)}| for {self.lang}')
+            raise LexingException(f'Text not lexed at the end for lang {self.lang}: |{word}| in |{ln(text)}| for {self.lang}')
         return tokens
 
     def to_html(self, text=None, tokens=None, raws=None):

@@ -1858,6 +1858,11 @@ tests = [
     [
         "!var DEFAULT_CODE=bnf\nYoupi j'aime bien les @@<règles>@@ !\n",
         '<p>Youpi j\'aime bien les <code><span class="bnf-keyword" title="token n°0 : keyword">&lt;règles&gt;</span></code> !</p>\n'
+    ],
+    # More tests
+    [
+        "* @@*@@ pour une liste non numérotée",
+        "<ul>\n  <li><code>*</code> pour une liste non numérotée</li>\n</ul>\n"
     ]
 ]
 
