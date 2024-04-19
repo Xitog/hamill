@@ -312,7 +312,7 @@ class Lexer
         {
             console.log(tokens);
             console.log(word.charCodeAt(0));
-            throw new Error(`Text not lexed at the end: |${word}| in |${text}| for lang ${this.lang.name}`);
+            throw new Error(`Text not lexed at the end for lang ${this.lang.getName()}: |${word}| in |${text}| for lang ${this.lang.name}`);
         }
         if (this.lang.after !== null)
         {
@@ -351,9 +351,9 @@ class Lexer
                 output += tok.getValue();
             } else {
                 let val = tok.getValue();
-                val = val.replace('&', '&amp;');
-                val = val.replace('>', '&gt;');
-                val = val.replace('<', '&lt;');
+                val = val.replace(/&/g, '&amp;');
+                val = val.replace(/>/g, '&gt;');
+                val = val.replace(/</g, '&lt;');
                 output += `<span class="${this.lang.getName()}-${tok.getType()}" title="token n°${nb} : ${tok.getType()}">${val}</span>`;
                 if (enumerate)
                 {
@@ -567,7 +567,7 @@ const LANGUAGES = {
     ),
     'bnf': new Language('bnf',
         {
-            'keyword': ['<[\\w- ]+>'],  // non-terminal
+            'keyword': ['<[\\w\\-è ]+>'],  // non-terminal
             'identifier': ['expansion', 'A', 'B', 'C', 'D', 'nom'], // expansion
             'operator': ['::=', '\\|', '\\.\\.\\.', '=', '-', '\\?', '\\*', '\\+', '@', '\\$', '_'],
             'separator': ['\\(', '\\)', '\\[', '\\]', '\\{', '\\}', ',', ';'],
@@ -596,20 +596,12 @@ const LANGUAGES = {
     ),
     'game': new Language('game',
         {
-            'year': ['\\([12][0-9][0-9][0-9]\\)'],
-            'normal': ['\\w[\\w\'\\-:\\d ]*[\\w\\d]'],
+            'year': ['[12][0-9][0-9][0-9]'],
+            'normal': ['\\w[\\w\'\\-:\\d ’]*[\\w\\d]'],
             'newline' : ['\n'],
             'separator': [',', ';'],
             'blank': PATTERNS['BLANKS'],
             'wrong_id': ['\\w[\\w\'\\-:\\d ]*[\\w\\d:]'], // Pour garder Far Cry<: >Blood Dragon
-            /*
-            'number': ['\\d+'],
-            'normal': ['\\w[\\w\'-]*'], // Total Annihilation => 2 tokens, Baldur's => 1, Half-life => 1
-            'blank': PATTERNS['BLANKS'],
-            'wrong_int' : PATTERNS['WRONG_INTEGER'],
-            'newline' : ['\n'],
-            'operator': [':'] // FarCry:
-            */
         },
         ['wrong_id'],
     ),
@@ -619,7 +611,7 @@ const LANGUAGES = {
             'macro': ['\\[=GENDATE\\]'],
             'newline' : PATTERNS["NEWLINES"],
             'paragraph': ['(\n|\n\r|\r\n){2}'],
-            'comment': ['//.*(\n|$)'],
+            'comment': ['$$.*(\n|$)', '!rem.*(\n|$)'],
             'markup': ['\\{\\{[^\\}]*\\}\\}'],
             'markup_wrong': ['\\{\\{[^\\}]*'],
             'list': ['^([\t ])*(\\* )+'],
@@ -646,7 +638,8 @@ const LANGUAGES = {
             //'normal': ["([^\\\\*'/\n\r]|\\\\\\*\\*|\\\\\\*|\\\\''|\\\\')+"], //|\\::|\\:)+"],
             'table': ['\\|'],
             'table_header_wrong': ['\\|-+'],
-            'normal': ["[^\n\r\\*'\\|\\{\\[:\\^]*"]
+            'normal': ["[^\n\r\\*'\\|\\{\\[:\\^]*"],
+            'other': ['\\[', '\\]']
         },
         // Nous avons besoin de "sustainers". Des définitions de tokens qui vont permettre d'atteindre le bon token.
         // Sinon https: s'arrêterait au ":" il ferait un <normal, https> puisque https: ne correspond à rien,
@@ -722,7 +715,6 @@ const LANGUAGES = {
                 {
                     next = res2[index + 1];
                 }
-                //console.log('>>', index, tok.getType());
                 // Start
                 if (index === 0 && tok.getType() === 'table')
                 {

@@ -393,14 +393,16 @@ class Code(Node):
         self.lang = lang
 
     def __repr__(self):
-        lang = "" if self.lang is None else f':{self.lang}'
+        lang = self.document.get_variable("DEFAULT_CODE") if self.lang is None else self.lang
+        lang = "" if lang is None else f':{lang}'
         inline =  " inline" if self.inline else ""
         return f'Code{lang} ' + '{' + f'content: {self.content}' + '}' + inline
 
     def to_html(self):
         output = ""
-        if self.lang is not None and self.lang in LANGUAGES:
-            output = LEXERS[self.lang].to_html(self.content, None, ["blank"])
+        lang = self.document.get_variable("DEFAULT_CODE") if self.lang is None else self.lang
+        if lang is not None and lang in LANGUAGES:
+            output = LEXERS[lang].to_html(self.content, None, ["blank"])
         else:
             output = self.content
         if self.inline:
@@ -424,8 +426,8 @@ class SetVar(EmptyNode):
         self.type = type
         self.constant = constant
 
-class Markup(Node):
-    pass
+    def __repr__(self):
+        return f'{self.id} = {self.value} ({self.type})'
 
 # Variable & document
 
@@ -451,7 +453,28 @@ class Variable:
 
     def get_value(self):
         if self.name == "NOW":
-            return datetime.now().strftime("%A %d %B %Y")
+            s = datetime.now().strftime("%A %d %B %Y").lower()
+            if self.document.get_variable('LANG', None) == 'fr':
+                s = s.replace('monday', 'lundi')
+                s = s.replace('tuesday', 'mardi')
+                s = s.replace('wednesday', 'mercredi')
+                s = s.replace('thursday', 'jeudi')
+                s = s.replace('friday', 'vendredi')
+                s = s.replace('saturday', 'samedi')
+                s = s.replace('sunday', 'dimanche')
+                s = s.replace('january', 'janvier')
+                s = s.replace('february', 'février')
+                s = s.replace('march', 'mars')
+                s = s.replace('april', 'avril')
+                s = s.replace('may', 'mai')
+                s = s.replace('june', 'juin')
+                s = s.replace('july', 'juillet')
+                s = s.replace('august', 'août')
+                s = s.replace('september', 'septembre')
+                s = s.replace('october', 'octobre')
+                s = s.replace('november', 'novembre')
+                s = s.replace('december', 'décembre')
+            return s
         else:
             return self.value
 
@@ -1830,6 +1853,11 @@ tests = [
         "**started __first** closed wrong__",
         "",
         "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
+    ],
+    # Default
+    [
+        "!var DEFAULT_CODE=bnf\nYoupi j'aime bien les @@<règles>@@ !\n",
+        '<p>Youpi j\'aime bien les <code><span class="bnf-keyword" title="token n°0 : keyword">&lt;règles&gt;</span></code> !</p>\n'
     ]
 ]
 
@@ -1919,8 +1947,10 @@ if len(sys.argv) == 2:
             if cmd != "exit":
                 doc = Hamill.process(cmd)
                 print(doc.to_html(False))
-    elif sys.argv[2] == "--help" or sys.argv[2] == "-h":
+    elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
         print(message)
+    elif sys.argv[1] == "--process" or sys.argv[1] == "-p":
+        print("You need to provide a configuration file")
     else:
         print("Unrecognized option(s). Type --help for help.")
 elif len(sys.argv) == 3:

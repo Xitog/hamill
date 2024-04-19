@@ -31,7 +31,6 @@ __version__ = "0.2.7"
 
 # Imports
 import logging
-#from weyland.regex import *
 from weyland.lexer import *
 from weyland.languages import RECOGNIZED_LANGUAGES, LANGUAGES, PATTERNS, Language
 
@@ -40,15 +39,15 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 LEXERS = {
     'ash': Lexer(LANGUAGES['ash'], ['blank']),
-    #'bnf': Lexer(LANGUAGES['bnf'], ['blank']),
+    'bnf': Lexer(LANGUAGES['bnf'], ['blank']),
     #'bnf-mini': Lexer(LANGUAGES['bnf-mini'], ['blank']),
     #'fr': Lexer(LANGUAGES['fr'], ['blank']),
     'game': Lexer(LANGUAGES['game'], ['blank', 'newline']),
     'hamill': Lexer(LANGUAGES['hamill'], ['blank']),
-    #'json': Lexer(LANGUAGES['json'], ['blank', 'newline']),
+    'json': Lexer(LANGUAGES['json'], ['blank', 'newline']),
     #'line': Lexer(LANGUAGES['line']),
     'lua': Lexer(LANGUAGES['lua'], ['blank']),
     'python': Lexer(LANGUAGES['python']),
     'ruby': Lexer(LANGUAGES['ruby']),
-    'text': Lexer(LANGUAGES['text'], ['blank'])
+    'text': Lexer(LANGUAGES['text'], ['blank']),
 }

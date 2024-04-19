@@ -452,15 +452,17 @@ class Code extends Node {
     }
 
     toString() {
-        let lang = (this.lang === null) ? "" : `:${this.lang}`;
+        let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE") : this.lang;
+        lang = lang === null ? "" : `:${lang}`;
         let inline = (this.inline) ? " inline" : "";
         return `Code${lang} { content: ${this.content}}${inline}`;
     }
 
     to_html() {
         let output = "";
-        if (this.lang !== null && this.lang in LANGUAGES) {
-            output = LEXERS[this.lang].to_html(this.content, null, [
+        let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE") : this.lang;
+        if (lang !== null && lang in LANGUAGES) {
+            output = LEXERS[lang].to_html(this.content, null, [
                 "blank",
             ]);
         } else {
@@ -491,8 +493,11 @@ class SetVar extends EmptyNode {
         this.type = type;
         this.constant = constant;
     }
+
+    toString() {
+        return `${this.id} = ${this.value} (${this.type})`;
+    }
 }
-class Markup extends Node { }
 
 // Variable & document
 
@@ -2368,6 +2373,11 @@ let tests = [
         "**started __first** closed wrong__",
         "",
         "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
+    ],
+    // Défaut
+    [
+        "!var DEFAULT_CODE=bnf\nYoupi j'aime bien les @@<règles>@@ !\n",
+        `<p>Youpi j'aime bien les <code><span class="bnf-keyword" title="token n°0 : keyword">&lt;règles&gt;</span></code> !</p>\n`
     ]
 ];
 
@@ -2485,6 +2495,8 @@ if (argv !== null) {
             }
         } else if (argv[2] === "--help" || argv[2] === "-h") {
             console.log(message);
+        } else if (argv[2] === "--process" || argv[2] === "-p") {
+            console.log('You need to provide a configuration file')
         } else {
             console.log(`Unrecognized option(s). Type --help for help.`);
         }

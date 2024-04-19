@@ -148,13 +148,14 @@ LANGUAGES = {
     ),
     'game': Language('game',
         {
-            'number': ['\\d+'],
-            'normal': ['\\w[\\w\'-]*'], # Total Annihilation => 2 tokens, Baldur's => 1, Half-life => 1
-            'blank': PATTERNS['BLANKS'],
-            'wrong_int' : PATTERNS['WRONG_INTEGER'],
+            'year': ['[12][0-9][0-9][0-9]'],
+            'normal': ['\\w[\\w\'\\-:\\d ’]*[\\w\\d]'],
             'newline' : ['\n'],
-            'operator': [':'] # FarCry:
-        }
+            'separator': [',', ';'],
+            'blank': PATTERNS['BLANKS'],
+            'wrong_id': ['\\w[\\w\'\\-:\\d ]*[\\w\\d:]'], # Pour garder Far Cry<: >Blood Dragon
+        },
+        ['wrong_id']
     ),
     'lua': Language('lua',
         {
@@ -219,16 +220,35 @@ LANGUAGES = {
     'hamill' : Language('hamill',
         {
             'keyword': ['var', 'const', 'include', 'require', 'css', 'html'],
-            'boolean': ['true', 'false'],
-            'identifier' : PATTERNS['IDENTIFIER'],
-            'integer' : ['\\d+'],
-            'nil': [],
-            'operator': [':'],
-            'separator' : ['{', '}', '\#', '.'],
-            'wrong_int' : WRONG_INT,
-            'blank': PATTERNS['BLANKS'],
-            'newline' : PATTERNS['NEWLINES'],
-            'line_comment': ['§§'],
+            'macro': ['\\[=GENDATE\\]'],
+            'newline' : PATTERNS["NEWLINES"],
+            'paragraph': ['(\n|\n\r|\r\n){2}'],
+            'comment': ['$$.*(\n|$)', '!rem.*(\n|$)'],
+            'markup': ['\\{\\{[^\\}]*\\}\\}'],
+            'markup_wrong': ['\\{\\{[^\\}]*'],
+            'list': ['^([\t ])*(\\* )+'],
+            'link': ['\\[\\[[^\\]]*\\]\\]*'],
+            'bold': ['\\*\\*'],
+            'special': ['\\\\\\*\\*', '\\*',"'", '\\^', ':', '\\{', '\\}'],
+            'italic': ["''"],
+            'sup': ["\\^\\^"],
+            'title': ['#+[^\n\r]*'],
+            'hr': ['---[\n\r]'],
+            'const': ['!const [^\n\r]*'],
+            'var': ['!var [^\n\r]*'],
+            'require': ['!require [^\n\r]*'],
+            'include': ['!include [^\n\r]*'],
+            'css': ['!css [^\n\r]*'],
+            'html': ['!html [^\n\r]*'],
+            'label': ['::[^:\n\r]*::[ \t]*'],
+            'label_wrong': ['::[^:\n\r]*'],
+            'url': ['(https://|http://)[\\w\\./#]*'],
+            'url_wrong': ['(https:|http:)'],
+            'table_header_line': ['\\|-+\\|'],
+            'table': ['\\|'],
+            'table_header_wrong': ['\\|-+'],
+            'normal': ["[^\n\r\\*'\\|\\{\\[:\\^]*"],
+            'other': ['\\[', '\\]']
         },
     ),
     'ruby': Language('ruby',
@@ -268,6 +288,35 @@ LANGUAGES = {
         {
             'ante_identifier': ['module', 'class', 'def']
         }
+    ),
+    'bnf': Language('bnf',
+        {
+            'keyword': ['<[\\w\\-è ]+>'], # non-terminal
+            'identifier': ['expansion', 'A', 'B', 'C', 'D', 'nom'], # expansion
+            'operator': ['::=', '\\|', '\\.\\.\\.', '=', '-', '\\?', '\\*', '\\+', '@', '\\$', '_'],
+            'separator': ['\\(', '\\)', '\\[', '\\]', '\\{', '\\}', ',', ';'],
+            'string' : ['"[\\w\\- <>:=,;\\|\']*"', "'[\\w\\- <>:=,;\\|\"]*'"], # terminal
+            'blank': PATTERNS['BLANKS'],
+            'comment': ['#[^\n]*\n'],
+            'newline' : PATTERNS['NEWLINES'],
+        }
+    ),
+    'json': Language('json',
+        {
+            'boolean': ['true', 'false'],
+            'identifier' : PATTERNS['IDENTIFIER'],
+            'number' : PATTERNS['INTEGER'] + PATTERNS['FLOAT'],
+            'string' : PATTERNS['STRINGS'],
+            'nil': [],
+            'keyword': ['null'],
+            'operator': [],
+            'separator': ['\\{', '\\}', '\\(', '\\)', '\\[', '\\]', ',', ':', "\\."],
+            'comment' : [],
+            'newline' : PATTERNS['NEWLINES'],
+            'blank': PATTERNS['BLANKS'],
+            'wrong_int' : PATTERNS['WRONG_INTEGER'],
+        },
+        ['wrong_int']
     ),
 }
 
