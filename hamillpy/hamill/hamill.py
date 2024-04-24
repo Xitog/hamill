@@ -147,8 +147,8 @@ class Picture(Node):
     def to_html(self):
         cls = '' if self.cls is None else f' class="{self.cls}"'
         ids = '' if self.ids is None else f' id="{self.ids}"'
-        path = self.document.get_variable("DEFAULT_FIND_IMAGE")
-        target = self.content if path is None else "/".join([path, self.content])
+        path = self.document.get_variable("DEFAULT_FIND_IMAGE", "")
+        target = self.content if path is None or path == "" else "/".join([path, self.content])
         if self.text is not None:
             return f'<figure><img{cls}{ids} src="{target}" alt="{self.text}"></img><figcaption>{self.text}</figcaption></figure>'
         else:
@@ -395,15 +395,15 @@ class Code(Node):
         self.lang = lang
 
     def __repr__(self):
-        lang = self.document.get_variable("DEFAULT_CODE") if self.lang is None else self.lang
-        lang = "" if lang is None else f':{lang}'
+        lang = self.document.get_variable("DEFAULT_CODE", "") if self.lang is None else self.lang
+        lang = "" if lang is None or lang == "" else f':{lang}'
         inline =  " inline" if self.inline else ""
         return f'Code{lang} ' + '{' + f'content: {self.content}' + '}' + inline
 
     def to_html(self):
         output = ""
-        lang = self.document.get_variable("DEFAULT_CODE") if self.lang is None else self.lang
-        if lang is not None and lang in LANGUAGES:
+        lang = self.document.get_variable("DEFAULT_CODE", "") if self.lang is None else self.lang
+        if lang is not None and lang != "" and lang in LANGUAGES:
             output = LEXERS[lang].to_html(self.content, None, ["blank"])
         else:
             output = self.content
@@ -553,7 +553,7 @@ class Document:
             self.variables[k] = Variable(self, k, t, v)
 
     def get_variable(self, k, default_value = None):
-        if k in self.variables:
+        if k in self.variables and self.variables[k].get_value() is not None:
             return self.variables[k].get_value()
         elif default_value is not None:
             return default_value
@@ -722,13 +722,11 @@ class Document:
                     elif req.endswith(".mjs"):
                         content += f'  <script type="module" src="{req}"></script>\n'
             content += "</head>\n"
-            bclass = ""
-            bid = ""
-            if self.has_variable("BODY_ID"):
-                bid = ' id="' + self.get_variable("BODY_ID") + '"'
-            if self.has_variable("BODY_CLASS"):
-                bclass = ' class="' + self.get_variable("BODY_CLASS") + '"'
-            content += f'<body{bid}{bclass}>\n'
+            bid = self.get_variable("BODY_ID", "")
+            sbid = f' id="{bid}"' if bid is not None and bid != "" else ''
+            bclass = self.get_variable("BODY_CLASS", "")
+            sbclass = f' class="{bclass}"' if bclass is not None and bclass != "" else ''
+            content += f'<body{sbid}{sbclass}>\n'
         first_text = True
         not_processed = 0
         types_not_processed = []
@@ -776,8 +774,8 @@ class Document:
                     in_paragraph = True
                     # If the first child is a pragraph indicator, don't start the paragraph !
                     if len(node.children) > 0 and not isinstance(node.children[0], ParagraphIndicator):
-                        c = self.get_variable("DEFAULT_PARAGRAPH_CLASS")
-                        cs = f' class="{c}"' if c is not None else ""
+                        c = self.get_variable("DEFAULT_PARAGRAPH_CLASS", "")
+                        cs = f' class="{c}"' if c is not None and c != "" else ""
                         content += f"<p{cs}>"
                 else:
                     content += "<br>\n"; # Chaque ligne donnera une ligne avec un retour à la ligne
@@ -799,17 +797,17 @@ class Document:
                 if not in_table:
                     in_table = True
                     # Try to get a class. NEXT > DEFAULT
-                    c = self.get_variable("NEXT_TABLE_CLASS")
-                    if c is None:
-                        c = self.get_variable("DEFAULT_TABLE_CLASS")
+                    c = self.get_variable("NEXT_TABLE_CLASS", "")
+                    if c is None or c == "":
+                        c = self.get_variable("DEFAULT_TABLE_CLASS", "")
                     else:
                         self.set_variable("NEXT_TABLE_CLASS", None) # reset if found
-                    cs = f' class="{c}"' if c is not None else ""
+                    cs = f' class="{c}"' if c is not None and c != "" else ""
                     # Try to get an id
-                    i1 = self.get_variable("NEXT_TABLE_ID")
+                    i1 = self.get_variable("NEXT_TABLE_ID", "")
                     if i1 is not None:
                         self.set_variable("NEXT_TABLE_ID", None) # reset if found
-                    i1s = f' id="{i1}"' if i1 is not None else ""
+                    i1s = f' id="{i1}"' if i1 is not None and i1 != "" else ""
                     content += f'<table{i1s}{cs}>\n'
                 content += "<tr>"
                 delim = "th" if node.is_header else "td"

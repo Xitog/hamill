@@ -155,8 +155,8 @@ class Picture extends Node {
     to_html() {
         let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
         let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
-        let p = this.document.get_variable("DEFAULT_FIND_IMAGE");
-        let target = p == null ? this.content : [p, this.content].join("/");
+        let p = this.document.get_variable("DEFAULT_FIND_IMAGE", "");
+        let target = p == null || p == "" ? this.content : [p, this.content].join("/");
 
         if (this.text !== null) {
             return `<figure><img${cls}${ids} src="${target}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
@@ -455,16 +455,16 @@ class Code extends Node {
     }
 
     toString() {
-        let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE") : this.lang;
-        lang = lang === null ? "" : `:${lang}`;
+        let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE", "") : this.lang;
+        lang = lang === null || lang === "" ? "" : `:${lang}`;
         let inline = (this.inline) ? " inline" : "";
         return `Code${lang} { content: ${this.content}}${inline}`;
     }
 
     to_html() {
         let output = "";
-        let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE") : this.lang;
-        if (lang !== null && lang in LANGUAGES) {
+        let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE", "") : this.lang;
+        if (lang !== null && lang !== "" && lang in LANGUAGES) {
             output = LEXERS[lang].to_html(this.content, null, [
                 "blank",
             ]);
@@ -624,7 +624,7 @@ class Document {
     }
 
     get_variable(k, default_value = null) {
-        if (k in this.variables) {
+        if (k in this.variables && this.variables[k].get_value() !== null) {
             return this.variables[k].get_value();
         } else if (default_value !== null) {
             return default_value;
@@ -857,15 +857,11 @@ class Document {
                 }
             }
             content += "</head>\n";
-            let bclass = "";
-            let bid = "";
-            if (this.has_variable("BODY_ID")) {
-                bid = ' id="' + this.get_variable("BODY_ID") + '"';
-            }
-            if (this.has_variable("BODY_CLASS")) {
-                bclass = ' class="' + this.get_variable("BODY_CLASS") + '"';
-            }
-            content += `<body${bid}${bclass}>\n`;
+            let bid = this.get_variable("BODY_ID", "");
+            let sbid = bid != null && bid != "" ? ` id="${bid}"` : '';
+            let bclass = this.get_variable("BODY_CLASS", "");
+            let sbclass = bclass != null && bclass != "" ? ` class="${bclass}"` : '';
+            content += `<body${sbid}${sbclass}>\n`;
         }
         let first_text = true;
         let not_processed = 0;
@@ -948,8 +944,8 @@ class Document {
                         node.children.length > 0 &&
                         !(node.children[0] instanceof ParagraphIndicator)
                     ) {
-                        let c = this.get_variable("DEFAULT_PARAGRAPH_CLASS");
-                        let cs = c != null ? ` class="${c}"` : "";
+                        let c = this.get_variable("DEFAULT_PARAGRAPH_CLASS", "");
+                        let cs = c != null && c != "" ? ` class="${c}"` : "";
                         content += `<p${cs}>`;
                     }
                 } else {
@@ -974,19 +970,19 @@ class Document {
                 if (!in_table) {
                     in_table = true;
                     // Try to get a class. NEXT > DEFAULT
-                    let c = this.get_variable("NEXT_TABLE_CLASS");
-                    if (c === null) {
-                        c = this.get_variable("DEFAULT_TABLE_CLASS");
+                    let c = this.get_variable("NEXT_TABLE_CLASS", "");
+                    if (c === null || c == "") {
+                        c = this.get_variable("DEFAULT_TABLE_CLASS", "");
                     } else {
                         this.set_variable("NEXT_TABLE_CLASS", null); // reset if found
                     }
-                    let cs = c != null ? ` class="${c}"` : "";
+                    let cs = c != null && c !== "" ? ` class="${c}"` : "";
                     // Try to get an id
-                    let i1 = this.get_variable("NEXT_TABLE_ID");
-                    if (i1 != null) {
+                    let i1 = this.get_variable("NEXT_TABLE_ID", "");
+                    if (i1 != null && i1 !== "") {
                         this.set_variable("NEXT_TABLE_ID", null); // reset if found
                     }
-                    let i1s = i1 != null ? ` id="${i1}"` : "";
+                    let i1s = i1 != null && i1 != "" ? ` id="${i1}"` : "";
                     content += `<table${i1s}${cs}>\n`;
                 }
                 content += "<tr>";
