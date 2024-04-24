@@ -147,10 +147,12 @@ class Picture(Node):
     def to_html(self):
         cls = '' if self.cls is None else f' class="{self.cls}"'
         ids = '' if self.ids is None else f' id="{self.ids}"'
+        path = self.document.get_variable("DEFAULT_FIND_IMAGE")
+        target = self.content if path is None else "/".join([path, self.content])
         if self.text is not None:
-            return f'<figure><img{cls}{ids} src="{self.content}" alt="{self.text}"></img><figcaption>{self.text}</figcaption></figure>'
+            return f'<figure><img{cls}{ids} src="{target}" alt="{self.text}"></img><figcaption>{self.text}</figcaption></figure>'
         else:
-            return f'<img{cls}{ids} src="{self.content}"/>'
+            return f'<img{cls}{ids} src="{target}"/>'
 
 class HR(EmptyNode):
 
@@ -433,18 +435,15 @@ class SetVar(EmptyNode):
 
 class Variable:
 
-    def __init__(self, document, name, type, constant = False, value = None):
+    def __init__(self, document, name, type, value = None):
         self.document = document
         self.name = name
         if type != "number" and type != "string" and type != "boolean":
             raise HamillException(f'Unknown type {type} for variable {name}')
         self.type = type
-        self.constant = constant
         self.value = value
 
-    def set_variable(self, value):
-        if self.value is not None and self.constant:
-            raise HamillException(f"Can't set the value of the already defined constant: {self.name} of type {self.type}")
+    def set_value(self, value):
         if (isinstance(value, str) and not value.isnumeric() and self.type == "number") or \
             (isinstance(value, str) and self.type != "string") or \
             (isinstance(value, bool) and self.type != "boolean"):
@@ -478,27 +477,42 @@ class Variable:
         else:
             return self.value
 
+class Constant(Variable):
+
+    def __init__(self, document, name, type, value = None):
+        super().__init__(document, name, type, value)
+
+    def set_value(self, value):
+        if self.value is None:
+            super().set_value(value)
+        else:
+            raise HamillException(f"Can't set the value of the already set constant : {self.name} of type {self.type}")
+
 class Document:
 
     def __init__(self, name = None):
-        self.predefined_constants = [
-            "TITLE",
-            "ICON",
-            "LANG",
-            "ENCODING",
-            "BODY_CLASS",
-            "BODY_ID",
-            "VERSION",
-            "NOW",
-        ]
         self.name = name
-        self.variables = {
-            "VERSION": Variable(self, "VERSION", "string", "true", f'Hamill {VERSION}'),
-            "NOW": Variable(self, "NOW", "string", "true", ""),
-            "PARAGRAPH_DEFINITION": Variable(self, "PARAGRAPH_DEFINITION", "boolean", False, False),
-            "EXPORT_COMMENT": Variable(self, "EXPORT_COMMENT", "boolean", False, False),
-            "DEFAULT_CODE": Variable(self, "DEFAULT_CODE", "string", "false"),
-        }
+        variables = [
+            Constant(self, "TITLE", "string"),
+            Constant(self, "ICON", "string"),
+            Constant(self, "LANG", "string"),
+            Constant(self, "ENCODING", "string"),
+            Constant(self, "VERSION", "string", f'Hamill {VERSION}'),
+            Constant(self, "NOW", "string", ""),
+            Variable(self, "PARAGRAPH_DEFINITION", "boolean", False),
+            Variable(self, "EXPORT_COMMENT", "boolean", False),
+            Variable(self, "DEFAULT_CODE", "string"),
+            Constant(self, "BODY_CLASS", "string"),
+            Constant(self, "BODY_ID", "string"),
+            Variable(self, "NEXT_TABLE_CLASS", "string"),
+            Variable(self, "NEXT_TABLE_ID", "string"),
+            Variable(self, "DEFAULT_TABLE_CLASS", "string"),
+            Variable(self, "DEFAULT_PARAGRAPH_CLASS", "string"),
+            Variable(self, "DEFAULT_FIND_IMAGE", "string")
+        ]
+        self.variables = {}
+        for v in variables:
+            self.variables[v.name] = v
         self.required = []
         self.css = []
         self.labels = {}
@@ -529,9 +543,14 @@ class Document:
 
     def set_variable(self, k, v, t = "string", c = False):
         if k in self.variables:
-            self.variables[k].set_variable(v)
+            # we have !var toto and in memory Constant("toto")
+            if isinstance(self.variables[k], Constant) and not c:
+                raise HamillException(f"You are trying to declare a variable which use the name of the constant {k}")
+            self.variables[k].set_value(v)
+        elif c:
+            self.variables[k] = Constant(self, k, t, v)
         else:
-            self.variables[k] = Variable(self, k, t, c, v)
+            self.variables[k] = Variable(self, k, t, v)
 
     def get_variable(self, k, default_value = None):
         if k in self.variables:
@@ -745,9 +764,6 @@ class Document:
                 if self.get_variable("EXPORT_COMMENT"):
                     content += "<!--" + node.content + " -->\n"
             elif isinstance(node, SetVar):
-                if not node.constant:
-                    if node.id in self.predefined_constants:
-                        raise HamillException(f'You cannot use {node.id} for a variable because it is a predefined constant.')
                 self.set_variable(node.id, node.value, node.type, node.constant)
             elif isinstance(node, HR) or isinstance(node, StartDiv) or isinstance(node, EndDiv) or isinstance(node, StartDetail) or isinstance(node, EndDetail) or isinstance(node, Detail) or isinstance(node, RawHTML) or isinstance(node, List) or isinstance(node, Quote) or isinstance(node, Code):
                 content += node.to_html()
@@ -760,7 +776,9 @@ class Document:
                     in_paragraph = True
                     # If the first child is a pragraph indicator, don't start the paragraph !
                     if len(node.children) > 0 and not isinstance(node.children[0], ParagraphIndicator):
-                        content += "<p>"
+                        c = self.get_variable("DEFAULT_PARAGRAPH_CLASS")
+                        cs = f' class="{c}"' if c is not None else ""
+                        content += f"<p{cs}>"
                 else:
                     content += "<br>\n"; # Chaque ligne donnera une ligne avec un retour à la ligne
                 content += node.to_html()
@@ -775,12 +793,24 @@ class Document:
                     content += "<p>"
                 content = self.string_to_html(content, node.content)
                 if self.get_variable("PARAGRAPH_DEFINITION"):
-                    content += END_PARAGRAPH
+                    content += "</p>" # we do not use END_PARAGRAPH here because we don't want the \n
                 content += "</dd>\n"
             elif isinstance(node, Row):
                 if not in_table:
                     in_table = True
-                    content += "<table>\n"
+                    # Try to get a class. NEXT > DEFAULT
+                    c = self.get_variable("NEXT_TABLE_CLASS")
+                    if c is None:
+                        c = self.get_variable("DEFAULT_TABLE_CLASS")
+                    else:
+                        self.set_variable("NEXT_TABLE_CLASS", None) # reset if found
+                    cs = f' class="{c}"' if c is not None else ""
+                    # Try to get an id
+                    i1 = self.get_variable("NEXT_TABLE_ID")
+                    if i1 is not None:
+                        self.set_variable("NEXT_TABLE_ID", None) # reset if found
+                    i1s = f' id="{i1}"' if i1 is not None else ""
+                    content += f'<table{i1s}{cs}>\n'
                 content += "<tr>"
                 delim = "th" if node.is_header else "td"
                 for node_list in node.node_list_list:
@@ -830,6 +860,8 @@ class Document:
             content = self.assure_list_consistency(content, stack, 0, None, None)
         if in_table:
             content += "</table>\n"
+        if in_def_list:
+            content += "</dl>\n"
         if not first_text:
             content += END_PARAGRAPH
         if header:
@@ -1229,7 +1261,7 @@ class Hamill:
                     doc.add_node(Row(doc, all_nodes))
             elif line.type == "empty":
                 # Prevent multiple empty nodes
-                if len(doc.nodes) == 0 or not type(doc.nodes[-1]) == EmptyNode:
+                if len(doc.nodes) == 0 or type(doc.nodes[-1]) != EmptyNode:
                     doc.add_node(EmptyNode(doc))
             elif line.type == "definition-header":
                 definition = Hamill.parse_inner_string(doc, line.value)
@@ -1643,6 +1675,10 @@ tests = [
         "je suis {{.myclass rouge}} et oui !",
         '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n',
     ],
+    [
+        "!var DEFAULT_PARAGRAPH_CLASS=zorba\nvive le rouge !",
+        '<p class="zorba">vive le rouge !</p>\n'
+    ],
     # Details
     [
         "<<small -> petit>>",
@@ -1742,6 +1778,14 @@ tests = [
     ],
     ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
     # Definition lists
+    [
+        "$ alpha\nFirst letter of the greek alphabet",
+        "<dl>\n<dt>alpha</dt>\n<dd>First letter of the greek alphabet</dd>\n</dl>\n"
+    ],
+    [
+        "!var PARAGRAPH_DEFINITION=true\n$ alpha\nFirst letter of the greek alphabet",
+        "<dl>\n<dt>alpha</dt>\n<dd><p>First letter of the greek alphabet</p></dd>\n</dl>\n"
+    ],
     # Tables
     [
         "|abc|def|",
@@ -1758,6 +1802,14 @@ tests = [
     [
         "|abc|def\\|ghk|",
         "<table>\n<tr><td>abc</td><td>def|ghk</td></tr>\n</table>\n"
+    ],
+    [
+        "!const DEFAULT_TABLE_CLASS=alpha\n|abc|def|",
+        '<table class="alpha">\n<tr><td>abc</td><td>def</td></tr>\n</table>\n'
+    ],
+    [
+        "!const DEFAULT_TABLE_CLASS=alpha\n!const NEXT_TABLE_CLASS=beta\n|abc|def|\n\n|ghi|jkl|",
+        '<table class="beta">\n<tr><td>abc</td><td>def</td></tr>\n</table>\n<table class="alpha">\n<tr><td>ghi</td><td>jkl</td></tr>\n</table>\n'
     ],
     # Links
     [
@@ -1794,13 +1846,17 @@ tests = [
         "((https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg))",
         '<p><img src="https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg"/></p>\n'
     ],
+    [
+        "!const DEFAULT_FIND_IMAGE=doyoureallybelieveafterlove\n((pipo.jpg))",
+        '<p><img src="doyoureallybelieveafterlove/pipo.jpg"/></p>\n'
+    ],
     # Constants
     ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
     ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
     [
         "!const ALPHACONST = abcd\n!const ALPHACONST = efgh",
         "",
-        "Can't set the value of the already defined constant: ALPHACONST of type string",
+        "Can't set the value of the already set constant : ALPHACONST of type string",
     ],
     [
         "$$VERSION$$",
@@ -1822,7 +1878,12 @@ tests = [
     [
         "!var TITLE=ERROR",
         "",
-        "You cannot use TITLE for a variable because it is a predefined constant.",
+        "You are trying to declare a variable which use the name of the constant TITLE"
+    ],
+    [
+        "!const TITLE = TRYING\n!const TITLE = TRYING TOO",
+        "",
+        "Can't set the value of the already set constant : TITLE of type string"
     ],
     # Inclusion of HTML files
     ["!include include_test.html", "<h1>Hello World!</h1>\n"],
@@ -1854,7 +1915,7 @@ tests = [
         "",
         "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
     ],
-    # Default
+    # Default code
     [
         "!var DEFAULT_CODE=bnf\nYoupi j'aime bien les @@<règles>@@ !\n",
         '<p>Youpi j\'aime bien les <code><span class="bnf-keyword" title="token n°0 : keyword">&lt;règles&gt;</span></code> !</p>\n'
@@ -1910,7 +1971,7 @@ def run_test(text, result, error = None):
             print("Test Validated")
             return True
         elif error is not None:
-            print(f"-- Unexpected error:")
+            print("-- Unexpected error:")
             print(repr(e))
             traceback.print_tb(e.__traceback__)
             print(f"-- Another error was expected:\n{error}")

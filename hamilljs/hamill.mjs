@@ -155,10 +155,13 @@ class Picture extends Node {
     to_html() {
         let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
         let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        let p = this.document.get_variable("DEFAULT_FIND_IMAGE");
+        let target = p == null ? this.content : [p, this.content].join("/");
+
         if (this.text !== null) {
-            return `<figure><img${cls}${ids} src="${this.content}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
+            return `<figure><img${cls}${ids} src="${target}" alt="${this.text}"></img><figcaption>${this.text}</figcaption></figure>`;
         } else {
-            return `<img${cls}${ids} src="${this.content}"/>`;
+            return `<img${cls}${ids} src="${target}"/>`;
         }
     }
 }
@@ -502,23 +505,17 @@ class SetVar extends EmptyNode {
 // Variable & document
 
 class Variable {
-    constructor(document, name, type, constant = false, value = null) {
+    constructor(document, name, type, value = null) {
         this.document = document;
         this.name = name;
         if (type !== "number" && type !== "string" && type !== "boolean") {
             throw new Error(`Unknown type ${type} for variable ${name}`);
         }
         this.type = type;
-        this.constant = constant;
         this.value = value;
     }
 
-    set_variable(value) {
-        if (this.value !== null && this.constant) {
-            throw new Error(
-                `Can't set the value of the already defined constant: ${this.name} of type ${this.type}`
-            );
-        }
+    set_value(value) {
         if (
             (isNaN(value) && this.type === "number") ||
             (typeof value === "string" && this.type !== "string") ||
@@ -543,44 +540,47 @@ class Variable {
     }
 }
 
+class Constant extends Variable {
+    constructor(document, name, type, value = null) {
+        super(document, name, type, value);
+    }
+
+    set_value(value) {
+        if (this.value === null) {
+            super.set_value(value);
+        } else {
+            throw new Error(
+                `Can't set the value of the already set constant : ${this.name} of type ${this.type}`
+            );
+        }
+    }
+}
+
 class Document {
     constructor(name = null) {
-        this.predefined_constants = [
-            "TITLE",
-            "ICON",
-            "LANG",
-            "ENCODING",
-            "BODY_CLASS",
-            "BODY_ID",
-            "VERSION",
-            "NOW",
-        ];
         this.name = name;
-        this.variables = {
-            VERSION: new Variable(
-                this,
-                "VERSION",
-                "string",
-                "true",
-                `Hamill ${VERSION}`
-            ),
-            NOW: new Variable(this, "NOW", "string", "true", ""),
-            PARAGRAPH_DEFINITION: new Variable(
-                this,
-                "PARAGRAPH_DEFINITION",
-                "boolean",
-                false,
-                false
-            ),
-            EXPORT_COMMENT: new Variable(
-                this,
-                "EXPORT_COMMENT",
-                "boolean",
-                false,
-                false
-            ),
-            DEFAULT_CODE: new Variable(this, "DEFAULT_CODE", "string", "false"),
-        };
+        let variables = [
+            new Constant(this, "TITLE", "string"),
+            new Constant(this, "ICON", "string"),
+            new Constant(this, "LANG", "string"),
+            new Constant(this, "ENCODING", "string"),
+            new Constant(this, "VERSION",  "string", `Hamill ${VERSION}`),
+            new Constant(this, "NOW", "string", ""),
+            new Variable(this, "PARAGRAPH_DEFINITION", "boolean", false),
+            new Variable(this, "EXPORT_COMMENT", "boolean", false),
+            new Variable(this, "DEFAULT_CODE", "string"),
+            new Constant(this, "BODY_CLASS", "string"),
+            new Constant(this, "BODY_ID", "string"),
+            new Variable(this, "NEXT_TABLE_CLASS", "string"),
+            new Variable(this, "NEXT_TABLE_ID", "string"),
+            new Variable(this, "DEFAULT_TABLE_CLASS", "string"),
+            new Variable(this, "DEFAULT_PARAGRAPH_CLASS", "string"),
+            new Variable(this, "DEFAULT_FIND_IMAGE", "string")
+        ];
+        this.variables = {};
+        for (const element of variables) {
+            this.variables[element.name] = element;
+        }
         this.required = [];
         this.css = [];
         this.labels = {};
@@ -612,9 +612,14 @@ class Document {
 
     set_variable(k, v, t = "string", c = false) {
         if (k in this.variables) {
-            this.variables[k].set_variable(v);
+            if (this.variables[k] instanceof Constant && !c) {
+                throw new Error(`You are trying to declare a variable which use the name of the constant ${k}`)
+            }
+            this.variables[k].set_value(v);
+        } else if (c) {
+            this.variables[k] = new Constant(this, k, t, v);
         } else {
-            this.variables[k] = new Variable(this, k, t, c, v);
+            this.variables[k] = new Variable(this, k, t, v);
         }
     }
 
@@ -905,13 +910,6 @@ class Document {
                     content += "<!--" + node.content + " -->\n";
                 }
             } else if (node instanceof SetVar) {
-                if (!node.constant) {
-                    if (this.predefined_constants.includes(node.id)) {
-                        throw new Error(
-                            `You cannot use ${node.id} for a variable because it is a predefined constant.`
-                        );
-                    }
-                }
                 this.set_variable(
                     node.id,
                     node.value,
@@ -950,7 +948,9 @@ class Document {
                         node.children.length > 0 &&
                         !(node.children[0] instanceof ParagraphIndicator)
                     ) {
-                        content += "<p>";
+                        let c = this.get_variable("DEFAULT_PARAGRAPH_CLASS");
+                        let cs = c != null ? ` class="${c}"` : "";
+                        content += `<p${cs}>`;
                     }
                 } else {
                     content += "<br>\n"; // Chaque ligne donnera une ligne avec un retour à la ligne
@@ -968,12 +968,26 @@ class Document {
                     content += "<p>";
                 content = this.string_to_html(content, node.content);
                 if (this.get_variable("PARAGRAPH_DEFINITION") === true)
-                    content += "</p>\n";
+                    content += "</p>";
                 content += "</dd>\n";
             } else if (node instanceof Row) {
                 if (!in_table) {
                     in_table = true;
-                    content += "<table>\n";
+                    // Try to get a class. NEXT > DEFAULT
+                    let c = this.get_variable("NEXT_TABLE_CLASS");
+                    if (c === null) {
+                        c = this.get_variable("DEFAULT_TABLE_CLASS");
+                    } else {
+                        this.set_variable("NEXT_TABLE_CLASS", null); // reset if found
+                    }
+                    let cs = c != null ? ` class="${c}"` : "";
+                    // Try to get an id
+                    let i1 = this.get_variable("NEXT_TABLE_ID");
+                    if (i1 != null) {
+                        this.set_variable("NEXT_TABLE_ID", null); // reset if found
+                    }
+                    let i1s = i1 != null ? ` id="${i1}"` : "";
+                    content += `<table${i1s}${cs}>\n`;
                 }
                 content += "<tr>";
                 let delim = node.is_header ? "th" : "td";
@@ -1062,6 +1076,9 @@ class Document {
         }
         if (in_code_block) {
             content += "</pre>\n";
+        }
+        if (in_def_list) {
+            content += "</dl>\n";
         }
         if (!first_text) {
             content += "</p>\n";
@@ -2163,6 +2180,10 @@ let tests = [
         "je suis {{.myclass rouge}} et oui !",
         '<p>je suis <span class="myclass">rouge</span> et oui !</p>\n',
     ],
+    [
+        "!var DEFAULT_PARAGRAPH_CLASS=zorba\nvive le rouge !",
+        '<p class="zorba">vive le rouge !</p>\n'
+    ],
     // Details
     [
         "<<small -> petit>>",
@@ -2262,6 +2283,14 @@ let tests = [
     ],
     ["  * A", "<ul>\n  <li>A</li>\n</ul>\n"],
     // Definition lists
+    [
+        "$ alpha\nFirst letter of the greek alphabet",
+        "<dl>\n<dt>alpha</dt>\n<dd>First letter of the greek alphabet</dd>\n</dl>\n"
+    ],
+    [
+        "!var PARAGRAPH_DEFINITION=true\n$ alpha\nFirst letter of the greek alphabet",
+        "<dl>\n<dt>alpha</dt>\n<dd><p>First letter of the greek alphabet</p></dd>\n</dl>\n"
+    ],
     // Tables
     [
         "|abc|def|",
@@ -2278,6 +2307,14 @@ let tests = [
     [
         "|abc|def\\|ghk|",
         "<table>\n<tr><td>abc</td><td>def|ghk</td></tr>\n</table>\n"
+    ],
+    [
+        "!const DEFAULT_TABLE_CLASS=alpha\n|abc|def|",
+        '<table class="alpha">\n<tr><td>abc</td><td>def</td></tr>\n</table>\n'
+    ],
+    [
+        "!const DEFAULT_TABLE_CLASS=alpha\n!const NEXT_TABLE_CLASS=beta\n|abc|def|\n\n|ghi|jkl|",
+        '<table class="beta">\n<tr><td>abc</td><td>def</td></tr>\n</table>\n<table class="alpha">\n<tr><td>ghi</td><td>jkl</td></tr>\n</table>\n'
     ],
     // Links
     [
@@ -2314,13 +2351,17 @@ let tests = [
         "((https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg))",
         `<p><img src="https://fr.wikipedia.org/wiki/%C3%89douard_Detaille#/media/Fichier:Carabinier_de_la_Garde_imp%C3%A9riale.jpg"/></p>\n`
     ],
+    [
+        "!const DEFAULT_FIND_IMAGE=doyoureallybelieveafterlove\n((pipo.jpg))",
+        '<p><img src="doyoureallybelieveafterlove/pipo.jpg"/></p>\n'
+    ],
     // Constants
     ["!const NUMCONST = 25\n$$NUMCONST$$", "<p>25</p>\n"],
     ["\\!const NOT A CONST", "<p>!const NOT A CONST</p>\n"],
     [
         "!const ALPHACONST = abcd\n!const ALPHACONST = efgh",
         "",
-        "Can't set the value of the already defined constant: ALPHACONST of type string",
+        "Can't set the value of the already set constant : ALPHACONST of type string",
     ],
     [
         "$$VERSION$$",
@@ -2342,7 +2383,12 @@ let tests = [
     [
         "!var TITLE=ERROR",
         "",
-        "You cannot use TITLE for a variable because it is a predefined constant.",
+        "You are trying to declare a variable which use the name of the constant TITLE",
+    ],
+    [
+        "!const TITLE = TRYING\n!const TITLE = TRYING TOO",
+        "",
+        "Can't set the value of the already set constant : TITLE of type string"
     ],
     // Inclusion of HTML files
     ["!include include_test.html", "<h1>Hello World!</h1>\n"],
@@ -2374,7 +2420,7 @@ let tests = [
         "",
         "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
     ],
-    // Défaut
+    // Défaut code
     [
         "!var DEFAULT_CODE=bnf\nYoupi j'aime bien les @@<règles>@@ !\n",
         `<p>Youpi j'aime bien les <code><span class="bnf-keyword" title="token n°0 : keyword">&lt;règles&gt;</span></code> !</p>\n`
