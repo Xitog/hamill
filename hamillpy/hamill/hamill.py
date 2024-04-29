@@ -30,6 +30,7 @@
 
 from weyland import LANGUAGES, LEXERS
 from datetime import datetime
+from typing import List
 import time
 import traceback
 import os.path
@@ -78,6 +79,8 @@ class EmptyNode:
             raise HamillException("Undefined or null document")
         self.ids = ids
         self.cls = cls
+        if self.ids is not None:
+            document.register_id(self.ids)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -280,7 +283,7 @@ class Composite(EmptyNode):
     def to_html(self, level = 0):
         s = ""
         for child in self.children:
-            if isinstance(child, List):
+            if isinstance(child, ElementList):
                 s += "\n" + child.to_html(level)
             else:
                 s += child.to_html()
@@ -296,7 +299,7 @@ class TextLine(Composite):
     def to_html(self, level=None):
         return self.document.string_to_html("", self.children)
 
-class List(Composite):
+class ElementList(Composite):
 
     def __init__(self, document, parent, ordered = False, reverse = False, level = 0, children = None):
         super().__init__(document, parent)
@@ -321,7 +324,7 @@ class List(Composite):
         s = start + "\n"
         for child in self.children:
             s += "    " * level + "  <li>"
-            if isinstance(child, List):
+            if isinstance(child, ElementList):
                 s += "\n" + child.to_html(level + 1) + "  </li>\n"
             elif isinstance(child, Composite) and not isinstance(child, TextLine):
                 s += child.to_html(level + 1) + "  </li>\n"
@@ -354,12 +357,13 @@ class Link(EmptyNode):
             display = self.document.string_to_html("", self.display)
         if not url.startswith("https://") and not url.startswith("http://") and not url.startswith("www."):
             if url == "#":
-                url = self.document.get_label(self.document.make_anchor(display))
+                url = self.document.get_label_value(self.document.make_anchor(display))
             elif url.startswith("#"):
-                # nothing to do
-                pass
+                # it is an ID, check if it exists
+                if not self.document.has_id(url[1:]):
+                    raise HamillException(f"Refering to an unknown id {url[1:]}")
             else:
-                url = self.document.get_label(url)
+                url = self.document.get_label_value(url)
         if display is None:
             display = url
         return f'<a href="{url}">{display}</a>'
@@ -492,6 +496,7 @@ class Document:
 
     def __init__(self, name = None):
         self.name = name
+        self.ids = [] # list of all node ids
         variables = [
             Constant(self, "TITLE", "string"),
             Constant(self, "ICON", "string"),
@@ -517,6 +522,17 @@ class Document:
         self.css = []
         self.labels = {}
         self.nodes = []
+
+    def register_id(self, id):
+        if id in self.ids:
+            for i in self.ids:
+                print(i)
+            raise HamillException(f"You are trying to define two elements with same id: {id}")
+        else:
+            self.ids.append(id)
+
+    def has_id(self, id):
+        return id in self.ids
 
     def set_name(self, name):
         self.name = name
@@ -580,7 +596,7 @@ class Document:
     def get_node(self, i):
         return self.nodes[i]
 
-    def get_label(self, target):
+    def get_label_value(self, target):
         if target not in self.labels:
             for label in self.labels:
                 print(label)
@@ -763,7 +779,7 @@ class Document:
                     content += "<!--" + node.content + " -->\n"
             elif isinstance(node, SetVar):
                 self.set_variable(node.id, node.value, node.type, node.constant)
-            elif isinstance(node, HR) or isinstance(node, StartDiv) or isinstance(node, EndDiv) or isinstance(node, StartDetail) or isinstance(node, EndDetail) or isinstance(node, Detail) or isinstance(node, RawHTML) or isinstance(node, List) or isinstance(node, Quote) or isinstance(node, Code):
+            elif isinstance(node, HR) or isinstance(node, StartDiv) or isinstance(node, EndDiv) or isinstance(node, StartDetail) or isinstance(node, EndDetail) or isinstance(node, Detail) or isinstance(node, RawHTML) or isinstance(node, ElementList) or isinstance(node, Quote) or isinstance(node, Code):
                 content += node.to_html()
             elif isinstance(node, TextLine):
                 # Check that ParagraphIndicator must be only at 0
@@ -907,7 +923,7 @@ class Hamill:
             f = open(string_or_filename, 'r', encoding='utf-8')
             data = f.read()
             f.close()
-            print("Data read from file: {string_or_filename}")
+            print(f"Data read from file: {string_or_filename}")
             name = string_or_filename
         if data is None:
             data = string_or_filename
@@ -1148,7 +1164,7 @@ class Hamill:
                 elif line.type == "reverse_list":
                     elem_is_reverse = True
                 if actual_list is None:
-                    actual_list = List(doc, None, elem_is_ordered or elem_is_reverse, elem_is_reverse)
+                    actual_list = ElementList(doc, None, elem_is_ordered or elem_is_reverse, elem_is_reverse)
                     actual_level = 1
                     starting_level = line.param
                 # common code between lists
@@ -1169,7 +1185,7 @@ class Hamill:
                     c = Composite(doc, actual_list) # create a new composite
                     c.add_child(last) # put the old last item in it
                     actual_list = actual_list.add_child(c) # link the new composite to the list
-                    sub = List(doc, c, elem_is_ordered, elem_is_reverse) # create a new list
+                    sub = ElementList(doc, c, elem_is_ordered, elem_is_reverse) # create a new list
                     actual_list = actual_list.add_child(sub)
                     actual_level += 1
                 while list_level < actual_level:
@@ -1178,7 +1194,7 @@ class Hamill:
                         # L'item était un composite, il faut remonter à la liste mère !
                         actual_list = actual_list.get_parent()
                     actual_level -= 1
-                    if not isinstance(actual_list, List):
+                    if not isinstance(actual_list, ElementList):
                         raise HamillException(f"List incoherency: last element is not a list but a {actual_list.__class__.__name__}")
                 # creation
                 item_text = line.value[line.value.find(delimiter) + 2:].strip()

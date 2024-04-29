@@ -79,7 +79,11 @@ class EmptyNode {
         }
         this.ids = ids;
         this.cls = cls;
+        if (this.ids !== null) {
+            this.document.register_id(this.ids);
+        }
     }
+
     toString() {
         return this.constructor.name;
     }
@@ -311,7 +315,7 @@ class Composite extends EmptyNode {
     to_html(level = 0) {
         let s = "";
         for (const child of this.children) {
-            if (child instanceof List) {
+            if (child instanceof ElementList) {
                 s += "\n" + child.to_html(level);
             } else {
                 s += child.to_html();
@@ -331,7 +335,7 @@ class TextLine extends Composite {
     }
 }
 
-class List extends Composite {
+class ElementList extends Composite {
     constructor(
         document,
         parent,
@@ -364,7 +368,7 @@ class List extends Composite {
         let s = start + "\n";
         for (const child of this.children) {
             s += "    ".repeat(level) + "  <li>";
-            if (child instanceof List) {
+            if (child instanceof ElementList) {
                 s += "\n" + child.to_html(level + 1) + "  </li>\n";
             } else if (
                 child instanceof Composite &&
@@ -408,13 +412,16 @@ class Link extends EmptyNode {
             !url.startsWith("www.")
         ) {
             if (url === "#") {
-                url = this.document.get_label(
+                url = this.document.get_label_value(
                     this.document.make_anchor(display)
                 );
             } else if (url.startsWith("#")) {
-                // nothing to do
+                // it is an ID, check if it exists
+                if (!this.document.has_id(url.substring(1))) {
+                    throw new Error(`Refering to an unknown id ${url.substring(1)}`);
+                }
             } else {
-                url = this.document.get_label(url);
+                url = this.document.get_label_value(url);
             }
         }
         if (display === undefined || display === null) {
@@ -585,6 +592,21 @@ class Document {
         this.css = [];
         this.labels = {};
         this.nodes = [];
+        this.ids = [];
+    }
+
+    register_id(id) {
+        if (this.ids.includes(id)) {
+            for (const i of this.ids) {
+                console.log(i);
+            }
+            throw new Error(`You are trying to define two elements with same id: ${id}`);
+        }
+        this.ids.push(id);
+    }
+
+    has_id(id) {
+        return this.ids.includes(id);
     }
 
     set_name(name) {
@@ -660,7 +682,7 @@ class Document {
         return this.nodes[i];
     }
 
-    get_label(target) {
+    get_label_value(target) {
         if (!(target in this.labels)) {
             for (const label in this.labels) {
                 console.log(label);
@@ -920,7 +942,7 @@ class Document {
                 node instanceof EndDetail ||
                 node instanceof Detail ||
                 node instanceof RawHTML ||
-                node instanceof List ||
+                node instanceof ElementList ||
                 node instanceof Quote ||
                 node instanceof Code
             ) {
@@ -1446,7 +1468,7 @@ class Hamill {
                 case "unordered_list":
                     elem_is_unordered = true;
                     if (actual_list === null) {
-                        actual_list = new List(doc, null, false, false);
+                        actual_list = new ElementList(doc, null, false, false);
                         actual_level = 1;
                         starting_level = line.param;
                     }
@@ -1454,7 +1476,7 @@ class Hamill {
                 case "ordered_list":
                     if (line.type === "ordered_list") elem_is_ordered = true;
                     if (actual_list === null) {
-                        actual_list = new List(doc, null, true, false);
+                        actual_list = new ElementList(doc, null, true, false);
                         actual_level = 1;
                         starting_level = line.param;
                     }
@@ -1462,7 +1484,7 @@ class Hamill {
                 case "reverse_list":
                     if (line.type === "reverse_list") elem_is_reverse = true;
                     if (actual_list === null) {
-                        actual_list = new List(doc, null, true, true);
+                        actual_list = new ElementList(doc, null, true, true);
                         actual_level = 1;
                         starting_level = line.param;
                     }
@@ -1496,7 +1518,7 @@ class Hamill {
                         let c = new Composite(doc, actual_list); // create a new composite
                         c.add_child(last); // put the old last item in it
                         actual_list = actual_list.add_child(c); // link the new composite to the list
-                        let sub = new List(
+                        let sub = new ElementList(
                             doc,
                             c,
                             elem_is_ordered,
@@ -1512,7 +1534,7 @@ class Hamill {
                             actual_list = actual_list.get_parent();
                         }
                         actual_level -= 1;
-                        if (actual_list.constructor.name !== "List") {
+                        if (actual_list.constructor.name !== "ElementList") {
                             throw new Error(
                                 `List incoherency: last element is not a list but a ${actual_list.constructor.name}`
                             );
