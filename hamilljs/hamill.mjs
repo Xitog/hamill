@@ -45,7 +45,7 @@ const argv = process.argv;
 // Constants
 //-----------------------------------------------------------------------------
 
-const VERSION = '2.0.3';
+const VERSION = '2.0.5';
 
 //-----------------------------------------------------------------------------
 // Classes
@@ -2543,7 +2543,7 @@ if (DEBUG) {
 if (argv !== null) {
     let message = "---\n";
     message += "> Use hamill.mjs --process (or -p) <input config filepath> to convert the HML file to HTML\n";
-    message += "  The file must be a dict {} with a key named targets with an array value of pairs :\n";
+    message += "  The file must be an object {} with a key named targets with an array value of pairs :\n";
     message += '            ["inputFile", "outputDir"]\n';
     message += `> Use hamill.mjs --tests (or -t) to launch all the tests (${tests.length}).\n`;
     message += `> Use hamill.mjs --eval (or -e) to run a read-eval-print-loop from hml to html\n`;
