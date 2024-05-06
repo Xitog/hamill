@@ -1,5 +1,5 @@
 from setuptools import setup
-import hamill
+#import hamill
 
 f = open('..\\README.md', mode='r', encoding='utf8')
 long_desc = f.read()
@@ -8,7 +8,7 @@ f.close()
 setup(
     # Metadata
     name='hamill',
-    version=hamill.__version__,
+    version='2.0.5', #hamill.__version__,
 
     license="MIT",
 
