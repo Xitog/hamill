@@ -1,6 +1,6 @@
 # Hamill
 
-A simple lightweight markup language outputting HTML. Implementations are available in JavaScript and Python 3.
+A simple lightweight markup language outputting HTML. Implementations are available in [JavaScript]() and Python 3.
 
 <ins>Rationale</ins>: More complete than [the original Markdown](https://daringfireball.net/projects/markdown/syntax)<sup>2004</sup>, easier to parse and write.
 

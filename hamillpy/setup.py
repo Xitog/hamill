@@ -1,7 +1,7 @@
 from setuptools import setup
 import hamill
 
-f = open('README.md', mode='r', encoding='utf8')
+f = open('..\\README.md', mode='r', encoding='utf8')
 long_desc = f.read()
 f.close()
 
@@ -17,7 +17,7 @@ setup(
     url="https://xitog.github.io/dgx/informatique/hamill.html",
     maintainer='Damien Gouteux',
     maintainer_email='damien.gouteux@gmail.com',
-    
+
     description='A lightweight markup language',
     long_description=long_desc,
     long_description_content_type="text/markdown",
@@ -37,7 +37,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content :: CGI Tools/Libraries'
     ],
     keywords=['hamill', 'lml', 'lightweight markup language', 'markup', 'text', 'html'],
-    
+
     packages=['hamill'],  #same as name
     python_requires='>=3.5',
     install_requires = ['weyland'], #external packages as dependencies

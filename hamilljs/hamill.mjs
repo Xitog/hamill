@@ -469,19 +469,27 @@ class Code extends Node {
     }
 
     to_html() {
-        let output = "";
+        let output = this.content;
         let lang = this.lang == null ? this.document.get_variable("DEFAULT_CODE", "") : this.lang;
         if (lang !== null && lang !== "" && lang in LANGUAGES) {
             output = LEXERS[lang].to_html(this.content, null, [
                 "blank",
             ]);
-        } else {
-            output = this.content;
         }
         if (this.inline) {
             return "<code>" + output + "</code>";
         } else {
-            return "<pre>\n" + output + "</pre>\n";
+            let i = this.document.get_variable("NEXT_CODE_ID", "");
+            let is = i != null && i != "" ? ` id="${i}"` : "";
+            if (i !== null) {
+                this.document.set_variable("NEXT_CODE_ID", null);
+            }
+            let c = this.document.get_variable("NEXT_CODE_CLASS", "");
+            let cs = c != null && c != "" ? ` class="${c}"` : "";
+            if (c !== null) {
+                this.document.set_variable("NEXT_CODE_CLASS", null);
+            }
+            return `<pre${is}${cs}>\n` + output + "</pre>\n";
         }
     }
 }
@@ -582,7 +590,9 @@ class Document {
             new Variable(this, "NEXT_TABLE_ID", "string"),
             new Variable(this, "DEFAULT_TABLE_CLASS", "string"),
             new Variable(this, "DEFAULT_PARAGRAPH_CLASS", "string"),
-            new Variable(this, "DEFAULT_FIND_IMAGE", "string")
+            new Variable(this, "DEFAULT_FIND_IMAGE", "string"),
+            new Variable(this, "NEXT_CODE_CLASS", "string"),
+            new Variable(this, "NEXT_CODE_ID", "string")
         ];
         this.variables = {};
         for (const element of variables) {
@@ -1853,7 +1863,7 @@ class Hamill {
             sub: false,
             stroke: false,
         };
-        let stack = [];
+        let text_modifier_stack = [];
 
         while (index < str.length) {
             let char = str[index];
@@ -1996,13 +2006,14 @@ class Hamill {
                         // match with text modes
                         if (!modes[match]) {
                             modes[match] = true;
-                            stack.push(match);
+                            text_modifier_stack.push([match, str]);
                             nodes.push(new Start(doc, match));
                         } else {
                             modes[match] = false;
-                            let last_mode = stack.pop();
+                            let last = text_modifier_stack.pop();
+                            let last_mode = last[0];
                             if (last_mode != match) {
-                                throw new Error(`Incoherent stacking of the modifier: finishing ${match} but ${last_mode} should be closed first!`);
+                                throw new Error(`Incoherent stacking of the modifier: finishing ${match} but ${last_mode} should be closed first in ${last[1]}`);
                             }
                             nodes.push(new Stop(doc, match));
                         }
@@ -2018,8 +2029,9 @@ class Hamill {
         if (word.length > 0) {
             nodes.push(new Text(doc, word));
         }
-        if (stack.length > 0) {
-            throw new Error(`Unclosed ${stack.pop()} text mode.`);
+        if (text_modifier_stack.length > 0) {
+            let last = text_modifier_stack.pop();
+            throw new Error(`Unclosed ${last[0]} text mode in ${last[1]}.`);
         }
         return nodes;
     }
@@ -2431,12 +2443,12 @@ let tests = [
     [
         "**started but not finished",
         "",
-        "Unclosed bold text mode."
+        "Unclosed bold text mode in **started but not finished."
     ],
     [
         "**started __first** closed wrong__",
         "",
-        "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
+        "Incoherent stacking of the modifier: finishing bold but underline should be closed first in **started __first** closed wrong__"
     ],
     // Défaut code
     [
@@ -2447,6 +2459,11 @@ let tests = [
     [
         "* @@*@@ pour une liste non numérotée",
         "<ul>\n  <li><code>*</code> pour une liste non numérotée</li>\n</ul>\n"
+    ],
+    // Défaut code class and id
+    [
+        "!var NEXT_CODE_CLASS=cls\n!var NEXT_CODE_ID=ids\n@@@\nhello\n@@@",
+        '<pre id="ids" class="cls">\nhello\n</pre>\n'
     ]
 ];
 

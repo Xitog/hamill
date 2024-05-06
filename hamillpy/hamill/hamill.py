@@ -44,7 +44,7 @@ import re
 # Constants
 #------------------------------------------------------------------------------
 
-VERSION = '2.0.3'
+VERSION = '2.0.5'
 END_PARAGRAPH = "</p>\n"
 
 #------------------------------------------------------------------------------
@@ -405,16 +405,22 @@ class Code(Node):
         return f'Code{lang} ' + '{' + f'content: {self.content}' + '}' + inline
 
     def to_html(self):
-        output = ""
+        output = self.content
         lang = self.document.get_variable("DEFAULT_CODE", "") if self.lang is None else self.lang
         if lang is not None and lang != "" and lang in LANGUAGES:
             output = LEXERS[lang].to_html(self.content, None, ["blank"])
-        else:
-            output = self.content
         if self.inline:
             return "<code>" + output + "</code>"
         else:
-            return "<pre>\n" + output + "</pre>\n"
+            i = self.document.get_variable("NEXT_CODE_ID", "")
+            ids = f' id="{i}"' if i is not None and i != "" else ""
+            if i is not None:
+                self.document.set_variable("NEXT_CODE_ID", None)
+            c = self.document.get_variable("NEXT_CODE_CLASS", "")
+            cs = f' class="{c}"' if c is not None and c != "" else ""
+            if c is not None:
+                self.document.set_variable("NEXT_CODE_CLASS", None)
+            return f'<pre{ids}{cs}>\n' + output + "</pre>\n"
 
 class GetVar(Node):
 
@@ -513,7 +519,9 @@ class Document:
             Variable(self, "NEXT_TABLE_ID", "string"),
             Variable(self, "DEFAULT_TABLE_CLASS", "string"),
             Variable(self, "DEFAULT_PARAGRAPH_CLASS", "string"),
-            Variable(self, "DEFAULT_FIND_IMAGE", "string")
+            Variable(self, "DEFAULT_FIND_IMAGE", "string"),
+            Variable(self, "NEXT_CODE_CLASS", "string"),
+            Variable(self, "NEXT_CODE_ID", "string")
         ]
         self.variables = {}
         for v in variables:
@@ -1409,7 +1417,7 @@ class Hamill:
             "sub": False,
             "stroke": False,
         }
-        stack = []
+        text_modifier_stack = []
 
         while index < len(s):
             char = s[index]
@@ -1530,13 +1538,14 @@ class Hamill:
                         # match with text modes
                         if not modes[match]:
                             modes[match] = True
-                            stack.append(match)
+                            text_modifier_stack.append([match, s])
                             nodes.append(Start(doc, match))
                         else:
                             modes[match] = False
-                            last_mode = stack.pop()
+                            last = text_modifier_stack.pop()
+                            last_mode = last[0]
                             if last_mode != match:
-                                raise HamillException(f"Incoherent stacking of the modifier: finishing {match} but {last_mode} should be closed first!")
+                                raise HamillException(f"Incoherent stacking of the modifier: finishing {match} but {last_mode} should be closed first in {last[1]}")
                             nodes.append(Stop(doc, match))
                         index += 1
                 # no match
@@ -1545,8 +1554,9 @@ class Hamill:
             index += 1
         if len(word) > 0:
             nodes.append(Text(doc, word))
-        if len(stack) > 0:
-            raise HamillException(f"Unclosed {stack.pop()} text mode.")
+        if len(text_modifier_stack) > 0:
+            last = text_modifier_stack.pop()
+            raise HamillException(f"Unclosed {last[0]} text mode in {last[1]}.")
         return nodes
 
     @staticmethod
@@ -1922,12 +1932,12 @@ tests = [
     [
         "**started but not finished",
         "",
-        "Unclosed bold text mode."
+        "Unclosed bold text mode in **started but not finished."
     ],
     [
         "**started __first** closed wrong__",
         "",
-        "Incoherent stacking of the modifier: finishing bold but underline should be closed first!"
+        "Incoherent stacking of the modifier: finishing bold but underline should be closed first in **started __first** closed wrong__"
     ],
     # Default code
     [
@@ -1938,6 +1948,11 @@ tests = [
     [
         "* @@*@@ pour une liste non numérotée",
         "<ul>\n  <li><code>*</code> pour une liste non numérotée</li>\n</ul>\n"
+    ],
+    # Défaut code class and id
+    [
+        "!var NEXT_CODE_CLASS=cls\n!var NEXT_CODE_ID=ids\n@@@\nhello\n@@@",
+        '<pre id="ids" class="cls">\nhello\n</pre>\n'
     ]
 ]
 
@@ -2009,7 +2024,7 @@ if DEBUG:
 
 message = "---\n"
 message += "> Use hamill.mjs --process (or -p) <input config filepath> to convert the HML file to HTML\n"
-message += "  The file must be a dict {} with a key named targets with an array value of pairs :\n"
+message += "  The file must be an object {} with a key named targets with an array value of pairs :\n"
 message += '            ["inputFile", "outputDir"]\n'
 message += f"> Use hamill.mjs --tests (or -t) to launch all the tests ({len(tests)}).\n"
 message += "> Use hamill.mjs --eval (or -e) to run a read-eval-print-loop from hml to html\n"
