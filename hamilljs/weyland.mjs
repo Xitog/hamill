@@ -487,39 +487,32 @@ const SHORTCUTS = {
 const LANGUAGES = {
     'ash': new Language('ash',
         {
-            'keyword' : ['if', 'then', 'elif', 'else', 'end',
-                'while', 'do', 'for',
-                'break', 'next', 'return',
-                'var', 'fun', 'sub', 'get', 'set', 'class',
-                'import', 'from', 'as',
-                'try', 'catch', 'finally', 'raise', 'const'],
+            'keyword' : ['var', 'const',
+                'if', 'then', 'elsif', 'else', 'end',
+                'while', 'do', 'for', 'loop', 'in',
+                'break', 'next',
+                'fun', 'pro', 'return', 'get', 'set',
+                'and', 'or', 'not',
+                'class', 'static', 'is',
+                'import'],
             'special': ['writeln', 'write'],
             'boolean' : ['false', 'true'],
-            'identifier' : PATTERNS["IDENTIFIER"],
-            // Old
-            'affectation' : ['='],
-            'combined_affectation' : ['\\+=', '-=', '\\*=', '/=', '//=', '\\*\\*=', '%='],
-            'type' : [':', '->'],
-            'fast' : ['=>'],
-            'label' : ['::'],
-            // 'unary_operator' : ['-', 'not', r'\#', '~'],
-            // New
-            'integer' : PATTERNS["INTEGER"].concat(PATTERNS["INTEGER_BIN"]).concat(PATTERNS["INTEGER_HEXA"]),
-            'number' : PATTERNS["FLOAT"],
             'nil': ['nil'],
-            // 'binary_operator' : ['and', 'or', # boolean
-            'operator' : ['-', 'not', '#', '~', 'and', 'or', // boolean
-                'in', // belongs to
-                '\\+', '-', '\\*', '/', '//', '\\*\\*', '%', // mathematical
+            'identifier' : ['[@$]?[a-zA-Z]\\w*'],
+            'number' : PATTERNS["INTEGER"].concat(PATTERNS["INTEGER_BIN"]).concat(PATTERNS["INTEGER_HEXA"]).concat(PATTERNS["FLOAT"]),
+            'string' : PATTERNS["STRINGS"],
+            'operator' : ['\\.\\.', // range
+                '\\+', '-', '\\*', '\\*\\*', '/', '//', '%', // mathematical
                 '&', '\\|', '~', '>>', '<<', // bitwise
                 '<', '<=', '>', '>=', '==', '!=', // comparison
-                '\\.'], // call
-            'separator': ['\\{', '\\}', '\\(', '\\)', '\\[', '\\]', ',', ';'],
-            'wrong_int' : PATTERNS["WRONG_INTEGER"],
-            'blank': PATTERNS["BLANKS"],
-            'newline' : PATTERNS["NEWLINES"],
+                '\\.', // call
+                '=', '\\+=', '-=', '\\*=', '\\*\\*=', '/=', '//=', '%=',
+                '=>', '#', '\\$'], // fast
+            'separator': ['\\{', '\\}', '\\(', '\\)', '\\[', '\\]', ',', ';', ':'],
             'comment': ['--[^\n]*'],
-            'string' : PATTERNS["STRINGS"],
+            'newline' : PATTERNS["NEWLINES"],
+            'blank': PATTERNS["BLANKS"],
+            'wrong_int' : PATTERNS["WRONG_INTEGER"],
         },
         ['wrong_int'],
         // Special
