@@ -8,7 +8,7 @@ f.close()
 setup(
     # Metadata
     name='hamill',
-    version='2.0.5', #hamill.__version__,
+    version='2.0.6', #hamill.__version__,
 
     license="MIT",
 

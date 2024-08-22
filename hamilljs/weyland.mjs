@@ -453,7 +453,7 @@ class Test
 //var INTEGER_SEP  = ['#+[#_]*#+'];
 
 const PATTERNS = {
-    'IDENTIFIER'    : ['[a-zA-Z]\\w*'],
+    'IDENTIFIER'    : ['[_a-zA-Z]\\w*'],
     'INTEGER'       : ['\\d+'],
     'INTEGER_HEXA'  : ['0[xX][\\dABCDEFabcdef]+'],
     'INTEGER_BIN'   : ['0[bB][01]+'],

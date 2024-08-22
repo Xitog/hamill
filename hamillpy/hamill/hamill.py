@@ -44,7 +44,7 @@ import re
 # Constants
 #------------------------------------------------------------------------------
 
-VERSION = '2.0.5'
+VERSION = '2.0.6'
 END_PARAGRAPH = "</p>\n"
 
 #------------------------------------------------------------------------------
@@ -2060,16 +2060,22 @@ elif len(sys.argv) == 3:
         config = json.load(f)
         f.close()
         for target in config["targets"]:
-            if target[0] != "comment":
-                inputFile = target[0]
-                targetOK = os.path.isfile(inputFile)
-                if not targetOK:
-                    print(f"{inputFile} is an invalid target. Aborting.")
-                    exit()
-                outputDir = target[1]
-                Hamill.process(
-                    inputFile
-                ).to_html_file(outputDir)
+            if "do" in target and "source" in target and "destination" in target:
+                if target["do"]:
+                    inputFile = target["source"]
+                    targetOK = os.path.isfile(inputFile)
+                    if not targetOK:
+                        print(f"{inputFile} is an invalid target. Aborting.")
+                        exit()
+                    outputDir = target["destination"]
+                    Hamill.process(
+                        inputFile
+                    ).to_html_file(outputDir)
+            elif "comment" in target and len(target) == 1:
+                pass # Do nothing, this is a comment
+            else:
+                print('Malformed configuration file. Aborting.')
+                exit()
     else:
         print("Unrecognized options. Type --help for help.")
 else:

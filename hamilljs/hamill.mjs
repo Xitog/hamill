@@ -45,7 +45,7 @@ const argv = process.argv;
 // Constants
 //-----------------------------------------------------------------------------
 
-const VERSION = '2.0.5';
+const VERSION = '2.0.6';
 
 //-----------------------------------------------------------------------------
 // Classes
@@ -579,7 +579,7 @@ class Document {
             new Constant(this, "ICON", "string"),
             new Constant(this, "LANG", "string"),
             new Constant(this, "ENCODING", "string"),
-            new Constant(this, "VERSION",  "string", `Hamill ${VERSION}`),
+            new Constant(this, "VERSION", "string", `Hamill ${VERSION}`),
             new Constant(this, "NOW", "string", ""),
             new Variable(this, "PARAGRAPH_DEFINITION", "boolean", false),
             new Variable(this, "EXPORT_COMMENT", "boolean", false),
@@ -833,7 +833,7 @@ class Document {
                 word += '&lt;';
             } else if (char === '>') {
                 word += '&gt;';
-            // Escaping
+                // Escaping
             } else if (char === "\\" && specials.includes(next)) {
                 // Do nothing, this is an escaping slash
                 if (next === "\\") {
@@ -1029,7 +1029,7 @@ class Document {
                         node_list[0].content[0] === "="
                     ) {
                         node_list[0].content =
-                        node_list[0].content.substring(1);
+                            node_list[0].content.substring(1);
                         center = ' style="text-align: center"';
                     } else if (
                         node_list.length > 0 &&
@@ -1038,7 +1038,7 @@ class Document {
                         node_list[0].content[0] === ">"
                     ) {
                         node_list[0].content =
-                        node_list[0].content.substring(1);
+                            node_list[0].content.substring(1);
                         center = ' style="text-align: right"';
                     }
                     if (node_list.length > 0 &&
@@ -1053,7 +1053,7 @@ class Document {
                         }
                         if (span !== '') {
                             let i = 2;
-                            let found  = false;
+                            let found = false;
                             while (i < node_list[0].content.length) {
                                 if (node_list[0].content[i] === '#') {
                                     found = true;
@@ -1065,7 +1065,7 @@ class Document {
                                 span = '';
                             } else {
                                 span += node_list[0].content.substring(2, i) + '"';
-                                node_list[0].content = node_list[0].content.substring(i+1);
+                                node_list[0].content = node_list[0].content.substring(i + 1);
                             }
                         }
                     }
@@ -1888,7 +1888,7 @@ class Hamill {
                 // in case of a ## b, the first space is removed by trim() above
                 // and the second space by this :
                 if (index + 1 < str.length && str[index + 1] === ' ') {
-                    index +=1 ;
+                    index += 1;
                 }
             } else if (char === "\\" && next === "\\" && next_next === "\\") {
                 // escape it
@@ -1998,7 +1998,7 @@ class Hamill {
                         let language = code_str.split(" ")[0];
                         if (language in LANGUAGES) {
                             lang = language;
-                            code_str = code_str.substring(language.length+1); // remove the language and one space
+                            code_str = code_str.substring(language.length + 1); // remove the language and one space
                         }
                         nodes.push(new Code(doc, Hamill.unescape_code(code_str), null, null, lang, true)); // unescape only @@ !
                         index = is_code_ok + 1; // will inc by 1 at the end of the loop
@@ -2598,17 +2598,24 @@ if (argv !== null) {
             let raw = fs.readFileSync(filepath, "utf-8");
             let config = JSON.parse(raw);
             for (const target of config["targets"]) {
-                if (target[0] !== "comment") {
-                    let inputFile = target[0];
-                    let targetOK = fs.existsSync(inputFile);
-                    if (!targetOK) {
-                        console.log(`${inputFile} is an invalid target. Aborting.`);
-                        process.exit();
+                if (target.hasOwnProperty("do") && target.hasOwnProperty("source") && target.hasOwnProperty("destination")) {
+                    if (target["do"]) {
+                        let inputFile = target["source"];
+                        let targetOK = fs.existsSync(inputFile);
+                        if (!targetOK) {
+                            console.log(`${inputFile} is an invalid target. Aborting.`);
+                            process.exit();
+                        }
+                        let outputDir = target["destination"];
+                        Hamill.process(
+                            inputFile
+                        ).to_html_file(outputDir);
                     }
-                    let outputDir = target[1];
-                    Hamill.process(
-                        inputFile
-                    ).to_html_file(outputDir);
+                } else if (target.hasOwnProperty("comment") && Object.keys(target).length === 1) {
+                    // Do nothing, this is a comment
+                } else {
+                    console.log('Malformed configuration file. Aborting.');
+                    process.exit();
                 }
             }
         } else {

@@ -1,6 +1,6 @@
 {
   "name": "hamill",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "A simple lightweight markup language outputting HTML. Hamill, the right mark.",
   "main": "hamill.mjs",
   "scripts": {
