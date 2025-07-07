@@ -182,14 +182,6 @@ class BR extends EmptyNode {
     }
 }
 
-class Span extends Node {
-    to_html() {
-        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
-        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
-        return `<span${ids}${cls}>${this.content}</span>`;
-    }
-}
-
 class ParagraphIndicator extends EmptyNode {
 
     to_html() {
@@ -332,6 +324,21 @@ class TextLine extends Composite {
     }
     to_html() {
         return this.document.string_to_html("", this.children);
+    }
+}
+
+class Span extends TextLine {
+    constructor(document, children = [], ids = null, cls = null) {
+        super(document, children);
+        this.ids = ids;
+        this.cls = cls;
+    }
+
+    to_html() {
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        let content = this.document.string_to_html("", this.children); // New
+        return `<span${ids}${cls}>${content}</span>`;
     }
 }
 
@@ -1963,7 +1970,7 @@ class Hamill {
                             nodes.push(
                                 new Span(
                                     doc,
-                                    res["text"],
+                                    Hamill.parse_inner_string(doc, res["text"]), // New
                                     res["id"],
                                     res["class"]
                                 )
@@ -2075,10 +2082,6 @@ class Hamill {
                 in_class = true;
                 cls = "";
                 continue;
-            } else if (c === ".") {
-                throw new Error(
-                    `Class or text already defined for this markup: ${content}`
-                );
             }
 
             if (
@@ -2092,10 +2095,6 @@ class Hamill {
                 in_ids = true;
                 ids = "";
                 continue;
-            } else if (c === "#") {
-                throw new Error(
-                    `ID or text alreay defined for this markup: ${content}`
-                );
             }
 
             if (c === " " && in_class) {
