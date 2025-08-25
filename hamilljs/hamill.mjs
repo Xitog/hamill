@@ -263,8 +263,8 @@ class EndDiv extends EmptyNode {
 }
 
 class Composite extends EmptyNode {
-    constructor(document, parent = null) {
-        super(document);
+    constructor(document, parent = null, ids = null, cls = null) {
+        super(document, ids, cls);
         this.children = [];
         this.parent = parent;
     }
@@ -318,8 +318,8 @@ class Composite extends EmptyNode {
 }
 
 class TextLine extends Composite {
-    constructor(document, children = []) {
-        super(document);
+    constructor(document, children = [], parent = null, ids = null, cls = null) {
+        super(document, parent, ids, cls);
         this.add_children(children);
     }
     to_html() {
@@ -328,10 +328,14 @@ class TextLine extends Composite {
 }
 
 class Span extends TextLine {
-    constructor(document, children = [], ids = null, cls = null) {
-        super(document, children);
-        this.ids = ids;
-        this.cls = cls;
+    constructor(document, children = [], parent = null, ids = null, cls = null) {
+        super(document, children, parent, ids, cls);
+    }
+
+    toString() {
+        let cls = (this.cls === null) ? '' : ` class="${this.cls}"`;
+        let ids = (this.ids === null) ? '' : ` id="${this.ids}"`;
+        return this.constructor.name + `${ids}${cls} (${this.children.length})`;
     }
 
     to_html() {
@@ -425,6 +429,7 @@ class Link extends EmptyNode {
             } else if (url.startsWith("#")) {
                 // it is an ID, check if it exists
                 if (!this.document.has_id(url.substring(1))) {
+                    console.log(this.document.ids.join("\n"));
                     throw new Error(`Refering to an unknown id ${url.substring(1)}`);
                 }
             } else {
@@ -1971,6 +1976,7 @@ class Hamill {
                                 new Span(
                                     doc,
                                     Hamill.parse_inner_string(doc, res["text"]), // New
+                                    null,
                                     res["id"],
                                     res["class"]
                                 )
