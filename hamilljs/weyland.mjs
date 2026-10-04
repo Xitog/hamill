@@ -590,7 +590,7 @@ const LANGUAGES = {
     'game': new Language('game',
         {
             'year': ['[12][0-9][0-9][0-9]'],
-            'normal': ['\\w[\\w\'\\-:\\d ’]*[\\w\\d]'],
+            'normal': ['\\w[\\w\'\\-:\\d ’\\.]*[\\w\\d\\.:²]'],
             'newline' : ['\n'],
             'separator': [',', ';'],
             'blank': PATTERNS['BLANKS'],
